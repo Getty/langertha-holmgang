@@ -5,3 +5,6 @@ Revision history for Langertha-Holmgang
   - Langertha::Holmgang::Report: write and read the JSON report (holmgang_report 1,
     ADR 0006), merge reports without double counting, map cai-platform --report
     for the acceptance comparison
+  - Simulator plugin contract (Role::Simulator, Role::AnswerWorld, Simulators
+    registry) and the linux device simulator with the bash grammar, nftables
+    evaluation and systemd calendar
