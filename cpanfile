@@ -10,6 +10,7 @@ requires 'namespace::autoclean';
 requires 'Path::Tiny';
 requires 'Scalar::Util';
 requires 'URI';
+requires 'YAML::XS';
 
 on test => sub {
   requires 'Test::Fatal';

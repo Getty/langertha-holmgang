@@ -14,3 +14,6 @@ Revision history for Langertha-Holmgang
   - Simulators for device types routeros (RouterOS console: menus,
     print/add/set/remove/move, find, export, ping) and ios (Cisco IOS switch
     CLI: show, configure terminal, interfaces, VLANs)
+  - Sim::Linux::Kubernetes: kubectl against a simulated cluster — stored
+    resources, derived pods and status, endpoints, reachability, Ingress,
+    cert-manager, RBAC

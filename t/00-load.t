@@ -20,6 +20,7 @@ for (qw(
   Langertha::Holmgang::Sim::Linux::Accounts
   Langertha::Holmgang::Sim::RouterOS
   Langertha::Holmgang::Sim::IOS
+  Langertha::Holmgang::Sim::Linux::Kubernetes
 )) {
   use_ok($_);
 }
