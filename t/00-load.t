@@ -14,6 +14,10 @@ for (qw(
   Langertha::Holmgang::Sim::Linux
   Langertha::Holmgang::Sim::Linux::Nft
   Langertha::Holmgang::Sim::Linux::Calendar
+  Langertha::Holmgang::Sim::Linux::Monitoring
+  Langertha::Holmgang::Sim::Linux::Sshd
+  Langertha::Holmgang::Sim::Linux::Logrotate
+  Langertha::Holmgang::Sim::Linux::Accounts
 )) {
   use_ok($_);
 }

@@ -8,3 +8,6 @@ Revision history for Langertha-Holmgang
   - Simulator plugin contract (Role::Simulator, Role::AnswerWorld, Simulators
     registry) and the linux device simulator with the bash grammar, nftables
     evaluation and systemd calendar
+  - Linux simulator: Prometheus/Alertmanager with promtool and amtool, sshd
+    configuration and reload/restart, logrotate, accounts and sudo
+    (Sim::Linux::Monitoring, ::Sshd, ::Logrotate, ::Accounts)
