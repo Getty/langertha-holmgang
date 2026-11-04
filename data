@@ -1,0 +1,27 @@
+---
+claimed_at: 2026-11-04T22:02:32Z
+claimed_by: cai-holmgang
+class: standard
+completed: 2026-11-04T22:02:40Z
+created: 2026-11-04T19:34:09Z
+depends_on:
+- 12
+id: 14
+priority: medium
+started: 2026-11-04T21:48:15Z
+status: done
+tags:
+- bericht
+title: 'Auswertung je Kategorie: Gewichte, Längenstufen, Urteil, Vergleichstabelle'
+updated: 2026-11-04T22:02:40Z
+---
+
+Nie ein Gesamtprozent über alle Fälle; gesamt höchstens als Mittel der Kategorien. Gewicht = Clustergröße / Vertreter. Kurven je Längenstufe (16k, 48k, 96k, 160k) mit Treffern, context_exceeded und Fehlern getrennt. Urteil je Suite mit threshold.pass_rate und harten Fällen (Eval::Batch::verdicts). Tabelle Ziel+Variante x Kategorie als Text, Markdown und JSON.
+
+2026-11-04 21:58 Decision (ADR 0008, new): every rate is a weighted share over ALL results; no_vision/context_exceeded/error are in the denominator and not passed (as cai-platform for rate and pass^k); every status keeps its own counter; tier curves show context_exceeded and error as own shares of the same base. Overall = mean of topic rates (deliberate difference to cai gesamt, pooled). k = run repeat; cai 'runs' renamed k / repetitions, 'cases' (result count) renamed results. Comparison rendering moved from ::Report to ::Evaluation (amendment ADR 0005); pointer amendment in ADR 0006.
+
+2026-11-04 21:58 Also found: a report carries no suite threshold (pass_rate/pass_k), so Evaluation takes thresholds as input. For the CLI slice (this board): holmgang report from files alone needs either the suite dirs or a new report field suite.threshold (no version raise) - decide there. Report.pm untouched, no bug found.
+
+2026-11-04 21:58 Done: lib/Langertha/Holmgang/Evaluation.pm (topics, overall, tier_curves, verdicts with pass^k and hard cases, comparison; to_json/to_text/to_markdown), ADR 0008 + amendments in 0005/0006, tests t/evaluation/{verdicts,topics,render}.t (port of t/eval_batch_verdicts.t and the verdict/by_topic parts of t/db/eval_batch.t, invented data) + helper t/lib/Holmgang/EvalReport.pm, t/00-load.t. Verified: prove -lr t -> Files=51, Tests=1585, PASS, nothing skipped; mutation checks on pass_k and hard-case rule turn verdicts.t red. Not committed.
+
+2026-11-04 22:02 Committed a73a56c on main (Evaluation).
