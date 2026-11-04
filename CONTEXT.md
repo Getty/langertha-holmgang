@@ -34,7 +34,7 @@ only depends on Holmgang (ADR 0001).
 | **Handler** | A tool effect described in data, for small worlds without a simulator. |
 | **Answer world** | A world without devices whose tools take answers: give the answer, report a finding, rate a clause, hand in a translation. Model: `Sim::Kueche` in cai-platform. |
 | **Fixture** | Checked-in fixed output for cases that need it (pre-rendered HTML …). |
-| **Rule** | One check with a title and exactly one kind: `state`, `unchanged_except`, `calls`, `not_called`, `only_tools`. Required unless marked display-only. |
+| **Rule** | One check with a title and exactly one kind: `state`, `unchanged_except`, `calls`, `not_called`, `only_tools`, `check`, `packet`, `login` (ADR 0005). Required unless marked display-only. |
 | **Expectation** | What a `state` rule demands of a value: `exists`/`absent`, `equals`, `in`, `regex`, `contains`/`excludes`, `length`, `any`/`none`, `before`. |
 | **Reference solution** | Tool calls that must pass. **Alternative**: another correct path that must pass too. **Wrong solution**: a typical mistake that must fail. The model never sees any of them. |
 | **Lint** | The self-check every case passes on every load (below). |
@@ -57,10 +57,11 @@ only depends on Holmgang (ADR 0001).
 | durchgefallen — failed | a required rule missed | `failed` |
 | unsicher — uncertain | failed, but the model hit a simulation gap | `ungraded` |
 | error | the target did not answer | `error` |
-| `context_exceeded` | the input does not fit the target's context window; counted separately, **not** an error | — |
+| `context_exceeded` | the input does not fit the target's context window; counted separately, **not** an error | `context_exceeded` |
+| `no_vision` | the case carries an image the target cannot see; counted separately, **not** an error | — |
 | rundengrenze — turn limit | too many turns without finishing | a failed rule |
 
-The wire names for reports are fixed in an ADR before the report slice lands.
+The wire names (`passed`, `failed`, `uncertain`, `error`, `context_exceeded`, `turn_limit`, `no_vision`) and the report format are fixed in ADR 0006.
 
 ## What it must cover
 
