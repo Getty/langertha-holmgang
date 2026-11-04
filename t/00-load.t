@@ -33,6 +33,9 @@ for (qw(
   Langertha::Holmgang::Sim::Linux::Nginx
   Langertha::Holmgang::Sim::Linux::Pki
   Langertha::Holmgang::Sim::Linux::SshAccess
+  Langertha::Holmgang::Sim::Linux::Docker
+  Langertha::Holmgang::Sim::Linux::Git
+  Langertha::Holmgang::Sim::Linux::Helm
 )) {
   use_ok($_);
 }

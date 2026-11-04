@@ -27,3 +27,6 @@ Revision history for Langertha-Holmgang
   - Sim::Linux parts Http (curl, applications, probes), Nginx (nginx -t,
     loading, serving), Pki (openssl, update-ca-certificates, client
     verification) and SshAccess (SSH login check behind the login rule)
+  - Linux simulator parts Docker (Engine 26 with Compose v2), Git (working
+    copy, index, push to a Forgejo server with hooks) and Helm 3 (releases,
+    values, revisions against the Kubernetes part)
