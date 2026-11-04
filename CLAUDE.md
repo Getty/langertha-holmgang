@@ -18,7 +18,7 @@ decisions so far; the code arrives in small vertical slices. Where things live:
 - **Source of the extraction** — `~/cai-platform` on agent-lab: `lib/CAI/Platform/Eval/`,
   `t/eval_*.t`, `docs/entwurf-evals.md`. Read only; the map is in skill `holmgang-core`.
 
-Development happens on agent-lab (`~/dev/langertha-holmgang`), next to cai-platform and the
+Development happens on agent-lab (`~/langertha-holmgang`), next to cai-platform and the
 CitiAI targets. Real benchmark cases never enter this repo (ADR 0003).
 
 Don't create new planning or status files in the repo root: decisions become ADRs, open work
