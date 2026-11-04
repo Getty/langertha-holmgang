@@ -24,3 +24,6 @@ Revision history for Langertha-Holmgang
   - Linux simulator parts PostgreSQL (psql), MariaDB (mysql/mariadb/mysqladmin),
     Redis (redis-cli, CONFIG, INFO, BGSAVE) and RedisService (Redis from the
     service alone)
+  - Sim::Linux parts Http (curl, applications, probes), Nginx (nginx -t,
+    loading, serving), Pki (openssl, update-ca-certificates, client
+    verification) and SshAccess (SSH login check behind the login rule)
