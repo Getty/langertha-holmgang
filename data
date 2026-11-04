@@ -1,0 +1,25 @@
+---
+claimed_at: 2026-11-04T21:24:01Z
+claimed_by: cai-holmgang
+class: standard
+completed: 2026-11-04T21:24:01Z
+created: 2026-11-04T19:34:07Z
+depends_on:
+- 11
+id: 12
+priority: high
+started: 2026-11-04T21:13:52Z
+status: done
+tags:
+- bericht
+title: Bericht als JSON je Lauf
+updated: 2026-11-04T21:24:10Z
+---
+
+Bericht nach ADR aus der Vorkarte schreiben und wieder lesen; Grundlage für Auswertung, Vergleich und den Abgleich mit cai-platform.
+
+2026-11-04 21:23 Report.pm built (worktree k12): add_run from per-repetition result hashes (interface in POD, for k9), to_json/write/from_json/read with shape+version validation, merge, image_entry, from_cai_platform (k13). Choices of mine, not in ADR 0006: (1) every format-1 field nullable except holmgang_report, runs, repeat, run/repetition status, case_id, suite.id, repetition no., the cases/repetitions arrays and the target/variant/suite/tokens objects; (2) turns[].duration_ms treated as volatile like the repetition's; (3) merge = runs keyed by target+variant+suite, repetitions by number, identical-apart-from-volatile kept once, different croaks, run status worst-of; (4) cai run status done/cancelled/failed -> complete/cancelled/aborted (ADR table silent); (5) converter: without DB grading rules/diff null and score null on turn limit; seed = round when repeat>1 as Eval::Batch; (6) base64 heuristic = run of >=1024 base64 chars, plus data: URLs, provider base64 blocks and any blessed object; (7) target url: userinfo, fragment and query params matching key|token|secret|pass|auth|sig|cred dropped. Error-text scrubbing left to the engine per ADR.
+
+2026-11-04 21:23 Done: lib/Langertha/Holmgang/Report.pm (format holmgang_report 1 per ADR 0006), tests t/report/{build,merge,cai_platform}.t with invented data, cpanfile (+Langertha 0.504, JSON::MaybeXS, Moose, Path::Tiny, URI, ...), t/00-load.t. prove -lr t/: 4 files, 49 tests, all pass, none skipped. Mutation check: disabling url cleaning / zero-filling tokens turns tests red. New files untracked (git add before dzil build). Not committed.
+
+2026-11-04 21:24 Committed as 7253e1d on main (ff-only from k12); prove -lr t/ green, 4 files 49 tests.
