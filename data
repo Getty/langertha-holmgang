@@ -1,0 +1,17 @@
+---
+class: standard
+created: 2026-11-04T19:34:11Z
+depends_on:
+- 14
+- 15
+- 16
+id: 17
+priority: medium
+status: backlog
+tags:
+- abnahme
+title: 'Abnahme 4: echter Lauf gegen ein OpenAI-kompatibles Ziel'
+updated: 2026-11-04T19:34:11Z
+---
+
+Von agent-lab gegen ein CitiAI-Ziel, nur auf Ansage (GPU-Zeit): Token je Fall, context_exceeded bei einem zu langen Fall, Auswertung je Kategorie.
