@@ -67,30 +67,36 @@ The wire names for reports are fixed in an ADR before the report slice lands.
 ### 1. Cases in a Perl DSL
 
 Cases and suites are written in Perl with a small language in the style of `Test::More`,
-Moose or Dancer. A sketch (the DSL itself is designed in its own ADR):
+Moose or Dancer. A sketch (keywords, collisions, generators and discovery: ADR 0007):
 
 ```perl
 use Langertha::Holmgang;
 
-suite 'example-web' => version 1, topic 'betrieb', sub {
+suite 'example-web' => sub {
+  title   'Example: web servers';
+  version 1;
+  topic   'betrieb';
   system_prompt file 'system.md';
-  tools qw( run_command write_file );
+  tool run_command => ( description => '...', simulator => 'run_command', parameters => {...} );
+  tool write_file  => ( description => '...', simulator => 'write_file',  parameters => {...} );
 
   case '01-nginx-stopped' => sub {
-    world web1 => linux { services => { nginx => { active => 0 } } };
+    title 'Shop down after an update';
+    device web1 => linux => { services => { nginx => { active => 0 } } };
     ask 'The shop on web1 is down since the last update. Get it back up.';
-    rule 'nginx runs'         => state 'web1.services.nginx.active', equals => 1;
+    rule 'nginx runs'         => at 'web1.services.nginx.active', equals => 1;
     rule 'nothing else moved' => unchanged_except [ 'web1.services.nginx.*' ];
-    solution    [ run web1 => 'systemctl start nginx' ];
-    alternative [ run web1 => 'systemctl enable --now nginx' ];
-    wrong       [ run web1 => 'reboot' ];
+    solution    run web1 => 'systemctl start nginx';
+    alternative 'enable and start' => run web1 => 'systemctl enable --now nginx';
+    wrong       'reboot instead'   => run web1 => 'reboot';
   };
-};
 
-generate 'contract-check' => seed 4711, sub {
-  for my $tokens (16_000, 48_000, 100_000) {
-    case "clause-$tokens" => sub { context law 'bgb', tokens => $tokens; ... };
-  }
+  generate seed => 4711, sub {
+    my ( $rng ) = @_;
+    for my $tokens ( 16_000, 48_000, 96_000 ) {
+      case "clause-$tokens" => sub { ask [ 'Check the clause.', haystack kind => '...', tokens => $tokens ]; ... };
+    }
+  };
 };
 ```
 
