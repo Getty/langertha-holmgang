@@ -1,0 +1,28 @@
+---
+claimed_at: 2026-11-04T21:40:05Z
+claimed_by: cai-holmgang
+class: standard
+completed: 2026-11-04T21:39:58Z
+created: 2026-11-04T19:34:02Z
+depends_on:
+- 3
+id: 7
+priority: medium
+started: 2026-11-04T21:31:42Z
+status: done
+tags:
+- sim
+title: 'Simulatoren portieren: DNS, Postfix, Monitoring, sshd, logrotate, Storage,
+  Backup, Konten, Kalender'
+updated: 2026-11-04T21:40:05Z
+---
+
+Sim::Dns, Sim::Postfix, Sim::Monitoring, Sim::Sshd, Sim::Logrotate, Sim::Storage, Sim::Backup, Sim::Accounts, Sim::Calendar mit ihren t/eval_sim_*.t. Quelle: ~/cai-platform auf agent-lab (Übersicht im Skill holmgang-core).
+
+2026-11-04 21:35 k7b (Monitoring, Sshd, Logrotate, Accounts) ported in worktree k7b, uncommitted: lib/Langertha/Holmgang/Sim/Linux/{Monitoring,Sshd,Logrotate,Accounts}.pm (rename-only port of cai-platform af7561a5; abstracts in English; Monitoring drops an unused 'use CAI::Platform::Eval::World'), t/sim/monitoring.t + t/sim/logrotate.t (from eval_sim_monitoring/logrotate.t, Test::More + TestSim). Sshd/Accounts have no test of their own in the source; they are covered by linux_haertung.t, which still skips the whole file because ssh_login runs every command through SshAccess (k25a) and RedisService is missing. Checked once with throwaway SshAccess/RedisService/Redis copies outside the repo (since deleted): linux_haertung.t + linux_messung.t pass. The Monitoring/Sshd subtests in linux_messung.t now run (Sshd+Expectation still skips, k2). prove -lr t: 29 files, 1014 tests, PASS. 00-load.t not extended (shared file): the four modules still need adding there.
+
+2026-11-04 21:36 k7a (Backup, Storage, Dns, Postfix) done in worktree k7a, not committed. Ported close to the source as Langertha::Holmgang::Sim::Linux::{Backup,Storage,Dns,Postfix}: names changed, the cai-platform doc reference spelled out, and Postfix's deliver_when now runs through Sim::Linux::_condition (that is Expectation::condition, k2) where the source called World::condition. Tests: t/sim/{backup,storage,dns_mail}.t, ported from t/eval_sim_{backup,storage,dns_mail}.t with the source's invented states. The 4+1+1 deliver_when asserts in dns_mail.t skip until Expectation (k2) lands; they passed locally against a throwaway Expectation stub that was deleted afterwards. Removed the Backup skip guards in t/sim/terminal.t (2 subtests) and t/sim/linux_mv_many.t (1 block). Did not touch Linux.pm, Simulators.pm or 00-load.t. prove -lr t: 30 files, 941 tests, PASS.
+
+k7b landed 640425c
+
+Committed 640425c (k7b) and 7ba48f1 (k7a)
