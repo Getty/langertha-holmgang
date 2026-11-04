@@ -25,6 +25,10 @@ for (qw(
   Langertha::Holmgang::Sim::Linux::Storage
   Langertha::Holmgang::Sim::Linux::Dns
   Langertha::Holmgang::Sim::Linux::Postfix
+  Langertha::Holmgang::Sim::Linux::Postgres
+  Langertha::Holmgang::Sim::Linux::MariaDB
+  Langertha::Holmgang::Sim::Linux::Redis
+  Langertha::Holmgang::Sim::Linux::RedisService
 )) {
   use_ok($_);
 }

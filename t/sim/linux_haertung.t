@@ -9,7 +9,8 @@ use JSON::MaybeXS ();
 
 use Holmgang::TestSim qw( run_command write_file prepare clone diff get throws_ok need_parts );
 
-if ( my $why = need_parts('SshAccess', 'RedisService') ) { plan skip_all => $why }
+# srv meldet sich per ssh_login an: jeder Befehl dort geht durch Sim::Linux::SshAccess
+my $NO_SSH = need_parts('SshAccess');
 
 # Linux-Simulator fuer Haertungs-Faelle (platform#121, Suite sicherheit-haertung).
 # Behauptet wird: sshd liest seine Konfiguration wie OpenSSH (Include an Ort und
@@ -65,6 +66,7 @@ sub sh {
 sub srv { $state->{srv} }
 
 subtest 'Shell: 2>/dev/null und 2>&1 lenken nur die Fehlerausgabe um' => sub {
+    plan skip_all => $NO_SSH if $NO_SSH;
     fresh();
     my ( $o, $ok ) = sh('find /usr -perm -4000 -type f 2>/dev/null');
     is( $o, "/usr/bin/passwd\n/usr/local/bin/helper", 'Ausgabe bleibt, keine 2 als Pfad' );
@@ -99,6 +101,7 @@ subtest 'Shell: 2>/dev/null und 2>&1 lenken nur die Fehlerausgabe um' => sub {
 };
 
 subtest 'sshd: Include, erster Wert gewinnt, Listen' => sub {
+    plan skip_all => $NO_SSH if $NO_SSH;
     fresh();
     my ( $o, $ok ) = sh('sshd -T');
     ok( $ok, 'sshd -T gelingt' );
@@ -111,6 +114,7 @@ subtest 'sshd: Include, erster Wert gewinnt, Listen' => sub {
 };
 
 subtest 'sshd -t: Fehler wie OpenSSH' => sub {
+    plan skip_all => $NO_SSH if $NO_SSH;
     fresh();
     sh(q{echo 'PermitRootLogn no' >> /etc/ssh/sshd_config});
     my ( $o, $ok ) = sh('sshd -t');
@@ -123,6 +127,7 @@ subtest 'sshd -t: Fehler wie OpenSSH' => sub {
 };
 
 subtest 'reload und restart: Wirkung und Scheitern' => sub {
+    plan skip_all => $NO_SSH if $NO_SSH;
     fresh();
     sh('rm /etc/ssh/sshd_config.d/50-cloud-init.conf');
     is( srv()->{services}{ssh}{effective}{passwordauthentication}, 'yes', 'Datei allein wirkt nicht' );
@@ -147,6 +152,7 @@ subtest 'reload und restart: Wirkung und Scheitern' => sub {
 };
 
 subtest 'Aussperren ueber AllowGroups und Konto' => sub {
+    plan skip_all => $NO_SSH if $NO_SSH;
     fresh();
     sh(q{sed -i 's/^AllowGroups admins$/AllowGroups sshusers/' /etc/ssh/sshd_config});
     my ( $o, $ok ) = sh('systemctl reload ssh');
@@ -160,6 +166,7 @@ subtest 'Aussperren ueber AllowGroups und Konto' => sub {
 };
 
 subtest 'Host-Schluessel zu offen' => sub {
+    plan skip_all => $NO_SSH if $NO_SSH;
     fresh();
     sh('chmod 644 /etc/ssh/ssh_host_ed25519_key');
     my ( $o, $ok ) = sh('sshd -t');
@@ -169,6 +176,7 @@ subtest 'Host-Schluessel zu offen' => sub {
 };
 
 subtest 'Konten: sperren, ablaufen, Gruppen, loeschen' => sub {
+    plan skip_all => $NO_SSH if $NO_SSH;
     fresh();
     my ( $o, $ok ) = sh('usermod -L -e 1 -s /usr/sbin/nologin mmeier');
     ok( $ok, 'usermod gelingt' );
@@ -206,6 +214,7 @@ subtest 'Konten: sperren, ablaufen, Gruppen, loeschen' => sub {
 };
 
 subtest 'SUID: chmod, ls -l, find -perm' => sub {
+    plan skip_all => $NO_SSH if $NO_SSH;
     fresh();
     like( sh('ls -l /usr/local/bin/helper'), qr/\A-rwsr-xr-x /, 'ls zeigt s' );
     is( sh('find / -perm -4000'), "/usr/bin/passwd\n/usr/local/bin/helper", 'find -perm -4000' );
@@ -222,6 +231,7 @@ subtest 'SUID: chmod, ls -l, find -perm' => sub {
 };
 
 subtest 'sudo: visudo -c und sudo -l' => sub {
+    plan skip_all => $NO_SSH if $NO_SSH;
     fresh();
     my ( $o, $ok ) = sh('visudo -c');
     ok( $ok, 'visudo -c gelingt' );
@@ -238,6 +248,7 @@ subtest 'sudo: visudo -c und sudo -l' => sub {
 };
 
 subtest 'grep -r mit Dateinamen' => sub {
+    plan skip_all => $NO_SSH if $NO_SSH;
     fresh();
     is( sh('grep -ri passwordauthentication /etc/ssh'),
         "/etc/ssh/sshd_config:PasswordAuthentication no\n/etc/ssh/sshd_config.d/50-cloud-init.conf:PasswordAuthentication yes", 'grep -r' );
@@ -248,6 +259,7 @@ subtest 'grep -r mit Dateinamen' => sub {
 
 # Runde 1 (platform#121): was die Modelle taten und der Simulator falsch beantwortete.
 subtest 'for-Schleife' => sub {
+    plan skip_all => $NO_SSH if $NO_SSH;
     fresh();
     is( sh('for f in /etc/ssh/sshd_config.d/*.conf; do echo "== $f"; cat "$f"; done'),
         "== /etc/ssh/sshd_config.d/10-crypto.conf\nCiphers chacha20-poly1305\@openssh.com\n== /etc/ssh/sshd_config.d/50-cloud-init.conf\nPasswordAuthentication yes",
@@ -257,6 +269,8 @@ subtest 'for-Schleife' => sub {
 };
 
 subtest 'Programme mit Pfad, installierte Programme' => sub {
+    my $why = need_parts('SshAccess', 'RedisService');
+    plan skip_all => $why if $why;
     fresh();
     my ( $o, $ok ) = sh('/usr/bin/id ops');
     like( $o, qr/uid=1000\(ops\)/, '/usr/bin/id wie id' );
@@ -274,6 +288,7 @@ subtest 'Programme mit Pfad, installierte Programme' => sub {
 };
 
 subtest 'sudo als Benutzer prueft die Regeln' => sub {
+    plan skip_all => $NO_SSH if $NO_SSH;
     fresh();
     like( sh('sudo -u deploy sudo -l'), qr/User deploy may run the following commands on srv:\n    \(root\) NOPASSWD/, 'sudo -u x sudo -l: Regeln von x' );
     my ( $o, $ok ) = sh('su - deploy -c "sudo -n /usr/bin/systemctl is-active ssh"');
@@ -294,6 +309,7 @@ subtest 'sudo als Benutzer prueft die Regeln' => sub {
 };
 
 subtest 'Standardverzeichnisse, crontab' => sub {
+    plan skip_all => $NO_SSH if $NO_SSH;
     fresh();
     my ( $o, $ok ) = sh('ls /etc/cron.daily /var/spool/cron/crontabs');
     ok( $ok, 'leere Debian-Verzeichnisse gibt es' );
@@ -305,6 +321,7 @@ subtest 'Standardverzeichnisse, crontab' => sub {
 };
 
 subtest 'ss, ps, pkill, kill passen zusammen' => sub {
+    plan skip_all => $NO_SSH if $NO_SSH;
     fresh();
     my $ss = sh('ss -tlnp');
     my ($pid) = $ss =~ /0\.0\.0\.0:22\s.*pid=(\d+)/;
@@ -337,6 +354,7 @@ subtest 'nft: Version, Position ohne Schluesselwort, delete ohne handle' => sub 
 };
 
 subtest 'sshd: Journal nach Start und Neuladen' => sub {
+    plan skip_all => $NO_SSH if $NO_SSH;
     fresh();
     sh('systemctl reload ssh');
     like( sh('journalctl -u ssh -n 4'), qr/Received SIGHUP; restarting\.\n.*Server listening on 0\.0\.0\.0 port 22\.\n.*Server listening on :: port 22\.\n.*Reloaded ssh\.service/,
@@ -347,6 +365,7 @@ subtest 'sshd: Journal nach Start und Neuladen' => sub {
 
 # Runde 2 (platform#121): find mit Klammern/Operatoren, awk mit Bedingungen.
 subtest 'find: ( ), -o, -a, !, Vorrang und Aktionen' => sub {
+    plan skip_all => $NO_SSH if $NO_SSH;
     fresh();
     is( sh('find / -xdev \( -perm -4000 -o -perm -2000 \) -type f'), "/usr/bin/passwd\n/usr/local/bin/helper", 'Klammern' );
     is( sh('find / -xdev -type f \( -perm -4000 -o -perm -2000 \) -print 2>/dev/null'), "/usr/bin/passwd\n/usr/local/bin/helper", 'mit -print' );
@@ -397,6 +416,7 @@ subtest 'awk: Bedingungen und print' => sub {
 };
 
 subtest 'awk BEGIN als Rechner (#120)' => sub {
+    plan skip_all => $NO_SSH if $NO_SSH;
     my $awk = sub { ( Langertha::Holmgang::Shell::Filter::filter_output( "x\ny", [ 'awk', @_ ] ) ) };
     is( ( $awk->('BEGIN { print 512 * 1024 }') )[0], '524288', 'print mit Zahl' );
     is( ( $awk->('BEGIN{printf "%.1f GiB\n", 3221225472/1024/1024/1024}') )[0], '3.0 GiB', 'printf' );
@@ -416,6 +436,8 @@ subtest 'awk BEGIN als Rechner (#120)' => sub {
 };
 
 subtest 'redis-cli: Verbindung nach bind, Anmeldung, roh wie ohne Terminal' => sub {
+    my $why = need_parts('RedisService');
+    plan skip_all => $why if $why;
     my $st = { r => { type => 'linux', interfaces => { eth0 => { addr => ['192.0.2.30/24'] } },
         files => { '/etc/redis/redis.conf' => "bind 127.0.0.1 -::1\nrequirepass geheim\nbind 0.0.0.0\n" },
         services => { 'redis-server' => { active => JSON::MaybeXS::true(), config => '/etc/redis/redis.conf',
@@ -441,6 +463,7 @@ subtest 'redis-cli: Verbindung nach bind, Anmeldung, roh wie ohne Terminal' => s
 };
 
 subtest 'getfacl' => sub {
+    plan skip_all => $NO_SSH if $NO_SSH;
     fresh();
     is( sh('getfacl /usr/local/bin/helper'), "getfacl: Removing leading '/' from absolute path names\n# file: usr/local/bin/helper\n# owner: root\n# group: root\n# flags: s--\nuser::rwx\ngroup::r-x\nother::r-x",
         'Rechte als ACL' );

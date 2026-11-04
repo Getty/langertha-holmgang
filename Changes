@@ -21,3 +21,6 @@ Revision history for Langertha-Holmgang
     attributes), Storage (mount, LVM, mkfs, resize, swap, partitions, mdadm),
     Dns (BIND: rndc, named-check*, dig, host) and Postfix (postconf, postmap,
     queue)
+  - Linux simulator parts PostgreSQL (psql), MariaDB (mysql/mariadb/mysqladmin),
+    Redis (redis-cli, CONFIG, INFO, BGSAVE) and RedisService (Redis from the
+    service alone)

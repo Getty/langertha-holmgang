@@ -94,6 +94,9 @@ subtest 'pg_database, pg_authid' => sub {
 };
 
 subtest 'Redis: SLOWLOG und DEBUG SLEEP' => sub {
+    # mit clock: die Zeit des Eintrags kommt aus Sim::Linux::Monitoring
+    my $why = need_parts('Monitoring');
+    plan skip_all => $why if $why;
     $state = {
         cache => {
             type  => 'linux',
