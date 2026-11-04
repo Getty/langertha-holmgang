@@ -33,3 +33,6 @@ Revision history for Langertha-Holmgang
   - Langertha::Holmgang::Sim::Kueche: the answer world kueche (recipes,
     pantry, shopping list, week plan, unit table); reading tools no longer
     create empty entries in the state
+  - Langertha::Holmgang::Haystack: generate long, deterministic contents
+    (logs, configs, manifests, runbooks) from a spec, byte-identical to
+    cai-platform; estimate_tokens
