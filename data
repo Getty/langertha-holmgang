@@ -1,0 +1,24 @@
+---
+claimed_at: 2026-11-04T21:13:05Z
+claimed_by: cai-holmgang
+class: standard
+completed: 2026-11-04T21:13:05Z
+created: 2026-11-04T19:33:56Z
+id: 1
+priority: high
+started: 2026-11-04T19:57:17Z
+status: done
+tags:
+- adr
+- format
+title: 'ADR: interne Fallstruktur und Modul-Layout aus Format 2'
+updated: 2026-11-04T21:13:05Z
+---
+
+Die interne Fallstruktur aus suite.yaml und cases/*.yaml ableiten (entwurf-evals.md 3.1-3.6) und als ADR 0005 festhalten: Suite, Fall, Welt, Regeln, Lösungen, Tags, Stufe, Gewicht. Dazu das Modul-Layout (Lader, Welt, Simulator-Rolle, Grader, Lint, Runner, Bericht, CLI). Lader und DSL bauen nur diese Struktur (ADR 0004). Quelle: ~/cai-platform auf agent-lab (Übersicht im Skill holmgang-core).
+
+2026-11-04 21:11 ADR 0005 drafted in worktree k1: docs/adr/0005-internal-case-structure-and-module-layout.md. Decisions: Suite/Case are immutable Moose objects, inner parts (state, rules, expectations, tools, calls) plain data as format 2 writes them; one Structure module validates for loader and DSL; all 8 format 2 rule kinds (incl. check/packet/login); tier and hard derived from tags (stufe-<tier>, injection/verbot); weight = new optional case key (default 1); generate specs kept, resolved lazily; images (k27) fits as extra message key. Layout: Langertha::Holmgang::{Suite,Case,Structure,Loader,Error,Haystack,World,Expectation,Template,ToolSchema,Role::Simulator,Role::AnswerWorld,Simulators,Shell,Shell::Filter,Sim::Linux(+::<Part>),Sim::RouterOS,Sim::IOS,Sim::Kueche,Grader,Lint,Target,Runner,Batch,Evaluation,Report,CLI}. Also found: CONTEXT.md lists 5 rule kinds, format 2 has 8 (prose fix, main agent).
+
+2026-11-04 21:11 Done: ADR 0005 written (structure from format 2 §3.1-3.6, module layout with cai-platform mapping, plugin boundary for k3). Docs only, no code; nothing to test.
+
+Committed as f047fc0 (ADR 0005), on main
