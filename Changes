@@ -1,6 +1,10 @@
 Revision history for Langertha-Holmgang
 
 {{$NEXT}}
+  - Langertha::Holmgang::Target: a Langertha engine plus variant settings;
+    chat_turn_f runs one turn and classifies a failed one as context_exceeded
+    (signatures of OpenAI, vLLM, llama.cpp, SGLang, TGI, LiteLLM, Ollama,
+    Anthropic), no_vision or error
   - Initial release
   - Langertha::Holmgang::Report: write and read the JSON report (holmgang_report 1,
     ADR 0006), merge reports without double counting, map cai-platform --report

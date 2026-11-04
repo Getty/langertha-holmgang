@@ -7,6 +7,7 @@ for (qw(
   Langertha::Holmgang
   Langertha::Holmgang::Report
   Langertha::Holmgang::Haystack
+  Langertha::Holmgang::Target
   Langertha::Holmgang::Role::Simulator
   Langertha::Holmgang::Role::AnswerWorld
   Langertha::Holmgang::Simulators

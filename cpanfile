@@ -3,6 +3,7 @@ requires 'perl', '5.020';
 requires 'Carp';
 requires 'Digest::SHA';
 requires 'Encode';
+requires 'Future';
 requires 'JSON::MaybeXS';
 requires 'Langertha', '0.504';
 requires 'Module::Runtime';
