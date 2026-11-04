@@ -18,6 +18,8 @@ for (qw(
   Langertha::Holmgang::Sim::Linux::Sshd
   Langertha::Holmgang::Sim::Linux::Logrotate
   Langertha::Holmgang::Sim::Linux::Accounts
+  Langertha::Holmgang::Sim::RouterOS
+  Langertha::Holmgang::Sim::IOS
 )) {
   use_ok($_);
 }
