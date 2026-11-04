@@ -1,0 +1,26 @@
+---
+claimed_at: 2026-11-04T21:13:20Z
+claimed_by: cai-holmgang
+class: standard
+completed: 2026-11-04T21:13:20Z
+created: 2026-11-04T19:34:06Z
+depends_on:
+- 9
+id: 11
+priority: high
+started: 2026-11-04T19:57:24Z
+status: done
+tags:
+- adr
+- bericht
+title: 'ADR: Statusnamen und Berichtsformat'
+updated: 2026-11-04T21:13:20Z
+---
+
+Drahtnamen für bestanden, durchgefallen, unsicher, error, context_exceeded und Rundengrenze festlegen (heute in cai-platform: passed, failed, ungraded, error). Felder je Lauf, Fall und Wiederholung: Ziel, Variante, Suite-Version, Status, Regeln mit Ergebnis und Begründung, Diff, Token, Runden, Aufrufe, Tags, Stufe, forbidden_calls, injection_held. Verhältnis zum --report von cai-platform klären.
+
+2026-11-04 21:11 ADR 0006 written (worktree k11, docs/adr/0006-status-names-and-report-format.md). Statuses: no_vision > context_exceeded > error > turn_limit > passed > uncertain (was ungraded) > failed; turn_limit is its own status, no synthetic turns rule. Report: holmgang_report: 1, runs[] > cases[] > repetitions[], per-turn tokens from Langertha::Usage (null not 0), calls[] with succeeded/sim_gap, no derived numbers stored (k14 computes), no base64 images. Mapping table cai --report -> Holmgang for k13. Drift: CONTEXT.md status table lacks no_vision and still says wire names pending - prose for main agent.
+
+2026-11-04 21:11 Done: docs/adr/0006-status-names-and-report-format.md in worktree k11 (uncommitted). Fixes 7 status wire names with precedence, turn_limit as own status, report JSON v1 (run/case/repetition fields), cai-platform --report mapping for k13. Prose only; no tests affected.
+
+Committed as be56ca0 (ADR 0006), on main
