@@ -93,6 +93,7 @@ All under `Langertha::Holmgang::`; executable `bin/holmgang`.
 | `::Structure` | shape checks and normalisation for both front ends | `Eval::Suite` (`_case`, `_rule`, `_tool`, `_keys_ok` …) |
 | `::Loader` | format 2 from search directories, `select_suites`, duplicate ids, checksum, YAML export | `Eval::Suite` (`load`, `locate`, `select_suites`) |
 | `::Error` | the loud refusal (field path, reason) | `CAI::Platform::Refusal` |
+| `::Random` | the seeded private random source for generators (ADR 0007) | — |
 | `::Haystack` | `generate` long contents, deterministic | `Eval::Haystack` |
 | `::World` | state, tool dispatch (observations → simulator → unknown host → handlers), handlers' `apply`, paths, end-state diff, `covered` | `Eval::World` |
 | `::Expectation` | the expectations, shared by rules, `when` and `check.expect` | `Eval::World` (`condition`, `_check_value`, `element_match`) |
@@ -149,3 +150,5 @@ gives generators their seed and structure.
   addition). This ADR is the authority until `CONTEXT.md` is updated.
 - New public names beyond this table (a further module, a structure field) need their own
   ADR.
+
+**Amendment 2026-11-04 (k18).** The World description above is too narrow: format 2 also allows top-level state entries without a `type` (handler worlds), which ADR 0007 covers with `world NAME => VALUE`. `Langertha::Holmgang::Random` (ADR 0007) joins the module table.
