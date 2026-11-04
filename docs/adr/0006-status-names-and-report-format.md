@@ -152,3 +152,5 @@ and finish reasons are reported, not compared.
   goes through the mapping above, never through aliases in the report.
 - A new status needs an ADR and raises `holmgang_report` — an old reader would count it
   wrong. `no_vision` is part of version 1 from the start, before k27 lands.
+
+**Amendment 2026-11-04 (k14).** How the rates treat the not-measured statuses is fixed in ADR 0008: every result is in the denominator, only `passed` passes, each status keeps its own counter.

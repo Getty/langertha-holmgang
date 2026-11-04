@@ -6,6 +6,7 @@ use Test::More;
 for (qw(
   Langertha::Holmgang
   Langertha::Holmgang::Report
+  Langertha::Holmgang::Evaluation
   Langertha::Holmgang::Haystack
   Langertha::Holmgang::Target
   Langertha::Holmgang::Role::Simulator
