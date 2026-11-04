@@ -1,0 +1,28 @@
+---
+claimed_at: 2026-11-04T21:47:02Z
+claimed_by: cai-holmgang
+class: standard
+completed: 2026-11-04T21:47:02Z
+created: 2026-11-04T19:56:11Z
+depends_on:
+- 3
+id: 25
+priority: high
+started: 2026-11-04T21:31:58Z
+status: done
+tags:
+- sim
+title: 'Simulatoren portieren: Nft, Nginx, Http, Pki, SshAccess, Docker, Git, Helm;
+  Haystack'
+updated: 2026-11-04T21:47:02Z
+---
+
+Fehlt auf dem Board, aber Abnahme 1 braucht es: Sim::Linux delegiert an Sim::Nft, Nginx, Http, Pki, SshAccess, Docker, Git, Helm (cai-platform origin/main c4ea6b6e), Eval::Haystack baut die Langkontext-Fälle. Mit ihren t/eval_sim_*.t und t/eval_haystack.t portieren. Lane: holmgang-sim-worker (Haystack: holmgang-worker).
+
+2026-11-04 21:37 k25b (Docker, Git, Helm) ready in worktree k25b, uncommitted: lib/Langertha/Holmgang/Sim/Linux/{Docker,Git,Helm}.pm (ported from af7561a5 close to source; package rename, abstracts English), t/sim/docker.t (from eval_sim_docker.t, skips without Http), t/sim/git.t (from eval_sim_git.t; cp/diff block skips without Backup), t/sim/helm.t (new, invented state: no cluster, grammar, gaps, refused upgrade, neutral end without Kubernetes). Source has no eval_sim_helm.t; Helm's source tests are the Helm subtest of eval_sim_kubernetes_adv.t, which k6 ports. Deviations: Helm loads Kubernetes via Linux::_part('Kubernetes') at helm() entry instead of a compile-time use (missing part = neutral gap, Helm.pm loads without k6; same pattern k6 uses for Helm); Docker loads Http via _part instead of require; IO::Compress::Gzip/MIME::Base64 hoisted to top-level use in Helm. No shared file touched. Verified: prove -lr t green (30 files/936 tests); with PERL5LIB of k25a+k6+k7a: docker.t 63/63, git.t 10/10 incl. diff, k6 kubernetes_adv.t Helm subtest 34/34, kubernetes.t + k8s_set_env.t, werkzeuge.t, helm.t all pass. Also found: combining all sibling libs at once, linux_haertung.t and pruefwege.t fail on sshd/redis slowlog — not Docker/Git/Helm, for the merge order to watch.
+
+2026-11-04 21:38 k25a (sim-worker, worktree k25a, uncommitted): ported Sim::Http/Nginx/Pki/SshAccess -> lib/Langertha/Holmgang/Sim/Linux/{Http,Nginx,Pki,SshAccess}.pm close to source af7561a5 (renames only; Docker calls via Linux::_part('Docker') so a missing Docker is the 'not installed' gap; World::clone -> Linux::clone_state; SshAccess drops its unused 'use Sim::Sshd'; Pki drops the dead 'env:' passin line, which read %ENV behind '&& 0'). Tests t/sim/{nginx,pki,ssh_access}.t from eval_sim_*.t; Http has no test file of its own in the source, it is covered through curl in nginx.t/pki.t. Linux::login_check already delegates to SshAccess::check; the Grader/Suite 'login' subtest is replaced by Simulators->login_check (allowed/denied + messages); the loader check 'login without key/auth' goes to k2. Guarded skips: ssh_access 3 subtests need Sshd (k7b), 2 need Backup (cp, k7a); pki 3 tests need Backup (cp), plus a new block covering update-ca-certificates without cp. All guarded parts passed once against the k7a/k7b WIP libs. werkzeuge.t keeps its skip (Docker, k25b). prove -lr t: 30 files, 1019 tests, PASS. No shared file edited; t/00-load.t should list the 4 new modules (release-manager).
+
+2026-11-04 21:39 Haystack part (worktree k25h, uncommitted): lib/Langertha/Holmgang/Haystack.pm + t/haystack.t; 00-load.t, cpanfile (Time::Local). Moose class, instance API: ->new( chars_per_token => 3.5 ), ->generate(\%spec, $field), ->resolve($value, $field), ->estimate_tokens($text) (also as class method, default 3.5), ->kinds. Per-instance cache instead of package %CACHE; chars_per_token attribute replaces the global $CHARS_PER_TOKEN. Algorithm + vocabulary ported verbatim: byte-identical to cai-platform Eval::Haystack af7561a5 on 336 specs (all 7 kinds, seeds 0..2**31, with tz/start/hours/hosts/units/inserts), pinned in t/haystack.t by SHA-256 per kind; deterministic across 3 processes with different PERL_HASH_SEED. Deliberate differences: refusal reasons in English, thrown as croak '<field>: <reason>' via _refuse (TODO: Langertha::Holmgang::Error once k2 has it); own xorshift32, not ::Random (byte identity). Loader (k2) must call: $haystack->resolve( $content, 'cases/<file>: messages[<i>].content' ) and for files 'cases/<file>: state.<dev>.files.<path>.content', only when the content is a HASH or ARRAY, and add sha256_hex(encode UTF-8 of the result) to the checksum (as Suite::_generated). Not ported: loader/suite subtests of eval_haystack.t (k2 / acceptance). prove -lr t: PASS 933 tests, t/sim/werkzeuge.t skipped (not mine). Also found: Encode is used in lib (Shell::Filter, Sim::Linux) and now t/haystack.t but missing from cpanfile.
+
+Committed 6c0d328 (Http, Nginx, Pki, SshAccess), e66d99e (Docker, Git, Helm), 131b1c9 (Haystack)
