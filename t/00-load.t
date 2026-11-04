@@ -21,6 +21,10 @@ for (qw(
   Langertha::Holmgang::Sim::RouterOS
   Langertha::Holmgang::Sim::IOS
   Langertha::Holmgang::Sim::Linux::Kubernetes
+  Langertha::Holmgang::Sim::Linux::Backup
+  Langertha::Holmgang::Sim::Linux::Storage
+  Langertha::Holmgang::Sim::Linux::Dns
+  Langertha::Holmgang::Sim::Linux::Postfix
 )) {
   use_ok($_);
 }

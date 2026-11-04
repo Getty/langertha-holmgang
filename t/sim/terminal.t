@@ -240,8 +240,6 @@ sub dev { $state->{srv} }
 
 # --- tar -T, --remove-files ---------------------------------------------------------
 subtest 'tar -T, --remove-files' => sub {
-    my $why = need_parts('Backup');
-    plan skip_all => $why if $why;
     fresh();
     my ( $o, $ok ) = sh(q{find /srv/daten -name '*.csv' -mtime +14 > /tmp/liste && tar -czf /srv/alt.tar.gz -T /tmp/liste && tar -tzf /srv/alt.tar.gz});
     ok( $ok, 'tar -T liest die Mitglieder aus einer Datei' ) or diag $o;
@@ -254,8 +252,6 @@ subtest 'tar -T, --remove-files' => sub {
 
 # --- nachgezogen beim Bau der Faelle -------------------------------------------------------
 subtest 'nachgezogen beim Bau der Faelle' => sub {
-    my $why = need_parts('Backup');
-    plan skip_all => $why if $why;
     fresh();
     dev()->{files}{'/srv/alt/README'} = { content => "x\n", mtime => 'Mar 12  2025' };
     is( sh('find /srv/alt -type f -mtime +14'), '/srv/alt/README', 'find -mtime: Zeit mit Jahr ("Mar 12  2025")' );

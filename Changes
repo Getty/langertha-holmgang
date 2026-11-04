@@ -17,3 +17,7 @@ Revision history for Langertha-Holmgang
   - Sim::Linux::Kubernetes: kubectl against a simulated cluster — stored
     resources, derived pods and status, endpoints, reachability, Ingress,
     cert-manager, RBAC
+  - Sim::Linux parts Backup (tar, gzip, sha256sum, rsync, restic, cp
+    attributes), Storage (mount, LVM, mkfs, resize, swap, partitions, mdadm),
+    Dns (BIND: rndc, named-check*, dig, host) and Postfix (postconf, postmap,
+    queue)

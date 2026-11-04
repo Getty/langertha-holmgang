@@ -44,14 +44,10 @@ is_deeply( files(), [ '/etc/x.conf', '/srv/archiv/2025/2025-01.tar', '/srv/archi
 like( sh('df -h /var'), qr/\s30%\s+\/var\b/, 'Belegung von /var sinkt (nur 2026-01.tar bleibt, 3 von 10 GB)' );
 like( sh('df -h /srv'), qr/\s6%\s+\/srv\b/, 'und steht jetzt auf /srv' );
 
-SKIP: {
-    my $why = need_parts('Backup');
-    skip $why, 2 if $why;
-    fresh();
-    ( $o, $ok ) = sh('cp /var/archiv/2025-01.tar /var/archiv/2025-02.tar /srv/archiv/2025');
-    ok( $ok, 'cp mit zwei Quellen in ein Verzeichnis (ohne / am Ende)' ) or diag $o;
-    ok( exists $state->{srv}{files}{'/var/archiv/2025-01.tar'} && exists $state->{srv}{files}{'/srv/archiv/2025/2025-02.tar'}, 'Quellen bleiben, Kopien liegen im Ziel' );
-}
+fresh();
+( $o, $ok ) = sh('cp /var/archiv/2025-01.tar /var/archiv/2025-02.tar /srv/archiv/2025');
+ok( $ok, 'cp mit zwei Quellen in ein Verzeichnis (ohne / am Ende)' ) or diag $o;
+ok( exists $state->{srv}{files}{'/var/archiv/2025-01.tar'} && exists $state->{srv}{files}{'/srv/archiv/2025/2025-02.tar'}, 'Quellen bleiben, Kopien liegen im Ziel' );
 
 fresh();
 ( $o, $ok ) = sh('mv /var/archiv/2025-01.tar /var/archiv/2025-02.tar /srv/fehlt/');
