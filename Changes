@@ -30,3 +30,6 @@ Revision history for Langertha-Holmgang
   - Linux simulator parts Docker (Engine 26 with Compose v2), Git (working
     copy, index, push to a Forgejo server with hooks) and Helm 3 (releases,
     values, revisions against the Kubernetes part)
+  - Langertha::Holmgang::Sim::Kueche: the answer world kueche (recipes,
+    pantry, shopping list, week plan, unit table); reading tools no longer
+    create empty entries in the state

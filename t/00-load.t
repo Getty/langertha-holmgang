@@ -36,6 +36,7 @@ for (qw(
   Langertha::Holmgang::Sim::Linux::Docker
   Langertha::Holmgang::Sim::Linux::Git
   Langertha::Holmgang::Sim::Linux::Helm
+  Langertha::Holmgang::Sim::Kueche
 )) {
   use_ok($_);
 }
