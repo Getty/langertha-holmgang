@@ -1,0 +1,23 @@
+---
+claimed_at: 2026-11-04T21:38:53Z
+claimed_by: cai-holmgang
+class: standard
+completed: 2026-11-04T21:38:39Z
+created: 2026-11-04T19:34:01Z
+depends_on:
+- 3
+id: 6
+priority: medium
+started: 2026-11-04T21:31:34Z
+status: done
+tags:
+- sim
+title: 'Simulator portieren: Kubernetes'
+updated: 2026-11-04T21:38:53Z
+---
+
+Sim::Kubernetes mit t/eval_sim_kubernetes.t: gespeicherte Ressourcen, abgeleitete Pods, Status, Endpoints, Erreichbarkeit. Quelle: ~/cai-platform auf agent-lab (Übersicht im Skill holmgang-core).
+
+2026-11-04 21:35 Done (worktree k6, uncommitted): lib/Langertha/Holmgang/Sim/Linux/Kubernetes.pm ported from cai-platform af7561a5 Sim/Kubernetes.pm (renames, VERSION, English ABSTRACT; MIME::Base64 hoisted to a top-level use; the two Helm requires now go through Linux::_part('Helm') so a missing Helm part is a 'not installed' gap instead of a die; public helpers kubectl/pod_tool/tls_probe/x509/jsonpath/_pods/_cols and %KIND/%GEN/%CLUSTER/%SINGULAR/%DERIVED/%GROUP/@ACME/@GAPS keep their source names for Helm k25b). Tests t/sim/kubernetes.t, kubernetes_adv.t, k8s_set_env.t ported (Test::More + Holmgang::TestSim). kubernetes_adv.t: 3 subtests (cert-manager, jsonpath/openssl, Helm) skip via need_parts('Helm') — the shared start state carries a Helm release; verified all 5 subtests pass with k25b's Helm.pm on @INC, no skips. cpanfile: + YAML::XS. Not touched: t/00-load.t (Kubernetes not added there, per brief), Linux.pm, Simulators.pm. prove -lr t: Files=30, Tests=961, PASS.
+
+Committed 3b0987c
