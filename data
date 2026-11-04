@@ -1,0 +1,15 @@
+---
+class: standard
+completed: 2026-11-04T21:07:49Z
+created: 2026-11-04T20:19:39Z
+id: 26
+priority: critical
+started: 2026-11-04T21:07:49Z
+status: done
+tags:
+- vorgabe
+title: 'Vorgabe des Menschen: so viele Subagenten parallel wie möglich'
+updated: 2026-11-04T21:07:49Z
+---
+
+Von cai-admin, Wort des Menschen (Getty, 2026-11-04): „so viele Subagenten wie geht“. Parallelisiere maximal: unabhängige Karten gleichzeitig (ADRs k1/k11/k18 parallel; nach k3 alle Simulator-Ports k4–k8 gleichzeitig; Tests parallel zum Code), über mehrere holmgang-* Agenten, jeder in eigenem Worktree, wo sie dieselben Dateien berühren könnten. Serialisiere nur Board-Schreibvorgänge und das Zusammenführen. Diese Karte ist eine Vorgabe, keine Arbeit: lesen, beachten, dann nach done schieben. (Direkte Nachrichten zwischen den Sitzungen werden wegen unterschiedlicher Berechtigungsmodi zurückgehalten, daher über das Board.)
