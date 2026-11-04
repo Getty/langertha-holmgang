@@ -7,7 +7,8 @@ use lib "$FindBin::Bin/../lib";
 use Test::More;
 use Test::Fatal qw( exception );
 
-use Holmgang::TestSim qw( need_parts );
+use Holmgang::TestSim qw( without_part );
+use Holmgang::TestSim ();
 use Langertha::Holmgang::Simulators;
 
 # Sim::Linux behind the plugin contract: the role, the result list with the
@@ -38,14 +39,17 @@ subtest 'write_file' => sub {
 };
 
 subtest 'a part that is not installed' => sub {
-  plan skip_all => 'Sim::Linux::Redis is installed' unless need_parts('Redis');
-  my $s = { db => { type => 'linux', redis => { service => 'redis-server' } } };
-  like exception { $sims->prepare($s) }, qr/\ALangertha::Holmgang::Sim::Linux::Redis is not installed/, 'prepare dies';
-  my $before = { %{ $s->{db} } };
-  my ( $o, $ok, $gap ) = $sims->run_command( $s, 'db', 'redis-cli ping' );
-  is $o, '', 'neutral output';
-  ok !$ok, 'failed';
-  like $gap, qr/\ALangertha::Holmgang::Sim::Linux::Redis is not installed\z/, 'reported as a gap';
+  # Redis is hidden from the loader for this subtest: the contract path is always tested
+  my $s = { db => { type => 'linux', redis => { service => 'redis-server' }, files => { '/etc/motd' => "hallo\n" } } };
+  my $before = Holmgang::TestSim::clone($s);
+  without_part( Redis => sub {
+    like exception { $sims->prepare($s) }, qr/\ALangertha::Holmgang::Sim::Linux::Redis is not installed/, 'prepare dies';
+    is_deeply [ $sims->run_command( $s, 'db', 'redis-cli ping' ) ],
+      [ '', 0, 'Langertha::Holmgang::Sim::Linux::Redis is not installed' ], 'neutral output, failed, reported as a gap';
+    is_deeply [ $sims->run_command( $s, 'db', 'cat /etc/motd' ) ], [ 'hallo', 1, undef ], 'a call that needs no part is not affected';
+  } );
+  is_deeply $s, $before, 'state untouched';
+  ok !exception { $sims->prepare( Holmgang::TestSim::clone($s) ) }, 'with the part back, prepare works';
 };
 
 subtest 'packet_verdict' => sub {
@@ -62,9 +66,10 @@ subtest 'packet_verdict' => sub {
 };
 
 subtest 'login_check' => sub {
-  plan skip_all => 'Sim::Linux::SshAccess is installed' unless need_parts('SshAccess');
-  like exception { $sims->login_check( $state->{box}, { user => 'root', from => '192.0.2.9' }, 'box' ) },
-    qr/SshAccess is not installed/, 'dies while SshAccess is missing';
+  without_part( SshAccess => sub {
+    like exception { $sims->login_check( $state->{box}, { user => 'root', from => '192.0.2.9' }, 'box' ) },
+      qr/SshAccess is not installed/, 'dies while SshAccess is missing';
+  } );
 };
 
 subtest 'class method run, as parts call it' => sub {

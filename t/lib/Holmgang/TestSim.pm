@@ -11,7 +11,7 @@ use Module::Runtime qw( module_notional_filename require_module );
 
 use Langertha::Holmgang::Simulators;
 
-our @EXPORT_OK = qw( sims run_command write_file prepare clone diff get throws_ok need_parts );
+our @EXPORT_OK = qw( sims run_command write_file prepare clone diff get throws_ok need_parts without_part );
 
 my $SIMS;
 sub sims { return $SIMS //= Langertha::Holmgang::Simulators->new }
@@ -73,6 +73,25 @@ sub need_parts {
     !eval { require_module($c); 1 };
   } @_;
   return @missing ? 'needs '.join( ', ', map { s/\A\+//r } @missing ).' (not installed yet)' : undef;
+}
+
+# Run $code while a part of the Linux simulator cannot be loaded, as if it were not
+# installed: its %INC entry is dropped and an @INC hook in front of the real directories
+# answers "Can't locate". Everything is put back afterwards.
+sub without_part {
+  my ( $part, $code ) = @_;
+  my $file  = module_notional_filename( 'Langertha::Holmgang::Sim::Linux::'.$part );
+  my $had   = exists $INC{$file};
+  my $saved = $INC{$file};
+  delete $INC{$file};
+  my $hook = sub { die "Can't locate $file in \@INC (hidden by the test)\n" if $_[1] eq $file; return };
+  my @r;
+  my $ok = do { local @INC = ( $hook, @INC ); eval { @r = $code->(); 1 } };
+  my $err = $@;
+  delete $INC{$file};
+  $INC{$file} = $saved if $had;
+  die $err unless $ok;
+  return @r;
 }
 
 1;

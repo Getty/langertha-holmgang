@@ -7,7 +7,7 @@ use lib "$FindBin::Bin/../lib";
 use Test::More;
 use JSON::MaybeXS ();
 
-use Holmgang::TestSim qw( run_command clone need_parts );
+use Holmgang::TestSim qw( run_command clone need_parts without_part );
 
 # helm on the Linux simulator, the parts of its grammar that the Helm subtest in
 # t/sim/kubernetes_adv.t does not cover: no cluster, the help text, unknown commands
@@ -52,9 +52,8 @@ subtest 'without a cluster' => sub {
 };
 
 subtest 'Kubernetes part not installed' => sub {
-  plan skip_all => 'Sim::Linux::Kubernetes is installed' unless need_parts('Kubernetes');
   my $s = clone($start);
-  my ( $o, $ok, $gap ) = run( $s, 'helm list -n apps' );
+  my ( $o, $ok, $gap ) = without_part( Kubernetes => sub { run( $s, 'helm list -n apps' ) } );
   is( $o, '', 'neutral output' );
   ok( !$ok, 'failed' );
   is( $gap, 'Langertha::Holmgang::Sim::Linux::Kubernetes is not installed', 'sim_gap names the part' );
