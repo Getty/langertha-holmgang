@@ -1,0 +1,25 @@
+---
+claimed_at: 2026-11-04T21:41:58Z
+claimed_by: cai-holmgang
+class: standard
+completed: 2026-11-04T21:41:58Z
+created: 2026-11-04T19:34:00Z
+depends_on:
+- 3
+id: 5
+priority: medium
+started: 2026-11-04T21:31:26Z
+status: done
+tags:
+- sim
+title: 'Simulatoren portieren: PostgreSQL, MariaDB, Redis'
+updated: 2026-11-04T21:41:58Z
+---
+
+Sim::Postgres, Sim::MariaDB, Sim::Redis und Sim::RedisService mit ihren t/eval_sim_*.t. Quelle: ~/cai-platform auf agent-lab (Übersicht im Skill holmgang-core).
+
+2026-11-04 21:36 Ported Postgres, MariaDB, Redis, RedisService as Sim::Linux::<Part> (worktree k5). Code close to source; only changes: package/namespace, dropped unused 'use CAI::Platform::Eval::World', runtime requires hoisted to top-level use (Digest::MD5/SHA, Time::Local, Calendar, Sim::Linux), Sim::shell_words -> Shell::shell_words, Monitoring via Sim::Linux::_part('Monitoring') (missing part = gap), English ABSTRACTs. Tests t/sim/{postgres,mariadb,redis}.t. redis.t block 'Passwort, Start, Sicherung' skips until +Expectation (k2): bgsave_needs goes through _failing_need -> Expectation. pruefwege.t enabled; subtest 'Redis: SLOWLOG' skips until Monitoring (clock -> now_epoch, verified). linux_haertung.t: global skip replaced by per-subtest skips; nft, awk, redis-cli (RedisService) subtests now run, the rest needs SshAccess (ssh_login on srv). Also found: t/sim/linux_contract.t 'a part that is not installed' uses Redis as its missing part and now always skips — the contract path loses coverage; needs another (fake) part. t/00-load.t does not list the new parts (shared file, left alone).
+
+2026-11-04 21:37 Done: 4 parts + 3 tests ported; pruefwege.t and parts of linux_haertung.t enabled. prove -lr t: Files=30, Tests=1034, PASS. Skips: redis.t 1 subtest (+Expectation), pruefwege.t 1 subtest (Monitoring), linux_haertung.t 19 subtests (SshAccess), linux_contract.t 'part not installed' (Redis now installed).
+
+Committed bdcd10a
