@@ -5,6 +5,7 @@ use Test::More;
 
 for (qw(
   Langertha::Holmgang
+  Langertha::Holmgang::Report
 )) {
   use_ok($_);
 }
