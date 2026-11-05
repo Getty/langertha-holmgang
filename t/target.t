@@ -140,4 +140,42 @@ subtest 'constructor checks' => sub {
     qr/variant must be a HashRef/, 'variant must be a HashRef';
 };
 
+subtest 'scrub: what goes and what stays (k38)' => sub {
+  my $T = 'Langertha::Holmgang::Target';
+  my @cases = (
+    [ 'die location, anywhere',
+      'boom at /home/x/lib/A.pm line 3. then Carp::croak(...) called at /home/x/b.pl line 9',
+      'boom then Carp::croak(...) called' ],
+    [ 'absolute paths',
+      'cannot open /srv/models/m.gguf, see ~/.config/x/y.json or C:\Users\me\key.txt',
+      'cannot open <path>, see <path> or <path>' ],
+    [ 'URL credentials and query keys, the URL kept',
+      'GET https://u:p@llm.invalid/v1/models?key=AAA&alt=json&access_token=BBB#x',
+      'GET https://***@llm.invalid/v1/models?key=***&alt=json&access_token=***#x' ],
+    [ 'header values',
+      'Authorization: Bearer abc.def x-goog-api-key: K1 "api_key":"K2" Authorization: Basic dXNlcg== echo: bearer zz9',
+      'Authorization: Bearer *** x-goog-api-key: *** "api_key":"***" Authorization: Basic *** echo: bearer ***' ],
+    [ 'key shapes',
+      'Incorrect API key provided: sk-proj-FAKEFAKEFAKEFAKE00, also AIzaFAKEFAKEFAKEFAKEFAKEFAKEFAKEFAKE00',
+      'Incorrect API key provided: ***, also ***' ],
+    [ 'nothing to scrub: unchanged',
+      'Langertha::Engine::Virtual request failed: 500 Internal Server Error - 1/2 of tokens/s and/or {"a":1}',
+      'Langertha::Engine::Virtual request failed: 500 Internal Server Error - 1/2 of tokens/s and/or {"a":1}' ],
+  );
+  is $T->scrub( $_->[1] ), $_->[2], $_->[0] for @cases;
+  is $T->scrub(undef), undef, 'undef stays undef';
+
+  my $t = Langertha::Holmgang::Target->new(
+    engine => Langertha::Engine::Virtual->new( rules => [], api_key => 'odd-FAKE-key' ) );
+  is $t->scrub('echo odd-FAKE-key and odd-FAKE-key'), 'echo *** and ***', 'the engine\'s own key, of any shape';
+  is +Langertha::Holmgang::Target->new( engine => Langertha::Engine::Virtual->new( rules => [], api_key => 'abc' ) )
+    ->scrub('abc def'), 'abc def', 'a key under 4 characters is not hunted (cai-platform)';
+
+  my $turn = turn( Langertha::Holmgang::Target->new(
+    engine => Langertha::Engine::Virtual->new( api_key => 'odd-FAKE-key', rules => [ qr/./ => error( 400,
+      'maximum context length exceeded for /srv/m.gguf, key odd-FAKE-key' ) ] ) ) );
+  is $turn->{error_class}, 'context_exceeded', 'the turn: classified';
+  like $turn->{error}, qr/maximum context length exceeded for <path>, key \*\*\*\z/, '... and its error text scrubbed';
+};
+
 done_testing;

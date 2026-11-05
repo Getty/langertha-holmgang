@@ -175,6 +175,82 @@ hint, a timeout, a refused connection, a croak before the request.
 
 =cut
 
+#### Scrubbing
+
+# Query parameters and header/JSON fields whose value is a credential.
+my $SECRET_PARAM = qr{ (?: api[_-]?key | key | access[_-]?token | token | auth | secret | password | passwd | sig | signature ) }xi;
+my $AUTH_SCHEME  = qr{ (?: Bearer | Basic | Token | Digest ) \s+ }xi;
+# What ends a value in a header, a query or a JSON string.
+my $VALUE = qr{ [^\s"',;&#]+ }x;
+# A path segment: anything but whitespace, a slash and the usual delimiters.
+my $SEG = qr{ [^\s/\\"'<>:,;()\[\]{}]+ }x;
+
+sub scrub {
+  my ( $self, $text ) = @_;
+  return $text unless defined $text;
+  # the engine's own key, of whatever shape (cai-platform ModelTester::scrub)
+  if ( ref $self ) {
+    my $engine = $self->engine;
+    my $key = $engine->can('api_key') ? eval { $engine->api_key } : undef;
+    $text =~ s/\Q$key\E/***/g if defined $key && !ref $key && length $key >= 4;
+  }
+  # die and Carp locations: " at FILE line N." anywhere, "called at" included
+  $text =~ s/ at \S+ line \d+\.?//g;
+  # credentials in URLs: userinfo and secret query parameters
+  $text =~ s{ ( \b [a-z][a-z0-9+.-]* :// ) [^/\s\@"']+ \@ }{$1***\@}gxi;
+  $text =~ s{ ( [?&;] $SECRET_PARAM = ) $VALUE }{$1***}gx;
+  # credentials in headers and JSON fields
+  $text =~ s{ \b ( Authorization ["']? \s* [:=] \s* ["']? $AUTH_SCHEME? ) $VALUE }{$1***}gxi;
+  $text =~ s{ \b ( Bearer \s+ ) (?!\*\*\*) $VALUE }{$1***}gxi;
+  $text =~ s{ \b ( (?: x- (?: goog- )? )? api[_-]?key ["']? \s* [:=] \s* ["']? ) $VALUE }{$1***}gxi;
+  # key shapes of the common providers
+  $text =~ s{ \b (?: sk | pplx | gsk | xai | hf ) [-_] [A-Za-z0-9_-]{16,} }{***}gx;
+  $text =~ s{ \b AIza [0-9A-Za-z_-]{30,} }{***}gx;
+  # absolute host paths: Unix (two segments at least, not inside a URL), home, Windows
+  $text =~ s{ (?<! [\w.:/~\\\@-] ) (?: ~ | [A-Za-z]: )? [/\\] (?: $SEG [/\\] )+ $SEG }{<path>}gx;
+  return $text;
+}
+
+=method scrub
+
+  my $clean = $target->scrub($text);    # also callable on the class, without the key
+
+The text of a failed turn with what must not leave the run removed (k38,
+ADR 0006: "error texts pass the engine's scrubbing first" -- Langertha has
+no scrubber yet, langertha k389). L</chat_turn_f> scrubs its C<error>; the
+class of the failure is read off the raw text before. What goes:
+
+=over
+
+=item * the engine's own C<api_key> (4 characters and up), wherever it stands
+-- C<***>; only on an object, the class knows no key;
+
+=item * die and Carp locations (C<at FILE line N.>, C<called at ...>), dropped;
+
+=item * URL credentials: the userinfo (C<https://***@host/...>) and the value
+of a query parameter named C<key>, C<api_key>, C<access_token>, C<token>,
+C<auth>, C<secret>, C<password>, C<sig>, C<signature> -- C<***>, the rest of
+the URL stays;
+
+=item * header and JSON field values: C<Authorization> (after its scheme),
+C<Bearer> tokens, C<x-api-key>, C<x-goog-api-key>, C<api_key>/C<api-key> --
+C<***>;
+
+=item * key shapes of the common providers (C<sk->, C<pplx->, C<gsk_>,
+C<xai->, C<hf_> with 16 characters and up, C<AIza...>) -- C<***>;
+
+=item * absolute host paths (C</a/b>, C<~/a>, C<C:\a\b>; not the path of a
+URL, not a single segment) -- C<< <path> >>.
+
+=back
+
+The status line, the provider's reason and the URL's host and path stay
+readable. This is a net for what Langertha's error text can carry, not a
+proof: a credential the engine does not hold and that has none of these
+shapes passes.
+
+=cut
+
 #### The turn
 
 sub chat_turn_f {
@@ -197,8 +273,9 @@ sub chat_turn_f {
       my ( $failure ) = @_;
       my $text = defined $failure ? "$failure" : '';
       $text =~ s/\s+\z//;
-      $text =~ s/ at \S+ line \d+\.?\z//;    # die's location, not the target's answer
-      return Future->done( { response => undef, error => $text, error_class => $self->classify_error($text) } );
+      # classified on the raw text, scrubbed before it leaves (k38)
+      my $class = $self->classify_error($text);
+      return Future->done( { response => undef, error => $self->scrub($text), error_class => $class } );
     },
   );
 }
@@ -223,8 +300,7 @@ C<undef> otherwise. Usage, finish reason, tool calls and timing are read from
 it.
 
 =item * C<error> -- the error text of a failed turn (Langertha's croak,
-without the trailing whitespace and the C<at FILE line N.> that C<die>
-appends), C<undef> otherwise.
+without the trailing whitespace, through L</scrub>), C<undef> otherwise.
 
 =item * C<error_class> -- C<undef> for a turn that succeeded, else
 C<no_vision>, C<context_exceeded> or C<error> (L</classify_error>); the

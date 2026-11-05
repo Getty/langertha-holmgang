@@ -208,7 +208,9 @@ L<Langertha::Holmgang::Report/add_run> takes (ADR 0006), plain data:
 =item * C<status>, C<score>, C<error>, C<rules>, C<diff>, C<sim_gaps>,
 C<forbidden_calls>, C<injection_held> -- from
 L<Langertha::Holmgang::Grader/grade>. C<error> is the target's error text
-when it did not answer, C<undef> otherwise (a turn limit has none).
+when it did not answer, scrubbed (L<Langertha::Holmgang::Target/scrub>),
+C<undef> otherwise (a turn limit has none). A failed request ends the case:
+its text never goes back to the model.
 
 =item * C<turns> -- one entry per model call that reached the target, the
 failed one included: C<input_tokens>, C<output_tokens>, C<reasoning_tokens>

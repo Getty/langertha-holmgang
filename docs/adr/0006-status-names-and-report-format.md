@@ -154,3 +154,5 @@ and finish reasons are reported, not compared.
   wrong. `no_vision` is part of version 1 from the start, before k27 lands.
 
 **Amendment 2026-11-04 (k14).** How the rates treat the not-measured statuses is fixed in ADR 0008: every result is in the denominator, only `passed` passes, each status keeps its own counter.
+
+**Amendment 2026-11-05 (k38).** Langertha has no scrubbing of its own yet (langertha k389); until it does, "the engine's scrubbing" for error texts is `Langertha::Holmgang::Target::scrub` (ADR 0005, k38), which every repetition's `error` passes. A run-level `error` (k15) goes through the same method.
