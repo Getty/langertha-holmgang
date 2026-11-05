@@ -16,7 +16,7 @@ simulated world is graded. It builds on Langertha and can measure every engine L
 knows.
 
 The grading principle runs today in CitiAI's platform (`cai-platform`,
-`CAI::Platform::Eval::*`, 15 suites, over 200 cases) and has proven itself there. Holmgang
+`CAI::Platform::Eval::*`, a few dozen suites, several hundred cases) and has proven itself there. Holmgang
 lifts it out, generalises it and adds a Perl DSL for writing cases. Afterwards `cai-platform`
 only depends on Holmgang (ADR 0001).
 
@@ -213,7 +213,7 @@ Working names, not fixed: `holmgang lint <suite>`, `holmgang run --suite … --t
 
 ## Acceptance
 
-1. The 15 existing suites from cai-platform load unchanged. Their lint is green.
+1. All existing format 2 suites from cai-platform load unchanged. Their lint is green.
 2. A mock run over all suites gives the same results as today's runner in cai-platform
    (report comparison).
 3. One suite is additionally written in the DSL, loads, and gives the same results as its
