@@ -53,7 +53,7 @@ dzil test
 
 ## Author
 
-Torsten Raudssus <getty@cpan.org>
+Torsten Raudssus <torsten@raudssus.de>
 
 ## License
 
