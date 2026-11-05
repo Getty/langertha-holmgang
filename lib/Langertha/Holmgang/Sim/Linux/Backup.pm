@@ -628,7 +628,7 @@ sub restic {
         my %gone;
         if (@rest) {
             for my $id (@rest) {
-                my $s = _find_snap( $r, $id ) or return ( "Fatal: invalid id \"$id\": no matching ID found for prefix \"$id\"", 0 );
+                my $s = _find_snap( $r, $id, %f ) or return ( "Fatal: invalid id \"$id\": no matching ID found for prefix \"$id\"", 0 );
                 $gone{ $s->{id} } = 1;
                 push @l, "removed snapshot " . substr( $s->{id}, 0, 8 );
             }
