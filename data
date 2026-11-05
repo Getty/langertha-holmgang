@@ -1,0 +1,38 @@
+---
+claimed_at: 2026-11-05T13:32:14Z
+claimed_by: cai-holmgang
+class: standard
+completed: 2026-11-05T13:32:14Z
+created: 2026-11-04T19:34:10Z
+depends_on:
+- 9
+id: 16
+priority: medium
+started: 2026-11-04T21:48:07Z
+status: done
+tags:
+- runner
+- langertha
+title: context_exceeded erkennen
+updated: 2026-11-05T13:32:14Z
+---
+
+Eingabe passt nicht ins Kontextfenster des Ziels: getrennt zählen, kein Fehler. Langertha hat kein einheitliches Signal; je Engine-Art prüfen (OpenAI-kompatibel wie llama.cpp und vLLM, Anthropic, Ollama). Was in Langertha fehlt, als Notiz für eine Karte auf dem langertha-Board.
+
+2026-11-04 21:56 Built Langertha::Holmgang::Target (engine + variant HashRef; chat_turn_f(%chat_f_opts) -> Future always done with {response, error, error_class undef|no_vision|context_exceeded|error}; classify_error($text)). $CONTEXT_RE ported unchanged from cai-platform af7561a5; no_vision signatures from k27 (llama.cpp 'image input is not supported … mmproj', vLLM 'not a multimodal model') checked first per ADR 0006. Langertha's 500-char error-body cut raised to 65536 via local around chat_f - holds only for synchronous transports (Virtual, LWP fallback); under Net::Async::HTTP the die happens outside the local. die's ' at FILE line N.' stripped from the error text. Deliberate differences recorded as amendment in ADR 0005. t/target.t: 11 context signatures + 2 no_vision + precedence, negatives (500 without hint, timeout, 200 mentioning the phrase), body past the cut (mutation-checked), variant precedence on the wire (requests->[0]{body}), croak/no-Future engines, constructor checks.
+
+2026-11-04 21:56 For the langertha board (not filed): (1) structured request-failure exception (HTTP status, full body, decoded provider error code/type) instead of a croak string; (2) uniform context_exceeded (and no_vision) classification per engine; (3) uncut error body, or a per-engine/per-request error_body_max_length instead of a package var that a local cannot cover across await; (4) ModelProbe: context window (n_ctx / max_model_len / num_ctx) as a model fact from probe_model_capabilities_f; (5) Virtual: context-window emulation option (estimate request tokens, 400 when prompt+max_tokens > window); (6) Virtual: error reaction with a JSON error body in provider shape (today error() serves text/plain, Virtual::Server only gives an OpenAI-style body); (7) die texts carry ' at .../Role/Chat.pm line 852.' - croak/newline so callers get a clean message; (8) no scrubbing helper for error texts (ADR 0006 wants error texts scrubbed). Also: Virtual drops temperature from the wire (no temperature capability) - test uses seed.
+
+2026-11-04 21:56 Done: lib/Langertha/Holmgang/Target.pm + t/target.t, Future in cpanfile, Target in t/00-load.t, ADR 0005 amendment (Target API, deviations). Verified: prove -lr t -> 49 files, 1573 tests PASS (installed Langertha 0.504); same with -I/home/frank/langertha/lib (0.505) PASS. Pre-existing skips unrelated to k16 in t/sim/{linux_messung,dns_mail,redis,helm,linux_server,linux_contract}.t. New files untracked - need git add before dzil build. Runner not written (k9).
+
+Langertha-Lücken als langertha k389 angelegt (cai-holmgang).
+
+2026-11-04 22:01 Committed 8ebc887 on main (Target). Stays in review until the runner k9 wires it.
+
+Stand 2026-11-05 (Halt cai-admin): FERTIG: ::Target mit chat_turn_f + classify_error (8ebc887), Langertha-Lücken als langertha k389. OFFEN: Verdrahtung im Runner (k9). NÄCHSTER SCHRITT: in k9 Target nutzen, dann k16 → done.
+
+2026-11-05 13:28 k9 (6037aa8, Merge 9b48c70) verdrahtet Target im Runner; context_exceeded/no_vision durch den Runner getestet. Aus Sicht cai-holmgang abnehmbar.
+
+
+
+2026-11-05 Abnahme cai-admin-entwicklung: main 9b48c70. Selbst gefahren: prove -lr t/ 65/2156 PASS, dzil test 67/2204 PASS. Leak-Check gegen af7561a5: keine Suitenamen, Fall-IDs oder Fallzeilen (nur generisches Tool-Schema). Keine Netz-URLs/Schlüssel im Diff. Abgenommen.
