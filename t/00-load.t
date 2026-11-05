@@ -20,6 +20,7 @@ for (qw(
   Langertha::Holmgang::Lint
   Langertha::Holmgang::Loader
   Langertha::Holmgang::Target
+  Langertha::Holmgang::Runner
   Langertha::Holmgang::Role::Simulator
   Langertha::Holmgang::Role::AnswerWorld
   Langertha::Holmgang::Simulators

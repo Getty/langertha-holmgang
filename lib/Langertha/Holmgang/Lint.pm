@@ -16,9 +16,9 @@ our $VERSION = '0.001';
   my $lint = Langertha::Holmgang::Lint->new( grader => $grader );
   $lint->lint( $case, 'cases/c1.yaml' );   # 1, or a Langertha::Holmgang::Error
 
-  # the runner (k9) adds the two mock runs
+  # with the two mock runs, as the loader's default lint has them
   my $lint = Langertha::Holmgang::Lint->new(
-    mock_runs => sub { my ( $lint, $case, $field ) = @_; ... },
+    mock_runs => Langertha::Holmgang::Runner->lint_mock_runs,
   );
 
 =description
@@ -48,7 +48,8 @@ paths (doing nothing, right ones, wrong ones).
 That at least one required rule checks the end state is part of the shape
 check (L<Langertha::Holmgang::Structure>). The two mock runs over a model
 engine — replaying the reference solution passes, twice identically; text
-only fails — need the runner; it hands them in as L</mock_runs>.
+only fails — need the runner; they come in as L</mock_runs>
+(L<Langertha::Holmgang::Runner/lint_mock_runs>, the loader's default).
 
 A case that does not hold is a L<Langertha::Holmgang::Error> with field and
 reason, and does not load. Fix the case or the simulator, never lint.
