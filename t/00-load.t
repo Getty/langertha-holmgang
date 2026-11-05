@@ -21,6 +21,7 @@ for (qw(
   Langertha::Holmgang::Loader
   Langertha::Holmgang::Target
   Langertha::Holmgang::Runner
+  Langertha::Holmgang::CLI
   Langertha::Holmgang::Role::Simulator
   Langertha::Holmgang::Role::AnswerWorld
   Langertha::Holmgang::Simulators
