@@ -24,6 +24,13 @@ my $JSON = JSON::MaybeXS->new( utf8 => 0, canonical => 1, allow_nonref => 1 );
 
   use Langertha::Holmgang::Runner;
   use Langertha::Holmgang::Target;
+  use Langertha::Engine::vLLM;
+
+  # any Langertha engine; the key, where one is needed, comes from the engine's environment variable
+  my $engine = Langertha::Engine::vLLM->new( url => 'http://10.0.0.5:8000/v1', model => 'some-model' );
+
+  # or, without a network: the mock model that replays the case's reference solution
+  my $engine = Langertha::Holmgang::Runner->mock_engine( $case, 'solution' );
 
   my $runner = Langertha::Holmgang::Runner->new(
     target => Langertha::Holmgang::Target->new( engine => $engine, variant => { max_tokens => 4000 } ),
