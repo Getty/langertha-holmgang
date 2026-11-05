@@ -13,6 +13,7 @@ use Langertha::Holmgang::Error;
 use Langertha::Holmgang::Grader;
 use Langertha::Holmgang::Haystack;
 use Langertha::Holmgang::Lint;
+use Langertha::Holmgang::Runner;
 use Langertha::Holmgang::Simulators;
 use Langertha::Holmgang::Structure;
 use Langertha::Holmgang::Suite;
@@ -96,13 +97,17 @@ has lint => (
 );
 sub _build_lint {
   my ( $self ) = @_;
-  return Langertha::Holmgang::Lint->new( grader => Langertha::Holmgang::Grader->new( simulators => $self->simulators ) );
+  return Langertha::Holmgang::Lint->new(
+    grader    => Langertha::Holmgang::Grader->new( simulators => $self->simulators ),
+    mock_runs => Langertha::Holmgang::Runner->lint_mock_runs,
+  );
 }
 
 =attr lint
 
-The L<Langertha::Holmgang::Lint> every case passes. The runner hands in one
-with its mock runs.
+The L<Langertha::Holmgang::Lint> every case passes, by default with the two
+mock runs of L<Langertha::Holmgang::Runner/lint_mock_runs> (replaying the
+reference solution passes twice identically, text only fails).
 
 =cut
 

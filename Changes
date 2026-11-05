@@ -15,6 +15,11 @@ Revision history for Langertha-Holmgang
     chat_turn_f runs one turn and classifies a failed one as context_exceeded
     (signatures of OpenAI, vLLM, llama.cpp, SGLang, TGI, LiteLLM, Ollama,
     Anthropic), no_vision or error
+  - Langertha::Holmgang::Runner: the model loop of one case over any Langertha
+    engine through ::Target — turns, turn_limit, tokens/finish_reason/calls
+    per turn, error/context_exceeded/no_vision; results in the report's shape;
+    Langertha::Engine::Virtual mock model; lint's two mock runs, on by
+    default in the loader
   - Langertha::Holmgang::Evaluation: per-topic rates with case weights,
     overall as the mean of topics, length-tier curves, verdicts with
     threshold, pass^k and hard cases, comparison as text, Markdown and JSON
