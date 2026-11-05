@@ -1,0 +1,41 @@
+---
+claimed_at: 2026-11-05T17:28:22Z
+claimed_by: cai-holmgang
+class: standard
+completed: 2026-11-05T17:28:22Z
+created: 2026-11-04T19:34:05Z
+depends_on:
+- 2
+- 3
+- 4
+- 5
+- 6
+- 7
+- 8
+- 9
+- 25
+id: 10
+priority: high
+started: 2026-11-05T17:10:24Z
+status: done
+tags:
+- abnahme
+title: 'Abnahme 1: die 15 cai-platform-Suites laden unverändert, Lint grün'
+updated: 2026-11-05T17:28:22Z
+---
+
+Gegen eine Kopie der Suites außerhalb des Checkouts; der Test skippt ohne Kopie. Format 2 lädt unverändert, kein Fall wird angepasst (ADR 0004). Keine echten Fälle in Repo, Karte oder Commit (ADR 0003).
+
+Stand cai-platform origin/main c4ea6b6e: 31 Suites, nicht 15; Abnahme läuft gegen alle Suites dieses Stands. Kopie: ~/holmgang-abnahme/current (außerhalb des Checkouts).
+
+2026-11-04 cai-holmgang: Quelle der Hebung = cai-platform origin/main af7561a5 (enthält c4ea6b6e + context_exceeded #195). Schnappschuss ~/holmgang-abnahme/cai-platform-af7561a5 (git archive, read-only genutzt), current zeigt jetzt dorthin (32 Suites); c4ea6b6e-Kopie bleibt daneben.
+
+2026-11-05 BERICHT k10 (holmgang-worker). ERLEDIGT: Abnahme 1 erfüllt gegen Schnappschuss cai-platform af7561a5. (1) Kopie unverändert: frisches git archive af7561a5 nach scratch entpackt, diff -r gegen die Kopie: kein abweichender Inhalt, keine Zusatzdatei (Kopie = Teilmenge cpanfile/docs/lib/share/t), share/evals und lib vor und nach allen Läufen byte-identisch. (2) Parität: cai Suite::list/load in-process (-I Kopie/lib, keine DB, kein Netz) vs Holmgang Loader->list/load, Treiber und Ausgaben nur in ~/holmgang-abnahme/scratch/k10: 31 Format-2-Suites beide geladen, lint grün; Fallzahl je Suite gleich (N gesamt), Fall-IDs je Suite in gleicher Reihenfolge identisch, Prüfsumme (checksum vs digest) je Suite identisch, Werkzeugzahl je Suite gleich. Einzige Abweichung: die eine pii-*-Suite fehlt bei cai (still übersprungen), Holmgang listet sie mit Fehler 'only format 2' -> bekannt, k33. (3) pii-*: Test meldet sie als 'not measured'. (4) t/acceptance_load.t verschärft: 'not measured' nur noch bei format pii-* aus suite.yaml (vorher reichte jede 'only format 2'-Abweisung, ein Format-2-Suite mit falschem/fehlendem format wäre still durchgerutscht — mit erfundener Suite in scratch gezeigt: alter Test PASS, neuer FAIL); optional HOLMGANG_ACCEPTANCE_CASES = Fallzahl laut cai-Lader, Summe der gemessenen Suites muss gleich sein (mit falscher Zahl gezeigt: FAIL). Unabhängig von k33s Entscheidung. VERIFIZIERT: prove -lr t/ 67 Dateien 2219 Tests PASS (acceptance skippt ohne Env); mit HOLMGANG_ACCEPTANCE_SUITES=Kopie und HOLMGANG_ACCEPTANCE_CASES=N: 67/2252 PASS; dzil test 69/2267 PASS. Geändert: nur t/acceptance_load.t (nicht committet, Worktree k10). OFFEN: k33 (pii-* im Loader) bleibt; nichts Neues.
+
+Committed ad25060 on k10, merged to main as c4d3f5f (--no-ff). Test-only, no Changes entry. On main: prove -lr t/ 70 files 2306 tests PASS; acceptance_load.t against the abnahme copy 32 tests PASS (1 suite found check + 31 measured suites, 1 pii-* suite noted as not measured; HOLMGANG_ACCEPTANCE_CASES unset so the total-count check did not run). dzil test result pending at note time. Card stays at review.
+
+dzil test PASS: 72 files, 2356 tests (includes author/release tests). Card stays at review.
+
+
+
+2026-11-05 Abnahme cai-admin-entwicklung: main c4d3f5f. Diff gelesen (nur t/acceptance_load.t, keine Suitenamen/Zahlen im Repo), HOLMGANG_ACCEPTANCE_SUITES=Kopie af7561a5 prove -lv t/acceptance_load.t 32/32 PASS selbst gefahren. Paritätstreiber in ~/holmgang-abnahme/scratch/k10 nicht nachgefahren. Abgenommen.
