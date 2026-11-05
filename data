@@ -1,0 +1,36 @@
+---
+claimed_at: 2026-11-05T17:09:59Z
+claimed_by: cai-holmgang
+class: standard
+completed: 2026-11-05T17:01:38Z
+created: 2026-11-05T13:01:07Z
+id: 32
+priority: high
+started: 2026-11-05T16:31:10Z
+status: done
+tags:
+- sim
+- leak
+title: 'Sim::Linux::Backup: Perl-die erreicht das Modell mit Host-Pfad'
+updated: 2026-11-05T17:11:11Z
+---
+
+Aus k2 (Abnahme-Replay einer falschen Lösung): lib/Langertha/Holmgang/Sim/Linux/Backup.pm Zeile ~479 stirbt mit 'Can't use an undefined value as an ARRAY reference at …'. Der Text wird Werkzeugausgabe, ein Host-Dateipfad erreicht das Modell. cai-platform verhält sich gleich (Notiz für deren Board). Fix in den Simulator, plus allgemein: World soll Perl-Fehlertexte von Simulatoren nicht ungefiltert ausgeben. Lane: holmgang-sim-worker.
+
+Ursache: restic forget <id> rief _find_snap ohne Filter, _sel dereferenziert dann undef (strict refs). Fix: Filter durchreichen; real restic 0.14.0 (Wegwerf-Container) bestaetigt: forget latest --host h1 nimmt den neuesten von h1, ohne Filter den neuesten ueberhaupt. Drift (nicht im Scope, Ausgaben wie in cai-platform belassen): echtes restic 0.14 gibt bei forget <id> '[0:00] 100.00%  1 / 1 files deleted' statt 'removed snapshot …' und bei unbekannter ID 'Ignoring "x": no matching ID found for prefix "x"' mit rc 0 statt Fatal rc 1. cai-platform hat denselben Bug (Karte auf deren Board noetig).
+
+erledigt: Sim::Linux::Backup restic forget reicht --host/--path/--tag an _find_snap (kein die mehr); World::_simulate und Kettenglieder laufen durch _guarded: die -> 'Fehler: interner Fehler beim Ausführen des Aufrufs.', ok 0, Zustand unveraendert; Perl-Fehlerzeile ('… at X.pm|.pl|.t|(eval N) line N.') in der Ausgabe -> diese Zeile ersetzt, Rest bleibt; Original jeweils als sim_gap 'simulator error: …' (nur Report). POD in World, Changes. verifiziert: t/world_sim_fault.t (13) + t/sim/backup.t neuer Subtest rot auf main, gruen danach; prove -lr t/ 66 Dateien 2170 Tests PASS; dzil test 68 Dateien 2218 Tests PASS. offen: sim_gap-Original enthaelt den Host-Pfad (nur reportseitig); restic-Ausgabe-Drift s. Notiz; cai-platform-Karte fuer denselben Bug.
+
+release-manager: commit 4e80a5f on k32, merged --no-ff as abf17aa on main (no conflicts). prove -lr t/ 67 files 2209 tests PASS; dzil test 69 files 2257 tests PASS. REGRESSION: t/acceptance_load.t FAILS test 4 (one suite, one case, solution replay) on main, PASSES 32/32 on d3dfb18. Cause: World PERL_ERROR regex replaces legitimate output lines ending ' at X.pm line N.' (log text of the case) with the fault text. Needs fix (guard the die only, or narrow the output scrub); stays at review.
+
+
+
+2026-11-05 Abnahme cai-admin-entwicklung: main abf17aa. Diff gelesen (World::_guarded: die des Simulators -> generische Meldung, Zustand bleibt; Perl-Fehlerzeile in der Ausgabe ersetzt; Original nur in die Lücke für den Bericht; Backup-Fix), prove -lr t/ 67/2209 PASS selbst gefahren, Leak-Check ohne Treffer. Abgenommen.
+
+Folge-Fix Regression (Abnahme-Replay rot nach abf17aa): Ausgabe-Scrub in World::_guarded traf simulierte Logzeilen der Form '… at X.pm line N.'. Meine Wahl: Scrub bleibt, zaehlt aber nur noch Zeilen, deren Datei eine Quelldatei dieses Prozesses ist (Wert in %INC oder $0, ohne Dateisystemzugriff); '(eval N)' faellt raus (kein Host-Pfad). die-Guard unveraendert. Warum nicht am Ursprung in der Linux-Shell: dort fangen mindestens 8 Stellen (Shell.pm, Shell/Filter.pm, Sim/Linux.pm, Sim/RouterOS.pm) dies ab und geben sie als Ausgabe zurueck — eine Pruefung in World deckt alle ab, die Datei-Pruefung macht sie so genau wie die Quelle. Regressionstests in t/world_sim_fault.t: erfundene Zeile 'Died at /opt/app/lib/Foo.pm line 12.' (Antwortwelt und cat einer Logdatei auf linux) bleibt unveraendert; abgefangener die in Sim/Linux/Backup.pm wird weiterhin ersetzt. k32 per git merge main auf abf17aa gebracht (fast-forward). Verifiziert: prove -lr t/ 67/2219 PASS, Abnahme acceptance_load.t 32/32 PASS.
+
+Regression fix committed 440d5e8, merged to main 311100a (no-ff): scrub only Perl errors naming a file of this process (%INC / $0). main: prove -lr t/ 67 files 2219 tests pass; dzil test 69 files 2267 tests pass; acceptance load 32/32 pass (lint green). Skipped without acceptance env: t/acceptance_load.t only. Not pushed.
+
+
+
+Nachtrag Abnahme: Regression im ersten Merge (Lint-Replay der Abnahmekopie, Perl-artige Logzeilen erfundener Pfade) behoben in 440d5e8, Merge 311100a — nur Fehlerzeilen mit Datei dieses Prozesses (%INC/$0) werden ersetzt. Diff gelesen, prove -lr t/ PASS auf 311100a selbst gefahren. Abnahme gilt für 311100a. Gegenkarte cai-platform: #228.
