@@ -1,0 +1,30 @@
+---
+claimed_at: 2026-11-05T17:48:16Z
+claimed_by: cai-holmgang
+class: standard
+completed: 2026-11-05T17:48:16Z
+created: 2026-11-04T19:34:18Z
+depends_on:
+- 21
+- 22
+id: 24
+priority: low
+started: 2026-11-05T17:27:36Z
+status: done
+tags:
+- doku
+- abnahme
+title: 'Doku: POD und README zu DSL, Format, Regeln, Simulator-Plugins, Bericht (Abnahme
+  5)'
+updated: 2026-11-05T17:48:16Z
+---
+
+POD je Modul, README mit DSL, Format 2, Regeln, Simulator-Plugins und Bericht. Alle Tests laufen ohne Netz.
+
+erledigt: POD Langertha::Holmgang (SYNOPSIS CLI, STATUS: Format 2 + CLI nutzbar, DSL ADR 0007 kommt, Modul exportiert nichts; HOW IT FITS TOGETHER; SEE ALSO), Loader 'SUITE FORMAT 2' (Layout, suite.yaml, Tools, Fall, Welt/Geraete, Pfade+Argumentfilter split/int/lc, Beobachtungen inkl. Pipe-Filter, Handler+Aenderungen, Lint, zwei erfundene Beispiel-Suites), Grader 'RULES' (8 Arten, Erwartungen) + 'STATUSES' (7 Wire-Namen ADR 0006, sim_gap -> uncertain), Role::Simulator (k32-Die-Guard als Regel, REGISTRATION), Runner-Synopsis (vLLM-Engine, mock_engine). README: Status ersetzt, Quick start mit lint/run mock-solution/mock-text/report, How it works, Doku-Tabelle mit Links auf die Modul-POD. Neue Abschnitte ans Dateiende gelegt, damit =attr/=method unter DESCRIPTION bleiben. Kein Code geaendert. verifiziert: README-YAML-Bloecke und Loader-POD-Beispiele woertlich extrahiert und mit bin/holmgang lint geladen (ok), README-Ausgabe von run/report gegen echten Lauf verglichen (identisch); podchecker auf gebauten Dateien OK; prove -lr t 70 Dateien 2306 Tests PASS (t/acceptance_load.t skipped: HOLMGANG_ACCEPTANCE_SUITES nicht gesetzt); dzil test 72/2356 PASS (author-pod-syntax ok; release-changes skipped). offen: Beispiel-Suites auf Platte = k22; Sim-POD (Sim::Linux, RouterOS, IOS, Kueche, mehrere Sim::Linux::*, Shell, Shell::Filter) ist Deutsch, Lane holmgang-sim-worker, Karte fuer hier; Drift fuer hier: holmgang run/report geben bei Schreib-/Lesefehler den Perl-Ort aus ('... at lib/Langertha/Holmgang/Report.pm line 445.', CLI-Fehlertext ungescrubbt); Role::Simulator: =method-Eintraege landen im gebauten POD unter RULES (vorbestehend, kein METHODS-Kopf); Changes-Eintrag fuer den Release-Manager.
+
+Committed d462532 on k24, merged 04415e2 (--no-ff). POD/README only (code outside POD verified identical), Changes entry added. main: prove -lr t/ 70 files 2306 tests PASS; dzil test 72 files 2356 tests PASS; skipped: t/acceptance_load.t (HOLMGANG_ACCEPTANCE_SUITES unset), release-only tests. Not pushed.
+
+
+
+2026-11-05 Abnahme cai-admin-entwicklung: main 04415e2. Code nach POD-Strip bis auf Leerzeilen identisch (Grader, Loader, Role::Simulator, Runner), README gelesen (Status ehrlich, DSL als kommt), Leak-Check ohne Treffer (keine Fall-IDs, Suitenamen, Fallzeilen, interne Hosts/Pfade), dzil test --release 72/2358 PASS inkl. pod-syntax selbst gefahren. Abgenommen.
