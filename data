@@ -1,0 +1,28 @@
+---
+claimed_at: 2026-11-05T13:32:13Z
+claimed_by: cai-holmgang
+class: standard
+completed: 2026-11-05T13:32:13Z
+created: 2026-11-04T19:34:04Z
+depends_on:
+- 2
+id: 9
+priority: high
+started: 2026-11-05T13:03:54Z
+status: done
+tags:
+- runner
+- langertha
+title: 'Runner über Langertha: Runden, Rundengrenze, Token je Runde, Lint-Mocks'
+updated: 2026-11-05T13:32:13Z
+---
+
+Ersatz für Eval::Runner und ModelTester: jede Langertha-Engine als Ziel, Langertha::Engine::Virtual als Mock. Fall endet ohne Werkzeugaufruf oder nach max_turns. Je Runde Langertha::Usage (input, output, reasoning), dazu Runden, Aufrufe, Dauer, finish_reason; Status error, wenn das Ziel nicht antwortet. Lint-Mocks: Musterlösung abspielen (besteht, zweimal identisch), nur Text (fällt durch). Test prüft die ausgehende Anfrage: kein Zustand, keine Regel, keine Lösung, keine untrusted-Marke. Quelle: ~/cai-platform auf agent-lab (Übersicht im Skill holmgang-core).
+
+2026-11-05 Worker: implementation done, tree commit-ready on branch k9 (nothing committed). NEW Runner.pm (target, grader; run_case_f/run_case -> Report::add_run result shape; mock_engine = Virtual replacing FakeTarget; lint_mock_runs for Lint). Loader default lint carries the mock runs. Target wired (no_vision/context_exceeded/error through the runner). Tests t/runner.t 91, t/lint_mock_runs.t 11, wire inspected. Mutation 19/20 killed (survivor equivalent). prove -lr t 65 files 2156 PASS (0.504 and dev Langertha); dzil test 2204 PASS; acceptance copy with mock runs 31 suites green. Skip: acceptance_load without env. ADR 0005 amendment k9. k16 acceptable.
+
+2026-11-05 13:28 BERICHT k9. Quelle cai-platform af7561a5 (Eval::Runner, FakeTarget). ERLEDIGT: lib/Langertha/Holmgang/Runner.pm (target, grader; run_case_f/run_case -> Ergebnis im Format von Report::add_run; jede Runde über Target::chat_turn_f, Toolergebnisse über format_tool_results der Engine; Ende ohne Toolaufruf oder turn_limit nach max_turns; je Runde Usage input/output/reasoning, duration_ms, finish_reason, calls; Zielfehler -> error/context_exceeded/no_vision; mock_engine(case, solution|text) auf Engine::Virtual statt FakeTarget; lint_mock_runs füllt Lint-Hook, im Loader standardmäßig an gemäß CONTEXT §4). ADR-0005-Nachtrag k9, cpanfile (Future::AsyncAwait, Time::HiRes), 00-load.t, Changes. COMMITS: 6037aa8 (Branch k9), Merge 9b48c70 auf main (--no-ff). VERIFIZIERT: prove -lr t/ 65 Dateien 2156 Tests PASS (main); dzil test 67 Dateien 2204 Tests PASS (main); t/runner.t 91 Tests inkl. Draht-Prüfung der Virtual-Requests (kein Zustand, keine Regel, Lösung, Beobachtung, Handler, untrusted); t/lint_mock_runs.t 11 Tests; 19/20 Mutationen gefangen (Überlebende ohne Drahtwirkung, Langertha::Tool verwirft Extraschlüssel); Abnahmekopie mit Mock-Läufen: 31 Format-2-Suiten lint-grün. Nur Mocks, kein Lauf gegen echte Modelle. SKIPS: acceptance_load.t ohne HOLMGANG_ACCEPTANCE_SUITES. ABWEICHUNGEN (im ADR-Nachtrag): turn_limit eigener Status ohne Fehlertext; fehlgeschlagene Anfrage zählt als Runde mit Null-Token; temperature nur bei supports; Fehlertext ungescrubbt ohne Ziel:-Präfix; kein keep_reasoning; Mock schätzt keine Token; resume/cancel -> k15 Batch. KOSTEN: Laden der Abnahmekopie 21s -> 36s durch Mock-Läufe. k16: abnehmbar — Target im Runner verdrahtet, context_exceeded (Runde 1 und 2) und no_vision durch den Runner getestet, context_exceeded in Report/Evaluation getrennt von error gezählt. OFFEN als Karten: k36 Case->tier Listenkontext + Report-Fallmeta-Helfer, k37 doppelte Systemnachricht, k38 Fehlertexte scrubben; Langertha-Lücken als Nachtrag auf langertha k389.
+
+
+
+2026-11-05 Abnahme cai-admin-entwicklung: main 9b48c70. Selbst gefahren: prove -lr t/ 65/2156 PASS, dzil test 67/2204 PASS. Leak-Check gegen af7561a5: keine Suitenamen, Fall-IDs oder Fallzeilen (nur generisches Tool-Schema). Keine Netz-URLs/Schlüssel im Diff. Abgenommen.
