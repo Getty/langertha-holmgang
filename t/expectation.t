@@ -111,7 +111,8 @@ is( flat( { b => 1, a => 2 } ), '{"a":2,"b":1}', 'flat: hash as canonical JSON' 
 is( interp_text( 'x={v|lc} n={n|int} {missing}.', { v => 'AbC', n => 'about 12 items' } ), 'x=abc n=12 .', 'interp_text with filters' );
 is_deeply( filter_value( ' 10.0.0.1/32,10.0.0.2/32  fe80::1 ', 'split' ), [qw( 10.0.0.1/32 10.0.0.2/32 fe80::1 )], 'split' );
 is( filter_value( 'none', 'int' ), 0, 'int without a number: 0' );
-like( exception { filter_value( 'x', 'upper' ) }, qr/unknown filter upper/, 'unknown filter dies' );
+is( exception { filter_value( 'x', 'upper' ) }, "dieser Aufruf ist in diesem Szenario nicht vorgesehen.\n",
+  'unknown filter dies with the generic refusal, without its name, file or line (k35)' );
 ok( element_match( 'abc', '^a' ), 'element_match: text' );
 ok( !element_match( { a => 'x' }, '^x' ), 'element_match: a text pattern needs a text element' );
 ok( !element_match( 'x', { a => 'x' } ), 'element_match: a field pattern needs a hash element' );

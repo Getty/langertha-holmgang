@@ -59,3 +59,7 @@ Revision history for Langertha-Holmgang
   - Langertha::Holmgang::Haystack: generate long, deterministic contents
     (logs, configs, manifests, runbooks) from a spec, byte-identical to
     cai-platform; estimate_tokens
+  - Lint refuses an unknown argument filter ({name|filter}) in a handler's
+    change or a when path at load time, even where no solution reaches it;
+    Expectation filter_value dies with the world's generic refusal instead of
+    the filter's name, so a tool result never carries it (k35)
