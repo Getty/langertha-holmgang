@@ -175,6 +175,22 @@ subtest restic => sub {
     is( scalar @{ $s->{backup1}{restic_repos}{'/srv/restic'}{snapshots} }, 7, 'nach unlock: neuer Snapshot' );
 };
 
+# forget mit IDs: "latest" waehlt wie restic 0.14 den neuesten Snapshot unter den
+# Filtern (--host, --path, --tag); ohne Filter den neuesten ueberhaupt (k32)
+subtest 'restic forget latest' => sub {
+    my $R = '-r sftp:backup1:/srv/restic --password-file /root/.restic-pass';
+    my $ids = sub { [ map { $_->{id} } @{ $_[0]{backup1}{restic_repos}{'/srv/restic'}{snapshots} } ] };
+    my $s = world();
+    $s->{backup1}{restic_repos}{'/srv/restic'}{snapshots}[-1]{time} = '2026-10-20 01:00:00';    # db1 zuletzt
+    my ( $o, $ok ) = run( $s, 'web1', "restic $R forget latest --host web1" );
+    ok( $ok, 'forget latest --host' ) or diag $o;
+    unlike( $o, qr/\.pm line \d+|Can't use/, '… keine Perl-Meldung in der Ausgabe' );
+    is_deeply( $ids->($s), [qw( a1000001 a1000002 a1000003 a1000004 b2000001 )], '… der neueste von web1 ist weg' );
+    ( $o, $ok ) = run( $s, 'web1', "restic $R forget latest" );
+    ok( $ok, 'forget latest ohne Filter' ) or diag $o;
+    is_deeply( $ids->($s), [qw( a1000001 a1000002 a1000003 a1000004 )], '… der neueste ueberhaupt (db1) ist weg' );
+};
+
 subtest 'Shell: Umleitungen und $?' => sub {
     my $s = world();
     like( run( $s, 'web1', 'ls /fehlt 2>&1 | head -1' ), qr/cannot access/, '2>&1 laesst die Ausgabe in der Pipe' );

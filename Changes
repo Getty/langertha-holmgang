@@ -28,6 +28,11 @@ Revision history for Langertha-Holmgang
     overall as the mean of topics, length-tier curves, verdicts with
     threshold, pass^k and hard cases, comparison as text, Markdown and JSON
     (ADR 0008)
+  - Langertha::Holmgang::World: a simulator that fails in Perl no longer
+    hands its error text and host file path to the model — the call answers
+    a generic tool error, the original goes into the sim_gap (k32)
+  - Sim::Linux::Backup: restic forget latest no longer dies; picks the
+    newest snapshot under --host/--path/--tag like restic 0.14 (k32)
   - Initial release
   - Langertha::Holmgang::Report: write and read the JSON report (holmgang_report 1,
     ADR 0006), merge reports without double counting, map cai-platform --report

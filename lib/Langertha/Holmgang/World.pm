@@ -20,6 +20,11 @@ our @OPS = qw( set push insert delete remove move );
 
 my $JSON = JSON::MaybeXS->new( utf8 => 0, canonical => 1, allow_nonref => 1 );
 
+# what the model gets for a simulator that fails in Perl, and how such a text looks
+# (" at FILE line N." of a Perl source file or an eval string, as die without "\n" ends)
+my $FAULT      = 'Fehler: interner Fehler beim Ausführen des Aufrufs.';
+my $PERL_ERROR = qr/^(.*? at (?:\S+\.(?:pm|pl|t)|\(eval \d+\)) line \d+(?:, <[^>]*> (?:line|chunk) \d+)?\.)[ \t]*$/m;
+
 =synopsis
 
   my $world = Langertha::Holmgang::World->new(
@@ -53,7 +58,13 @@ status.
 
 =item 2. The B<simulator> of the device type (C<run_command>, C<write_file>,
 or the tool of an answer world), through L<Langertha::Holmgang::Simulators>.
-An unknown host answers like C<ssh>.
+An unknown host answers like C<ssh>. A simulator that fails in Perl never
+hands its error text (with a host file path) to the model: a die answers
+C<Fehler: interner Fehler beim Ausführen des Aufrufs.> and leaves the state
+unchanged; a Perl error line in its output (a die the simulator caught) is
+replaced by that same text, the rest of the output and the state stay. Either
+way the call fails, and the original text goes into the gap of the simulation
+as C<simulator error: …> — for the report, never for the model.
 
 =item 3. B<Handlers> of a tool without simulator: the first whose C<match>
 and C<when> fit applies its C<apply> list (C<set>, C<push>, C<insert>,
@@ -203,12 +214,28 @@ sub _simulate {
     return @r if @r;
   }
   my $next = $self->clone( $self->state );
-  my ( $out, $ok, $gap )
-    = $sim eq 'write_file'  ? $sims->write_file( $next, @{$args}{qw( host path content )} )
+  my ( $died, $out, $ok, $gap ) = _guarded( sub {
+      $sim eq 'write_file'  ? $sims->write_file( $next, @{$args}{qw( host path content )} )
     : $sim eq 'run_command' ? $sims->run_command( $next, @{$args}{qw( host command )} )
     :                         $sims->tool_call( $next, $sim, $tool->{name}, $args );
-  $self->_set_state($next);
+  } );
+  $self->_set_state($next) unless $died;
   return ( $out, $args, $ok ? 1 : 0, $gap );
+}
+
+# runs a simulator call; ( died, output, ok, gap ) with a Perl error of the simulator —
+# its die, or such a text in its output — turned into $FAULT and the original into the gap
+sub _guarded {
+  my ( $code ) = @_;
+  my ( $out, $ok, $gap );
+  unless ( eval { ( $out, $ok, $gap ) = $code->(); 1 } ) {
+    my $err = $@ =~ s/\s+\z//r;
+    return ( 1, $FAULT, 0, join( '; ', grep { defined } $gap, 'simulator error: '.$err ) );
+  }
+  my @faults;
+  $out =~ s/$PERL_ERROR/push @faults, $1; $FAULT/ge if defined $out && !ref $out;
+  return ( 0, $out, $ok, $gap ) unless @faults;
+  return ( 0, $out, 0, join( '; ', grep { defined } $gap, map { 'simulator error: '.$_ } @faults ) );
 }
 
 # run_command with observations: a single command an observation answers, or a chain on
@@ -237,9 +264,9 @@ sub _observed_command {
     my $next = $self->clone( $self->state );
     # status of the previous link as $? (a trace the simulator takes out again)
     $next->{$host}{_rc} = $ok ? 0 : 1 if ref $next->{$host} eq 'HASH';
-    my ( $t, $k, $gap ) = $self->simulators->run_command( $next, $host, $cmd );
+    my ( $died, $t, $k, $gap ) = _guarded( sub { $self->simulators->run_command( $next, $host, $cmd ) } );
     delete $next->{$host}{_rc} if ref $next->{$host} eq 'HASH';
-    $self->_set_state($next);
+    $self->_set_state($next) unless $died;
     push @out, $t if defined $t && length $t;
     push @gaps, $gap if defined $gap;
     $ok = $k ? 1 : 0;
