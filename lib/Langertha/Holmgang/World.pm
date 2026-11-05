@@ -21,9 +21,11 @@ our @OPS = qw( set push insert delete remove move );
 my $JSON = JSON::MaybeXS->new( utf8 => 0, canonical => 1, allow_nonref => 1 );
 
 # what the model gets for a simulator that fails in Perl, and how such a text looks
-# (" at FILE line N." of a Perl source file or an eval string, as die without "\n" ends)
+# (" at FILE line N.", as die without "\n" ends); a line only counts when FILE is a
+# source file of this process (_own_file) — simulated log text with Perl-style lines
+# of invented paths is output the case asks for (ADR 0004)
 my $FAULT      = 'Fehler: interner Fehler beim Ausführen des Aufrufs.';
-my $PERL_ERROR = qr/^(.*? at (?:\S+\.(?:pm|pl|t)|\(eval \d+\)) line \d+(?:, <[^>]*> (?:line|chunk) \d+)?\.)[ \t]*$/m;
+my $PERL_ERROR = qr/^((.*? at (\S+) line \d+(?:, <[^>]*> (?:line|chunk) \d+)?\.)[ \t]*)$/m;
 
 =synopsis
 
@@ -61,8 +63,10 @@ or the tool of an answer world), through L<Langertha::Holmgang::Simulators>.
 An unknown host answers like C<ssh>. A simulator that fails in Perl never
 hands its error text (with a host file path) to the model: a die answers
 C<Fehler: interner Fehler beim Ausführen des Aufrufs.> and leaves the state
-unchanged; a Perl error line in its output (a die the simulator caught) is
-replaced by that same text, the rest of the output and the state stay. Either
+unchanged; a Perl error line in its output that names a source file of the
+running process (a die the simulator caught) is replaced by that same text,
+the rest of the output and the state stay — a simulated line of the same
+shape with any other path is output and passes unchanged. Either
 way the call fails, and the original text goes into the gap of the simulation
 as C<simulator error: …> — for the report, never for the model.
 
@@ -223,6 +227,13 @@ sub _simulate {
   return ( $out, $args, $ok ? 1 : 0, $gap );
 }
 
+# a file this process runs from: a loaded module (%INC) or the script; only these
+# paths are a host leak (never touches the file system)
+sub _own_file {
+  my ( $file ) = @_;
+  return $file eq $0 || scalar grep { defined && $_ eq $file } values %INC;
+}
+
 # runs a simulator call; ( died, output, ok, gap ) with a Perl error of the simulator —
 # its die, or such a text in its output — turned into $FAULT and the original into the gap
 sub _guarded {
@@ -233,7 +244,7 @@ sub _guarded {
     return ( 1, $FAULT, 0, join( '; ', grep { defined } $gap, 'simulator error: '.$err ) );
   }
   my @faults;
-  $out =~ s/$PERL_ERROR/push @faults, $1; $FAULT/ge if defined $out && !ref $out;
+  $out =~ s/$PERL_ERROR/_own_file($3) ? do { push @faults, $2; $FAULT } : $1/ge if defined $out && !ref $out;
   return ( 0, $out, $ok, $gap ) unless @faults;
   return ( 0, $out, 0, join( '; ', grep { defined } $gap, map { 'simulator error: '.$_ } @faults ) );
 }
