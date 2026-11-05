@@ -1,0 +1,26 @@
+---
+claimed_at: 2026-11-05T16:47:24Z
+claimed_by: cai-holmgang
+class: standard
+completed: 2026-11-05T16:47:24Z
+created: 2026-11-05T13:25:47Z
+id: 38
+priority: medium
+started: 2026-11-05T16:31:11Z
+status: done
+tags:
+- runner
+- leak
+title: 'Runner: Fehlertexte des Ziels scrubben (ADR 0006)'
+updated: 2026-11-05T16:48:17Z
+---
+
+Aus k9: Fehlertext im Ergebnis ist Langerthas eigener, ungescrubbt (Langertha hat keinen Scrubber; siehe langertha k389 Punkt 8). Sobald dort verfügbar, im Runner verwenden; bis dahin eigenen minimalen Scrub prüfen.
+
+BERICHT k38. Worktree .claude/worktrees/k38 (Branch k38, von 9b48c70), nichts committet. ERLEDIGT: Langertha 0.504 (installiert) und 0.505 (dev ~/langertha) haben keinen Scrubber (langertha k389 Punkt 6/8 offen, Karte backlog) -> cpanfile-Floor bleibt 0.504. Neu Target::scrub($text) (auch auf der Klasse), chat_turn_f klassifiziert auf dem Rohtext und gibt error gescrubbt zurück; der Runner erbt das (POD Runner/Target). Entfernt (eigene Wahl): api_key der Engine wörtlich (cai-platform ModelTester::scrub, ab 4 Zeichen), die/Carp-Orte ' at FILE line N' überall, URL-userinfo, Query-Werte key/api_key/access_token/token/auth/secret/password/sig/signature, Authorization-/Bearer-/x-api-key/x-goog-api-key/api_key-Werte, Schlüsselformen sk-/pplx-/gsk_/xai-/hf_/AIza, absolute Hostpfade -> <path>. Bleibt: Statuszeile, Grund des Providers, Host+Pfad der URL. Kein Ziel:-Präfix (Status sagt es). Nicht portiert: 2000-Zeichen-Kappung (gehört zu k12/k15). Zielfehler erreicht das Modell nie: Runner bricht bei error_class mit last ab, bevor etwas an die Konversation gehängt wird; Test zeigt 2 Requests bei Skript mit 3 Einträgen, Fehlertext in keinem Request-Body und nicht im Transcript. ADR 0005 + 0006 Nachtrag k38, Changes. VERIFIZIERT: Test rot auf main (17/113 in t/runner.t mit Target.pm von 9b48c70), grün danach; Mutationen: jede Scrub-Regel einzeln auskommentiert -> rot; Klassifikation-vor-Scrub-Tausch überlebt (äquivalent bei heutigen Signaturen). prove -lr t/ 65 Dateien 2179 PASS; prove -I~/langertha/lib -lr t/ 2179 PASS; dzil test 67 Dateien 2227 PASS. SKIP: acceptance_load.t ohne HOLMGANG_ACCEPTANCE_SUITES. OFFEN: Run-level error (Batch k15) muss durch Target::scrub (im ADR-0006-Nachtrag vermerkt); Netz ist kein Beweis — Geheimnisse ohne bekannte Form, die die Engine nicht hält, passieren.
+
+
+
+2026-11-05 Abnahme cai-admin-entwicklung: main d3dfb18. Diff gelesen (Target::scrub: api_key, die-Orte, URL-Userinfo/Query, Header/JSON, Provider-Schlüsselformen, Host-Pfade; Klasse vor dem Scrubben bestimmt), prove -lr t/ 66/2195 PASS selbst gefahren, Leak-Check ohne Treffer, Test-Schlüssel sind erfunden. Abgenommen.
+
+Committed 33ef005 on k38, merged to main as d3dfb18 (conflict in ADR 0005 resolved keeping k35 then k38). On main: prove -lr t/ 66 files 2195 tests PASS; dzil test 68 files 2243 tests PASS. Skipped: t/acceptance_load.t (HOLMGANG_ACCEPTANCE_SUITES unset), dzil only: t/release-changes_has_content.t (release test). Card stays at review. Not pushed.
