@@ -40,6 +40,11 @@ Revision history for Langertha-Holmgang
     sequential, no key on the command line) and report (per-topic evaluation
     of report files as text, Markdown or JSON, thresholds from --suite);
     exit 0 ok, 1 refused or verdict not ok, 2 usage/setup error (k21)
+  - Documentation: suite format 2 reference in Langertha::Holmgang::Loader,
+    rules and statuses in ::Grader, simulator registration and the die
+    guard in ::Role::Simulator, an overview in Langertha::Holmgang, and a
+    README with status, quick start against the mock targets and a map of
+    the module POD (k24)
   - Initial release
   - Langertha::Holmgang::Report: write and read the JSON report (holmgang_report 1,
     ADR 0006), merge reports without double counting, map cai-platform --report

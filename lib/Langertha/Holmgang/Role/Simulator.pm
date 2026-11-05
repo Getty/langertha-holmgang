@@ -111,9 +111,16 @@ real command that is not modelled.
 =item * The keys of the device state are documented in the simulator's POD; a
 new key lands there in the same change.
 
-=back
+=item * A Perl error is a bug of the simulator, never an answer. The world
+guards every call anyway (L<Langertha::Holmgang::World/DESCRIPTION>): when a
+simulator dies, the model gets C<Fehler: interner Fehler beim Ausführen des
+Aufrufs.>, the call fails and the state stays as it was before the call; a Perl
+error line in the output that names a source file of the running process is
+replaced by that same text. Either way the original text goes into the call's
+gap as C<simulator error: …>, for the report only — so a die shows up as a
+gap, but it must still be fixed in the simulator.
 
-=cut
+=back
 
 =method device_type
 
@@ -171,3 +178,20 @@ lines the daemon logs (without timestamps).
 =cut
 
 1;
+
+=pod
+
+=head1 REGISTRATION
+
+A simulator outside this distribution is a class on C<@INC>, registered by
+name:
+
+  my $sims = Langertha::Holmgang::Simulators->new( register_classes => ['My::Sim::Switch'] );
+
+L<Langertha::Holmgang::Simulators/register> loads the class, checks that it
+composes this role or L<Langertha::Holmgang::Role::AnswerWorld>, and makes it
+the simulator of its L</device_type>, replacing a built-in of the same type.
+There is no namespace scanning. The default loader of the command line knows
+only the built-in types.
+
+=cut
