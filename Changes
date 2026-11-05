@@ -33,6 +33,13 @@ Revision history for Langertha-Holmgang
     a generic tool error, the original goes into the sim_gap (k32)
   - Sim::Linux::Backup: restic forget latest no longer dies; picks the
     newest snapshot under --host/--path/--tag like restic 0.14 (k32)
+  - bin/holmgang, Langertha::Holmgang::CLI: the command line (ADR 0009) —
+    lint (loads exactly as a run does, ok/FAIL per suite and case), run
+    (any Langertha engine by name with --model/--url/--option, or the
+    network-free mock-solution/mock-text; --variant, --repeat, --report;
+    sequential, no key on the command line) and report (per-topic evaluation
+    of report files as text, Markdown or JSON, thresholds from --suite);
+    exit 0 ok, 1 refused or verdict not ok, 2 usage/setup error (k21)
   - Initial release
   - Langertha::Holmgang::Report: write and read the JSON report (holmgang_report 1,
     ADR 0006), merge reports without double counting, map cai-platform --report

@@ -6,6 +6,7 @@ requires 'Encode';
 requires 'Exporter';
 requires 'Future';
 requires 'Future::AsyncAwait';
+requires 'Getopt::Long';
 requires 'JSON::MaybeXS';
 requires 'Langertha', '0.504';
 requires 'Module::Runtime';
@@ -20,6 +21,7 @@ requires 'URI';
 requires 'YAML::XS';
 
 on test => sub {
+  requires 'IPC::Open3';
   requires 'Test::Fatal';
   requires 'Test::More';
 };

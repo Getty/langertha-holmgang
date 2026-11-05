@@ -1,0 +1,125 @@
+#!/usr/bin/env perl
+# PODNAME: holmgang
+# ABSTRACT: Lint Holmgang suites, run them against a Langertha engine, evaluate the reports
+
+our $VERSION = '0.001';
+
+use strict;
+use warnings;
+use Langertha::Holmgang::CLI;
+
+binmode STDOUT, ':encoding(UTF-8)';
+binmode STDERR, ':encoding(UTF-8)';
+
+exit Langertha::Holmgang::CLI->new->run(@ARGV);
+
+=synopsis
+
+  holmgang lint /srv/suites/demo-fan /srv/more-suites
+
+  LANGERTHA_OPENAI_API_KEY=... holmgang run --suite /srv/suites/demo-fan \
+    --target OpenAI --model gpt-4o-mini --repeat 3 --report /data/reports/run.json
+
+  holmgang run --suite /srv/suites/demo-fan --target vLLM \
+    --url http://10.0.0.5:8000/v1 --model some-model \
+    --variant 'chat_template_kwargs={"enable_thinking":false}' --variant max_tokens=4000
+
+  holmgang run --suite /srv/suites/demo-fan --target mock-solution   # dry run, no network
+
+  holmgang report /data/reports/*.json --by topic --format markdown --suite /srv/suites/demo-fan
+
+=description
+
+The command line of L<Langertha::Holmgang> (ADR 0009). Three commands:
+
+B<lint> loads each suite exactly as a run would -- format 2 shape checks, lint
+and its two mock runs -- and prints C<ok> with every case, or C<FAIL> with the
+refusal, which names the case file and the field. An argument is a suite
+directory (it holds F<suite.yaml>) or a directory of suites.
+
+B<run> plays every case of the suites against one target, one request at a
+time, repetition after repetition, prints one line per case and repetition and
+then the evaluation per topic; with C<--report> it writes the JSON report
+(ADR 0006). Write reports outside any checkout: a report quotes its cases.
+
+B<report> reads report files, joins them, and prints the evaluation per topic:
+the comparison of targets, the verdicts per suite and, where cases have a
+length tier, the tier curves.
+
+B<Exit codes:> C<0> everything loaded or ran and every verdict is ok; C<1> a
+suite was refused (lint) or a verdict is not ok (run, report); C<2> a usage or
+setup error, or a run that aborted.
+
+B<Keys:> holmgang reads no key. An engine takes its key from where Langertha
+reads it, its environment variable (C<LANGERTHA_OPENAI_API_KEY>,
+C<LANGERTHA_ANTHROPIC_API_KEY> ...). There is no default target and no default
+endpoint.
+
+=opt --suite DIR
+
+C<run>, C<report>: a suite directory, repeatable. For C<report> only the
+suites' C<threshold> is taken; without C<--suite> a verdict is judged by its
+hard cases alone.
+
+=opt --target NAME
+
+C<run>, required: a Langertha engine -- C<OpenAI> is
+L<Langertha::Engine::OpenAI>, a name with C<::> a class name as written -- or
+one of the two network-free targets: C<mock-solution> replays every case's
+reference solution, C<mock-text> answers text only.
+
+=opt --model M
+
+C<run>: the engine's C<model>.
+
+=opt --url U
+
+C<run>: the engine's C<url>.
+
+=opt --option K=V
+
+C<run>, repeatable: any other constructor argument of the engine. A value that
+parses as JSON (a number, C<true>, an object ...) is taken as that, otherwise
+as text. C<api_key> is refused -- the command line is visible to every user of
+the host.
+
+=opt --label L
+
+C<run>: the target's name in the report and the tables; default the model,
+else the engine name.
+
+=opt --variant K=V
+
+C<run>, repeatable: request settings added to every turn (C<max_tokens>,
+C<temperature>, C<reasoning_effort>, C<chat_template_kwargs> ...), values as
+for C<--option>. Named variants and several per target come later (k15).
+
+=opt --repeat N
+
+C<run>: repetitions per suite, 1 to 100; default the suite's C<repeat>, else 1.
+
+=opt --report FILE
+
+C<run>: write the JSON report there.
+
+=opt --by topic
+
+C<report>: the axis of the evaluation; C<topic> is the only one.
+
+=opt --format F
+
+C<report>: C<text> (default), C<markdown> or C<json>.
+
+=seealso
+
+=over 4
+
+=item * L<Langertha::Holmgang::CLI>
+
+=item * L<Langertha::Holmgang::Report>
+
+=item * L<Langertha::Holmgang::Evaluation>
+
+=back
+
+=cut
