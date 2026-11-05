@@ -6,8 +6,10 @@ use namespace::autoclean;
 use utf8;
 
 use Langertha::Holmgang::Error;
+use Langertha::Holmgang::Expectation qw( filter_value );
 use Langertha::Holmgang::Grader;
 use Langertha::Holmgang::Template ();
+use Langertha::Holmgang::World ();
 
 our $VERSION = '0.001';
 
@@ -27,6 +29,11 @@ A case checks itself (cai-platform C<docs/entwurf-evals.md> §3.5) after the
 shape check, on every load from either front end:
 
 =over 4
+
+=item 0. Every argument filter (C<{name|filter}>) the world applies — in the
+path, C<value>, C<at>, C<from> and C<to> of a handler's change and in the
+C<when> paths of handlers and observations — is one format 2 knows
+(C<split>, C<int>, C<lc>), whether or not a solution reaches it.
 
 =item 1. Every output template of the suite's handlers and the case's
 observations renders against the initial state.
@@ -93,6 +100,22 @@ sub lint {
   $f //= $case->id;
   my $g = $self->grader;
 
+  # 0. argument filters, where the world applies them (a where pattern takes {name} only)
+  for my $t ( @{ $case->tools } ) {
+    my $hs = $t->{handlers} || [];
+    for my $j ( 0 .. $#$hs ) {
+      my $hf = $f.': tools.'.$t->{name}.'.handlers['.$j.']';
+      $self->_when_filters( $hs->[$j]{when}, $hf );
+      my $ap = $hs->[$j]{apply} || [];
+      for my $k ( 0 .. $#$ap ) {
+        my $op = $ap->[$k];
+        $self->_filters( $op->{$_}, $hf.'.apply['.$k.'].'.$_ ) for grep { exists $op->{$_} } @Langertha::Holmgang::World::OPS, qw( value at from to );
+      }
+    }
+  }
+  my $obs = $case->observe || [];
+  $self->_when_filters( $obs->[$_]{when}, $f.': observe['.$_.']' ) for 0 .. $#$obs;
+
   # 1. templates
   for my $t ( @{ $case->tools } ) {
     my $hs = $t->{handlers} || [];
@@ -100,7 +123,6 @@ sub lint {
       $self->_renders( $case, $hs->[$j]{output}, $f.': tools.'.$t->{name}.'.handlers['.$j.'].output' );
     }
   }
-  my $obs = $case->observe || [];
   $self->_renders( $case, $obs->[$_]{output}, $f.': observe['.$_.'].output' ) for 0 .. $#$obs;
 
   my $failed = sub {
@@ -161,6 +183,28 @@ Runs the checks above on a L<Langertha::Holmgang::Case>. C<$field> starts
 every refused field (default the case id). Returns 1.
 
 =cut
+
+sub _when_filters {
+  my ( $self, $when, $field ) = @_;
+  $when ||= [];
+  $self->_filters( $when->[$_]{path}, $field.'.when['.$_.'].path' ) for 0 .. $#$when;
+  return;
+}
+
+# the {name|filter} the world's value and interp_text replace; a filter is known when
+# filter_value takes it
+sub _filters {
+  my ( $self, $v, $field ) = @_;
+  if ( ref $v eq 'HASH' ) { $self->_filters( $v->{$_}, $field.'.'.$_ ) for sort keys %$v; return }
+  if ( ref $v eq 'ARRAY' ) { $self->_filters( $v->[$_], $field.'['.$_.']' ) for 0 .. $#$v; return }
+  return if !defined $v || ref $v;
+  while ( $v =~ /\{[A-Za-z_][A-Za-z0-9_]*\|([a-z]+)\}/g ) {
+    my $name = $1;
+    eval { filter_value( 'x', $name ); 1 }
+      or $self->_refuse( $field, "unknown filter '".$name."' (known: split, int, lc)" );
+  }
+  return;
+}
 
 sub _renders {
   my ( $self, $case, $tmpl, $field ) = @_;

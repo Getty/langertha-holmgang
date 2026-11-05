@@ -123,7 +123,11 @@ sub interp_text {
   filter_value( '10.0.0.1/32, 10.2.0.0/24', 'split' );   # [ '10.0.0.1/32', '10.2.0.0/24' ]
 
 The argument filters of format 2: C<split> (comma and white space into a
-list), C<int> (the first integer), C<lc>. Dies on an unknown filter.
+list), C<int> (the first integer), C<lc>. Dies on an unknown filter, with
+the world's generic refusal and nothing of the filter, file or line: the
+text can reach the model as a tool result. Lint refuses such a case at load
+time (L<Langertha::Holmgang::Lint>), so this only guards a case that
+bypassed it.
 
 =cut
 
@@ -135,7 +139,7 @@ sub filter_value {
   }
   return int( $v =~ /(-?\d+)/ ? $1 : 0 ) if $f eq 'int';
   return lc "$v" if $f eq 'lc';
-  croak 'unknown filter '.$f;
+  die "dieser Aufruf ist in diesem Szenario nicht vorgesehen.\n";
 }
 
 sub _interp_re {
