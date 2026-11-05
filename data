@@ -1,0 +1,26 @@
+---
+claimed_at: 2026-11-05T16:42:16Z
+claimed_by: cai-holmgang
+class: standard
+completed: 2026-11-05T16:42:16Z
+created: 2026-11-05T13:01:08Z
+id: 35
+priority: low
+started: 2026-11-05T16:31:11Z
+status: done
+tags:
+- expectation
+- leak
+title: 'Expectation filter_value: Fehlertext kann das Modell erreichen'
+updated: 2026-11-05T16:44:36Z
+---
+
+Aus k2: filter_value croakt englisch bei unbekanntem {x|filter}; World entfernt den Dateiort, der Text erreicht aber das Modell, falls ein Fall einen solchen Filter nutzt. Lint sollte unbekannte Filter beim Laden abfangen.
+
+erledigt: Lint (Schritt 0) verweigert unbekannte {name|filter} in apply (Pfad, value, at, from, to) und when-Pfaden von Handlern/Beobachtungen beim Laden, auch ohne Lösungspfad dorthin; Expectation filter_value stirbt bei unbekanntem Filter mit der generischen Ablehnung der World ohne Filtername/Datei/Zeile; ADR 0005 Amendment k35 (Abweichung von cai-platform), Changes-Eintrag. Kein World.pm-Diff. verifiziert: t/unknown_filter.t vor dem Fix rot (9/16, Modell sah 'Fehler: unknown filter upper'), danach grün; prove -lr t: 66 Dateien, 2172 Tests PASS; dzil test: 68 Dateien, 2220 Tests PASS; HOLMGANG_ACCEPTANCE_SUITES=~/holmgang-abnahme/cai-platform-af7561a5/share/evals prove -l t/acceptance_load.t: 32 Tests PASS (Kopie nutzt nur int). offen: unbekannter Filter in einem when-Pfad stirbt zur Laufzeit aus World->call heraus (außerhalb eval) — nur erreichbar bei umgangenem Lint, gehört ggf. zu k32/k38; t/unknown_filter.t ist mit git add gestaged (für dzil), nicht committet.
+
+
+
+2026-11-05 Abnahme cai-admin-entwicklung: main d4b131e. Diff gelesen (Lint Schritt 0, generische Ablehnung in filter_value), prove -lr t/ 66/2172 PASS selbst gefahren, Leak-Check ohne Treffer. Abgenommen. Offen laut Bericht: when-Pfad-Filter zur Laufzeit außerhalb eval -> bei k32/k38 mit erledigen.
+
+Committed bc80b60 on k35, merged d4b131e on main (not pushed). Main: prove -lr t/ Files=66 Tests=2172 PASS; dzil test Files=68 Tests=2220 PASS. Stays at review per maintainer.
