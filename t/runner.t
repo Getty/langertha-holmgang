@@ -249,6 +249,46 @@ sub bodies { [ map { $_->{body} } @{ $_[0]->requests } ] }
   is( $r->{status}, 'no_vision', 'target cannot see images: no_vision' );
 }
 
+# --- the error text is scrubbed, and never goes back to the model (k38) ---------------------
+# Claim: whatever the target's failure text carries -- the engine's own key,
+# a bearer token, a key header, URL credentials and query keys, die/Carp
+# locations, absolute host paths -- none of it reaches the result; the status
+# line and the provider's reason stay readable; classification still sees the
+# raw text; and a failed request ends the case: no later request is sent, so
+# the text never reaches the model. All secrets below are invented.
+{
+  my $leaky = "Langertha::Engine::OpenAI request failed: 401 Unauthorized - "
+    .q({"error":{"message":"Incorrect API key provided: sk-holmgangFAKE0123456789abcdef","model":"/srv/models/fake-model.gguf"}})
+    ." POST https://fakeuser:fakepass-77\@llm.invalid/v1/chat/completions?api_key=FAKEQUERYKEY123&stream=0"
+    ." Authorization: Bearer FAKE.bearer.token-42 x-api-key: FAKE-header-key-99"
+    ." upstream echoed FAKE-literal-engine-key-XYZ987"
+    ." at /home/someone/perl5/lib/perl5/Langertha/Role/HTTP.pm line 500.\n"
+    ."\tLangertha::Role::HTTP::parse_response(...) called at /opt/holmgang/lib/Foo.pm line 12\n";
+  my $e = engine( api_key => 'FAKE-literal-engine-key-XYZ987',
+    script => [ tool( fan_set => { level => 'high' } ), sub { die $leaky }, answer('never asked') ] );
+  my $r = run_with( $e, $case{fan} );
+  is( $r->{status}, 'error', 'leaky failure: still error' );
+  for my $secret ( 'sk-holmgangFAKE0123456789abcdef', 'fakepass-77', 'fakeuser', 'FAKEQUERYKEY123',
+    'FAKE.bearer.token-42', 'FAKE-header-key-99', 'FAKE-literal-engine-key-XYZ987',
+    '/srv/models', '/home/someone', '/opt/holmgang', 'HTTP.pm', 'Foo.pm' ) {
+    unlike( $r->{error}, qr/\Q$secret\E/, "... '$secret' is not in the error text" );
+  }
+  unlike( $r->{error}, qr/ line \d+/, '... no file location' );
+  like( $r->{error}, qr/Langertha::Engine::OpenAI request failed: 401 Unauthorized - /, '... the status line stays' );
+  like( $r->{error}, qr/Incorrect API key provided: \*\*\*/, '... the reason stays, the key masked' );
+  like( $r->{error}, qr{https://\*\*\*\@llm\.invalid/v1/chat/completions\?api_key=\*\*\*&stream=0}, '... the URL stays readable, credentials masked' );
+  like( $r->{error}, qr/Authorization: Bearer \*\*\* x-api-key: \*\*\*/, '... header values masked' );
+
+  is( scalar @{ $e->requests }, 2, 'a failed request ends the case: no request after it' );
+  my $wire = $JSON->encode( bodies($e) ).$JSON->encode( $r->{transcript} );
+  unlike( $wire, qr/Unauthorized|FAKE|request failed/, '... the error text is in no request and not in the transcript' );
+
+  my $ctx = q({"message":"This model's maximum context length is 32768 tokens (/srv/models/fake.gguf)"});
+  $r = run_with( engine( script => [ error( 400, $ctx ) ] ), $case{fan} );
+  is( $r->{status}, 'context_exceeded', 'classification still on the raw text' );
+  unlike( $r->{error}, qr{/srv/models}, '... and the path scrubbed from it' );
+}
+
 # --- seed and variant reach every request -----------------------------------------------
 {
   my $e = engine( script => [ tool( fan_get => {} ), answer('ok') ] );

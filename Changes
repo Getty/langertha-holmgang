@@ -20,6 +20,10 @@ Revision history for Langertha-Holmgang
     per turn, error/context_exceeded/no_vision; results in the report's shape;
     Langertha::Engine::Virtual mock model; lint's two mock runs, on by
     default in the loader
+  - Langertha::Holmgang::Target: scrub the error text of a failed turn —
+    the engine's key, URL credentials and query keys, Authorization/Bearer/
+    api-key values, provider key shapes, die locations and host paths — so
+    the runner's result carries none of them
   - Langertha::Holmgang::Evaluation: per-topic rates with case weights,
     overall as the mean of topics, length-tier curves, verdicts with
     threshold, pass^k and hard cases, comparison as text, Markdown and JSON
