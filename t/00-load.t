@@ -8,6 +8,17 @@ for (qw(
   Langertha::Holmgang::Report
   Langertha::Holmgang::Evaluation
   Langertha::Holmgang::Haystack
+  Langertha::Holmgang::Error
+  Langertha::Holmgang::Expectation
+  Langertha::Holmgang::Template
+  Langertha::Holmgang::ToolSchema
+  Langertha::Holmgang::World
+  Langertha::Holmgang::Case
+  Langertha::Holmgang::Suite
+  Langertha::Holmgang::Structure
+  Langertha::Holmgang::Grader
+  Langertha::Holmgang::Lint
+  Langertha::Holmgang::Loader
   Langertha::Holmgang::Target
   Langertha::Holmgang::Role::Simulator
   Langertha::Holmgang::Role::AnswerWorld
