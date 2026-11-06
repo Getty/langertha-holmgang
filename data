@@ -1,0 +1,25 @@
+---
+claimed_at: 2026-11-06T00:45:58Z
+claimed_by: cai-holmgang
+class: standard
+completed: 2026-11-06T00:45:58Z
+created: 2026-11-05T17:44:07Z
+id: 41
+priority: low
+started: 2026-11-06T00:29:47Z
+status: done
+tags:
+- cli
+title: 'CLI: Report-Lese-/Schreibfehler zeigen Perl-Datei und Zeile'
+updated: 2026-11-06T00:45:58Z
+---
+
+Aus k24: wenn holmgang run/report eine Berichtsdatei nicht schreiben/lesen kann, steht auf stderr '… at lib/Langertha/Holmgang/Report.pm line N.'. Geht nicht ans Modell, aber unschön; Fehlermeldung ohne Ort ausgeben. Dazu: Role::Simulator-POD hat keine METHODS-Überschrift, Methoden landen unter RULES.
+
+Erledigt: CLI::_text ist die eine Stelle für weitergereichte die-Texte: Path::Tiny::Error -> nur der Grund (kein Temp-Dateiname von spew), Perl-Ort über Target->_strip_location (dieselbe Regel wie scrub, dist-intern ausgelagert), @INC-Liste bei 'Can't locate' entfernt. 'report not written' nennt jetzt den Pfad. Role::Simulator: =head1 METHODS vor den =method-Einträgen. Verifiziert: t/cli/errors.t (55 Tests) auf main 21 rot, jetzt grün; prove -lr t PASS, dzil test PASS (acceptance_load/acceptance_mock_runs übersprungen ohne HOLMGANG_ACCEPTANCE_*); gebautes POD: METHODS bei Zeile 142. Offen (Drift, kein Scope): Target-Ortsregel lässt ', <FH> line N.'-Suffix stehen (World hat die vollständige Regel); Engine-Konstruktor-warn (z. B. OpenAI temperature) geht direkt auf STDERR mit Ort, nicht über err; ein run gegen echte Engine ohne Key endete exit 0 (nur Hard-Cases entscheiden ohne Threshold) - prüfen, ob gewollt.
+
+Committed cde222c (CLI errors, Target._strip_location, t/cli/errors.t, Changes) and 291bd2b (Role::Simulator METHODS heading); merged to main as d24889b. prove -lr t/: 72 files, 2361 tests PASS; dzil test: 74 files, 2411 tests PASS; no skips reported. Not pushed.
+
+
+
+2026-11-06 Abnahme cai-admin-entwicklung: main d24889b. Diff gelesen (CLI::_text, gemeinsame Ortsregel mit Target::scrub), Leak-Check ohne Treffer, Tests nur mock-solution/nicht vorhandene Engine (kein Netz). prove -lr t/ PASS selbst gefahren; von Hand: report auf fehlende Datei -> Meldung ohne Perl-Ort, Exit 2. Abgenommen. Vorfall beim Reproduzieren (run --target OpenAI ohne Key) wird getrennt geklärt.
