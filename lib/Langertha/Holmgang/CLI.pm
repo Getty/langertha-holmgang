@@ -33,8 +33,9 @@ our $VERSION = '0.001';
 The commands behind F<bin/holmgang> (ADR 0009): C<lint> loads suites as the
 loader does, C<run> plays them against a target and writes a report, C<report>
 evaluates report files per topic. Every command returns its exit code instead
-of exiting: C<0> all well, C<1> a suite refused or a verdict not ok, C<2> a
-usage or setup error. The options are described in L<holmgang>.
+of exiting: C<0> all well, C<1> a suite refused, a verdict not ok, or a run in
+which the target answered no case, C<2> a usage or setup error. The options
+are described in L<holmgang>.
 
 The CLI reads no key: a real engine takes its key from where Langertha reads
 it (its environment variable). There is no default target.
@@ -76,6 +77,9 @@ sub runner_class     { 'Langertha::Holmgang::Runner' }
 sub target_class     { 'Langertha::Holmgang::Target' }
 sub report_class     { 'Langertha::Holmgang::Report' }
 sub evaluation_class { 'Langertha::Holmgang::Evaluation' }
+
+# the statuses of a result the target gave no answer for (ADR 0006)
+my %NO_ANSWER = map { $_ => 1 } qw( error context_exceeded no_vision );
 
 # the targets that need no network and no key (ADR 0009)
 my %MOCK = ( 'mock-solution' => 'solution', 'mock-text' => 'text' );
@@ -157,7 +161,7 @@ sub help {
     '                    [--variant K=V]... [--repeat N] [--report out.json]',
     '       holmgang report <report.json>... [--by topic] [--format text|markdown|json] [--suite <dir>]...',
     '',
-    'Exit codes: 0 ok, 1 a suite refused or a verdict not ok, 2 usage or setup error.',
+    'Exit codes: 0 ok, 1 a suite refused, a verdict not ok or no case answered, 2 usage or setup error.',
     'Keys come from the engine\'s environment variable (e.g. LANGERTHA_OPENAI_API_KEY), never from the command line.',
   );
   return 0;
@@ -260,7 +264,14 @@ sub _target {
   $opt->{model} = $o->{model} if defined $o->{model};
   $opt->{url}   = $o->{url}   if defined $o->{url};
   my $class = $name =~ /::/ ? $name : 'Langertha::Engine::'.$name;
-  my $engine = eval { use_module($class)->new(%$opt) };
+  # a notice of the engine while it is built (a setting it drops): to stderr,
+  # cleaned as a relayed error (k42)
+  my @warn;
+  my $engine = do {
+    local $SIG{__WARN__} = sub { push @warn, $_[0] };
+    eval { use_module($class)->new(%$opt) };
+  };
+  print { $self->err } map { 'holmgang: '.$self->target_class->scrub( $self->_text($_) )."\n" } @warn;
   return ( undef, 'target '.$name.' does not build: '.$self->target_class->scrub( $self->_text($@) ) ) unless $engine;
   return ( undef, 'target '.$name.' is no chat engine with tool calling (chat_f, format_tool_results)' )
     unless $engine->can('chat_f') && $engine->can('format_tool_results');
@@ -293,6 +304,8 @@ sub cmd_run {
   };
   my $report = $self->report_class->new;
   my $aborted = 0;
+  my ( @unanswered, @silent );   # the statuses without an answer; suites with nothing else
+  my $measured = 0;
   for my $suite ( @$suites ) {
     my $repeat = $o->{repeat} // $suite->repeat // 1;
     my ( @results, $error );
@@ -314,6 +327,10 @@ sub cmd_run {
       }
     }
     $aborted++ if defined $error;
+    my @none = grep { $NO_ANSWER{$_} } map { $_->{status} } @results;
+    push @unanswered, @none;
+    $measured += @results - @none;
+    push @silent, [ $suite->id, $self->_tally(@none) ] if @results && @results == @none;
     $report->add_run(
       target  => $target,
       variant => $variant,
@@ -342,7 +359,22 @@ sub cmd_run {
   $self->_say( '', $ev->to_text );
   $self->_say( 'report: '.$o->{report} ) if defined $o->{report};
   return 2 if $aborted;
+  # no answer over the whole run: nothing was measured, whatever the verdicts (k42)
+  unless ( $measured ) {
+    print { $self->err } 'holmgang: no case got an answer from the target ('
+      .$self->_tally(@unanswered).')'."\n";
+    return 1;
+  }
+  print { $self->err } 'holmgang: suite '.$_->[0].': no case got an answer from the target ('.$_->[1].')'."\n" for @silent;
   return ( grep { !$_->{ok} } @{ $ev->verdicts } ) ? 1 : 0;
+}
+
+# "2 error, 1 context_exceeded" in the order of the statuses
+sub _tally {
+  my ( $self, @statuses ) = @_;
+  my %n;
+  $n{$_}++ for @statuses;
+  return join ', ', map { $n{$_}.' '.$_ } grep { $n{$_} } qw( error context_exceeded no_vision );
 }
 
 =method cmd_run
@@ -355,6 +387,15 @@ every case C<--repeat> times (default the suite's C<repeat>, else 1), one at a
 time, prints a line per result and the evaluation, and writes the report with
 C<--report>. Returns 1 when a verdict is not ok, 2 for a usage or setup error
 or an aborted run.
+
+When the target answered no case of the whole run -- every result, over all
+suites and repetitions, is C<error>, C<context_exceeded> or C<no_vision> -- the
+run measured nothing: it says so on the error handle with the count per status
+and returns 1, whatever the verdicts. The report is written as always. When at
+least one result was measured, the verdicts decide; a suite in which no case
+got an answer then gets a note on the error handle. An aborted run stays 2.
+The engine's warnings while it is built go to the error handle, cleaned like
+a relayed error.
 
 =cut
 

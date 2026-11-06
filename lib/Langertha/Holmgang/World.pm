@@ -10,6 +10,7 @@ use Langertha::Holmgang::Expectation qw( condition element_match path get flat f
 use Langertha::Holmgang::Shell ();
 use Langertha::Holmgang::Shell::Filter ();
 use Langertha::Holmgang::Simulators;
+use Langertha::Holmgang::Target ();
 use Langertha::Holmgang::Template ();
 use Langertha::Holmgang::ToolSchema qw( schema_errors );
 
@@ -25,7 +26,7 @@ my $JSON = JSON::MaybeXS->new( utf8 => 0, canonical => 1, allow_nonref => 1 );
 # source file of this process (_own_file) — simulated log text with Perl-style lines
 # of invented paths is output the case asks for (ADR 0004)
 my $FAULT      = 'Fehler: interner Fehler beim Ausführen des Aufrufs.';
-my $PERL_ERROR = qr/^((.*? at (\S+) line \d+(?:, <[^>]*> (?:line|chunk) \d+)?\.)[ \t]*)$/m;
+my $PERL_ERROR = qr/^((.*?$Langertha::Holmgang::Target::LOCATION\.)[ \t]*)$/m;
 
 =synopsis
 
