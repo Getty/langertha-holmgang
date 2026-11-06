@@ -52,6 +52,12 @@ Revision history for Langertha-Holmgang
     codes unchanged (k41)
   - Langertha::Holmgang::Role::Simulator: the methods are documented under
     METHODS instead of under RULES (k41)
+  - share/suites: three invented example suites to learn format 2 from —
+    demo-linux (a linux device), demo-lamp (a world without devices, its
+    tool described by handlers), demo-haystack (generated input); installed
+    as the distribution's share directory, found with
+    File::ShareDir::dist_dir('Langertha-Holmgang').'/suites'; the README
+    quick start runs demo-linux (k22, ADR 0010)
   - Initial release
   - Langertha::Holmgang::Report: write and read the JSON report (holmgang_report 1,
     ADR 0006), merge reports without double counting, map cai-platform --report

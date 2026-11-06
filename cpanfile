@@ -4,6 +4,7 @@ requires 'Carp';
 requires 'Digest::SHA';
 requires 'Encode';
 requires 'Exporter';
+requires 'File::ShareDir';
 requires 'Future';
 requires 'Future::AsyncAwait';
 requires 'Getopt::Long';

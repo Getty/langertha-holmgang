@@ -28,47 +28,29 @@ report, the evaluation per topic, and the `holmgang` command line (`lint`,
 
 **Coming:** cases and suites written in a Perl DSL (ADR 0007) —
 `Langertha::Holmgang` exports nothing yet. Also not there yet: several
-variants per target, parallel requests and resume, a YAML export, and example
-suites shipped with the distribution.
+variants per target, parallel requests and resume, and a YAML export.
 
 Vision, vocabulary and scope: [CONTEXT.md](CONTEXT.md). Decisions:
 [docs/adr/](docs/adr/).
 
 ## Quick start
 
-From a checkout, with the dependencies installed (`cpanm --installdeps .`).
-Write a suite outside the checkout — this one is invented, one case:
+The distribution ships three small, invented example suites under
+`share/suites` (ADR 0010): `demo-linux` (a Linux device), `demo-lamp` (a world
+without devices, its tool described by handlers) and `demo-haystack`
+(generated input). Installed, they are in the distribution's share directory:
 
-```yaml
-# /tmp/suites/demo-motd/suite.yaml
-format: 2
-id: demo-motd
-version: 1
-title: "Demo: a message of the day"
-topic: demo
-threshold: { pass_rate: 1 }
-defaults:
-  system: "You administer Linux servers through the tools. Act, do not explain."
-  max_turns: 6
-tools:
-  - name: run_command
-    simulator: run_command
-    description: Run a shell command on a host.
-    parameters:
-      type: object
-      required: [host, command]
-      properties: { host: { type: string }, command: { type: string } }
-  - name: write_file
-    simulator: write_file
-    description: Replace a file on a host.
-    parameters:
-      type: object
-      required: [host, path, content]
-      properties: { host: { type: string }, path: { type: string }, content: { type: string } }
+```bash
+SUITES="$(perl -MFile::ShareDir=dist_dir -E 'say dist_dir("Langertha-Holmgang")')/suites"
+holmgang lint "$SUITES"
 ```
 
+The rest of this section runs from a checkout, with the dependencies installed
+(`cpanm --installdeps .`). `demo-linux` has two cases; its head
+(`share/suites/demo-linux/suite.yaml`) names the tools. One case:
+
 ```yaml
-# /tmp/suites/demo-motd/cases/motd.yaml
+# share/suites/demo-linux/cases/motd.yaml
 id: motd
 title: Announce the maintenance window
 difficulty: leicht
@@ -101,13 +83,14 @@ wrong_solutions:
         args: { host: web-1, path: /etc/issue, content: "Maintenance Saturday 06:00.\n" }
 ```
 
-Lint it — the loader checks every field, then the case checks itself: doing
-nothing fails, the reference solution and the alternative pass, the wrong
-solution fails, and two mock runs over a model engine hold:
+Lint it — the loader checks every field, then each case checks itself: doing
+nothing fails, the reference solution and the alternatives pass, the wrong
+solutions fail, and two mock runs over a model engine hold:
 
 ```bash
-perl -Ilib bin/holmgang lint /tmp/suites/demo-motd
-# ok   demo-motd (1 case)
+perl -Ilib bin/holmgang lint share/suites/demo-linux
+# ok   demo-linux (2 cases)
+#   ok hosts-entry
 #   ok motd
 # 1 suite: 1 ok, 0 refused
 ```
@@ -118,9 +101,9 @@ reports:
 
 ```bash
 mkdir -p /tmp/reports
-perl -Ilib bin/holmgang run --suite /tmp/suites/demo-motd --target mock-solution --report /tmp/reports/solution.json
-perl -Ilib bin/holmgang run --suite /tmp/suites/demo-motd --target mock-text     --report /tmp/reports/text.json
-perl -Ilib bin/holmgang report /tmp/reports/*.json --suite /tmp/suites/demo-motd
+perl -Ilib bin/holmgang run --suite share/suites/demo-linux --target mock-solution --report /tmp/reports/solution.json
+perl -Ilib bin/holmgang run --suite share/suites/demo-linux --target mock-text     --report /tmp/reports/text.json
+perl -Ilib bin/holmgang report /tmp/reports/*.json --suite share/suites/demo-linux
 ```
 
 ```
@@ -130,16 +113,20 @@ mock-solution  default  100.0%  100.0%
 mock-text      default  0.0%    0.0%
 
 Verdicts per suite
-target         variant  suite      passed  rate    threshold  pass^k  pass^k min  verdict
-mock-solution  default  demo-motd  1/1     100.0%  100.0%     -       -           ok
-mock-text      default  demo-motd  0/1     0.0%    100.0%     -       -           NOT PASSED
+target         variant  suite       passed  rate    threshold  pass^k  pass^k min  verdict
+mock-solution  default  demo-linux  2/2     100.0%  100.0%     -       -           ok
+mock-text      default  demo-linux  0/2     0.0%    100.0%     -       -           NOT PASSED
 ```
+
+To write your own suite, copy one of the examples outside the checkout and
+change it; the format is in `perldoc Langertha::Holmgang::Loader` (section
+SUITE FORMAT 2).
 
 A real target is a Langertha engine name plus its options; the key comes from
 the engine's environment variable, never from the command line:
 
 ```bash
-perl -Ilib bin/holmgang run --suite /tmp/suites/demo-motd --target vLLM \
+perl -Ilib bin/holmgang run --suite share/suites/demo-linux --target vLLM \
   --url http://10.0.0.5:8000/v1 --model some-model \
   --variant 'chat_template_kwargs={"enable_thinking":false}' \
   --repeat 3 --report /tmp/reports/vllm.json
