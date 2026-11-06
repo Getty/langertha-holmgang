@@ -58,6 +58,12 @@ Revision history for Langertha-Holmgang
     as the distribution's share directory, found with
     File::ShareDir::dist_dir('Langertha-Holmgang').'/suites'; the README
     quick start runs demo-linux (k22, ADR 0010)
+  - holmgang run: exit 1 when the target answered no case of the run (every
+    result error, context_exceeded or no_vision), said on stderr with the
+    count per status, the report written as always; a suite without an
+    answer next to measured ones gets a stderr note; the engine's
+    constructor warnings reach stderr without the Perl location; the shared
+    location rule also drops ", <FH> line N" (k42, ADR 0009)
   - Initial release
   - Langertha::Holmgang::Report: write and read the JSON report (holmgang_report 1,
     ADR 0006), merge reports without double counting, map cai-platform --report

@@ -110,3 +110,21 @@ concurrency, resume). The choices below are the worker's (k21), not the maintain
 - k15 replaces the private loop with `::Batch` and extends `--variant`; the option names
   here stay unless its ADR says otherwise.
 - `Getopt::Long` joins the cpanfile.
+
+**Amendment 2026-11-06 (k42).** Exit 1 also when `holmgang run` measured nothing: every
+result of the run is `error`, `context_exceeded` or `no_vision` (the not-measured statuses
+of ADR 0006/0008), so no case got an answer from the target. The maintainer decided the
+code and that the report stays exactly as it is; stderr gets
+`holmgang: no case got an answer from the target (<n> <status>, …)`, the verdict logic
+is untouched once one result was measured — `failed`, `uncertain` and `turn_limit` are
+answers. The worker's choices: it is judged **over the whole run**, all suites and all
+repetitions together, not per suite; a suite whose results are all unanswered next to a
+measured one gets only a stderr note (`holmgang: suite <id>: no case got an answer from
+the target (…)`), the exit code then comes from the verdicts. An aborted run stays 2,
+checked first. An empty suite cannot reach the run: the loader refuses a suite without
+cases (`cases: no cases`), so it is a setup error, exit 2, not a run without answers.
+The engine's warnings while it is built (a notice about a setting it drops) are caught
+and written to stderr as `holmgang: <text>`, cleaned like a relayed error (k41).
+`Target::_strip_location` and World's Perl-error line share one location rule,
+`$Langertha::Holmgang::Target::LOCATION`, which also covers Perl's `, <FH> line N` /
+`chunk N` suffix.

@@ -132,8 +132,9 @@ perl -Ilib bin/holmgang run --suite share/suites/demo-linux --target vLLM \
   --repeat 3 --report /tmp/reports/vllm.json
 ```
 
-Exit codes: `0` all well, `1` a suite refused or a verdict not ok, `2` a usage
-or setup error. Write reports outside any checkout: a report quotes its cases.
+Exit codes: `0` all well, `1` a suite refused, a verdict not ok, or a run in
+which the target answered no case (every result `error`, `context_exceeded` or
+`no_vision`), `2` a usage or setup error. Write reports outside any checkout: a report quotes its cases.
 
 ## How it works
 

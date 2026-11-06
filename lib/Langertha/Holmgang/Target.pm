@@ -185,9 +185,14 @@ my $VALUE = qr{ [^\s"',;&#]+ }x;
 # A path segment: anything but whitespace, a slash and the usual delimiters.
 my $SEG = qr{ [^\s/\\"'<>:,;()\[\]{}]+ }x;
 
-# die and Carp locations: " at FILE line N." anywhere, "called at" included.
-# Dist-internal: the CLI cuts relayed errors with the same rule (k41).
-sub _strip_location { my ( $class, $text ) = @_; return $text =~ s/ at \S+ line \d+\.?//gr }
+# A die or warn location: " at FILE line N", with the line of the last read
+# handle (", <FH> line N" or "chunk N") when Perl adds one; FILE is $1. The one
+# rule of the dist (k42): World builds its Perl-error line from it, the CLI
+# cuts relayed errors and warnings with _strip_location (k41).
+our $LOCATION = qr/ at (\S+) line \d+(?:, <[^>]*> (?:line|chunk) \d+)?/;
+
+# die and Carp locations anywhere, the closing dot optional ("called at" lines have none)
+sub _strip_location { my ( $class, $text ) = @_; return $text =~ s/$LOCATION\.?//gr }
 
 sub scrub {
   my ( $self, $text ) = @_;
@@ -228,7 +233,8 @@ class of the failure is read off the raw text before. What goes:
 =item * the engine's own C<api_key> (4 characters and up), wherever it stands
 -- C<***>; only on an object, the class knows no key;
 
-=item * die and Carp locations (C<at FILE line N.>, C<called at ...>), dropped;
+=item * die and Carp locations (C<at FILE line N.>, C<called at ...>, with
+C<< , <FH> line N >> when Perl adds it), dropped;
 
 =item * URL credentials: the userinfo (C<https://***@host/...>) and the value
 of a query parameter named C<key>, C<api_key>, C<access_token>, C<token>,

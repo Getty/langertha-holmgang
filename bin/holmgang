@@ -47,8 +47,10 @@ the comparison of targets, the verdicts per suite and, where cases have a
 length tier, the tier curves.
 
 B<Exit codes:> C<0> everything loaded or ran and every verdict is ok; C<1> a
-suite was refused (lint) or a verdict is not ok (run, report); C<2> a usage or
-setup error, or a run that aborted.
+suite was refused (lint), a verdict is not ok (run, report), or the target
+answered no case of the run -- every result C<error>, C<context_exceeded> or
+C<no_vision> (run; said on standard error, the report is written all the
+same); C<2> a usage or setup error, or a run that aborted.
 
 B<Keys:> holmgang reads no key. An engine takes its key from where Langertha
 reads it, its environment variable (C<LANGERTHA_OPENAI_API_KEY>,
