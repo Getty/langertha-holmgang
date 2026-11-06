@@ -44,9 +44,23 @@ F<holmgang> command line (C<lint>, C<run>, C<report>).
 B<Coming:> cases and suites written in a Perl DSL (ADR 0007). This module
 exports nothing yet; C<use Langertha::Holmgang> is the place the DSL will
 live. Also not yet there: several variants per target, parallel requests and
-resume of a run, a YAML export, and example suites shipped with the
-distribution. The distribution ships B<no real benchmark cases>: published
-cases end up in the training data of the next models.
+resume of a run, and a YAML export. The distribution ships B<no real
+benchmark cases>: published cases end up in the training data of the next
+models.
+
+=head1 EXAMPLE SUITES
+
+Three small, invented suites to learn format 2 from ship in the
+distribution's share directory (ADR 0010): C<demo-linux> (a Linux device),
+C<demo-lamp> (a world without devices, its tool described by handlers) and
+C<demo-haystack> (generated input). In a checkout they are under
+F<share/suites>; after installation under
+
+  perl -MFile::ShareDir=dist_dir -E 'say dist_dir("Langertha-Holmgang")."/suites"'
+
+  holmgang lint "$(perl -MFile::ShareDir=dist_dir -E 'say dist_dir("Langertha-Holmgang")')/suites"
+
+Details in L<Langertha::Holmgang::Loader/Example suites>.
 
 =head1 HOW IT FITS TOGETHER
 

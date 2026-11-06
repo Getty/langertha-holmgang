@@ -510,9 +510,29 @@ and the two mock runs over a model engine hold (replaying the reference
 solution passes twice identically; answering text only fails). A case that
 does not hold does not load. Fix the case or the simulator, never lint.
 
+=head2 Example suites
+
+The distribution ships three invented suites to learn from (ADR 0010), each
+with its origin and license in the head of F<suite.yaml>:
+
+  demo-linux      a linux device; run_command and write_file (two cases)
+  demo-lamp       a world without devices: one tool described by handlers
+  demo-haystack   a message made by generate (Langertha::Holmgang::Haystack)
+
+In a checkout they are under F<share/suites>; installed, under the
+distribution's share directory:
+
+  use File::ShareDir qw( dist_dir );
+  my $dir = dist_dir('Langertha-Holmgang').'/suites';
+  my $suite = Langertha::Holmgang::Loader->new->load("$dir/demo-linux");
+
+They are public and therefore no measurement; never copy one into a real
+suite.
+
 =head2 An example
 
-An invented suite of one case, to learn the shape from:
+An invented suite of one case, to learn the shape from (it is the case
+C<motd> of the shipped C<demo-linux>):
 
   # demo-motd/suite.yaml
   format: 2
