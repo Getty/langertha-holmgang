@@ -1,0 +1,37 @@
+---
+claimed_at: 2026-11-06T01:00:31Z
+claimed_by: cai-holmgang
+class: standard
+completed: 2026-11-06T00:55:59Z
+created: 2026-11-04T19:34:16Z
+depends_on:
+- 2
+- 3
+- 18
+id: 22
+priority: low
+started: 2026-11-06T00:29:47Z
+status: done
+tags:
+- beispiele
+title: Beispiel-Suites und Fixtures
+updated: 2026-11-06T04:24:07Z
+---
+
+Eine Handvoll kleiner Lern-Suites unter share/, bewusst keine echten Messfälle: eine mit Gerät, eine Antwortwelt, ein Generator. Eingecheckte Fixtures für feste Ausgaben. Quellen mit Lizenz und Herkunft im Suite-Kopf.
+
+ERLEDIGT: share/suites mit vier ausgedachten Lern-Suites (demo-linux: linux-Geraet, 2 Faelle; demo-kueche: Antwortwelt kueche; demo-lamp: Handler-Welt; demo-haystack: generate/::Haystack journal mit gepflanzter Zeile, Format 2 ohne DSL). Herkunft/Lizenz/Autor als Kopfkommentar + license: Perl_5 + source in jeder suite.yaml. ShareDir: @Basic bringt [ShareDir] schon mit (Makefile.PL install_share dist => share, configure_requires File::ShareDir::Install); dist.ini unveraendert; cpanfile + requires File::ShareDir. Kein Helper, kein neuer oeffentlicher Name: dist_dir('Langertha-Holmgang').'/suites' dokumentiert in README, Langertha::Holmgang (EXAMPLE SUITES), Loader POD (Example suites); Entscheidung als ADR 0010 docs/adr/0010-shipped-example-suites.md. t/share_suites.t laedt alle (Lint), prueft Herkunftskopf, und CLI mock-solution exit 0/alle passed, mock-text exit 1/alle failed, aus share/ neben t/. README-Quickstart auf demo-linux umgestellt; Changes-Eintrag unter NEXT. Dateien git add-ed, kein Commit. VERIFIZIERT: bin/holmgang lint share/suites 4 ok; prove -lr t/ PASS (72 Dateien, 2341 Tests; acceptance_load/acceptance_mock_runs skipped ohne HOLMGANG_ACCEPTANCE_*); dzil test PASS (74/2391); dzil build: alle 9 share-Dateien im Tarball. OFFEN: (1) Lookup nach echter Installation nicht end-to-end geprueft (kein make install gelaufen, nur install_share im Makefile.PL gesehen). (2) Generator-Beispiel in der DSL (generate mit seed) wartet auf k18. (3) Kartentext nennt eingecheckte Fixtures fuer feste Ausgaben - nicht gebaut, der Loader hat keine Fixture-Mechanik; eigene Karte falls gewuenscht.
+
+demo-kueche removed: task shape too close to an existing measurement. Now three example suites (demo-linux, demo-lamp, demo-haystack); test, README, POD, ADR 0010 and Changes updated. Open: no shipped example for a typed answer world (Role::AnswerWorld) - demo-lamp is a handler world without devices, not an answer world in the CONTEXT/ADR 0005 sense.
+
+
+
+2026-11-06 Abnahme cai-admin-entwicklung: main 3d24368. Alle drei Suites ganz gelesen (demo-linux motd/hosts-entry, demo-lamp hall, demo-haystack quota): frei erfunden, example.org/RFC-5737, Herkunft+Lizenz im Kopf. Nähe zu af7561a5 geprüft: keine Fall-IDs/Zeilen; einzige thematische Berührung motd (privat: Vorlagentreue, 4 Zeilen; Demo: eine Zeile schreiben) — ausreichend weit. dzil build: share/suites/* im Tarball. Selbst gefahren: lint je Suite ok, run mock-solution je 100 %, mock-text Exit 1, t/share_suites.t, prove -lr t/, dzil test --release PASS. Abgenommen.
+
+Committed 8804959 on k22 (Ship three invented example suites under share/suites), merged to main as 29bfd2f (Changes conflict with k41 resolved by keeping both). Main: prove -lr t/ 73 files, 2390 tests PASS (skips: acceptance_load.t, acceptance_mock_runs.t, no HOLMGANG_ACCEPTANCE_* env); dzil test 75 files, 2440 tests PASS; dzil build clean, tarball carries only share/suites/demo-{linux,lamp,haystack}; holmgang lint share/suites: 3 suites ok, 0 refused (4 cases). Build output removed. Not pushed.
+
+
+
+Nachtrag Abnahme: gilt für 29bfd2f (Amend von 3d24368, Baum und Eltern identisch geprüft). Korrektur: demo-lamp ist eine Handler-Welt, keine Antwortwelt — die Antwortwelt-Lern-Suite fehlt. Blockiert bis Getty entscheidet (a/b/c).
+
+2026-11-06 04:24 Entscheidung Getty 2026-11-06: (c) — Release ohne Antwortwelt-Beispiel, ADR 0010 hält es fest. Neue Antwortwelt folgt als eigene Karte nach dem Release.
