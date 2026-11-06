@@ -45,6 +45,13 @@ Revision history for Langertha-Holmgang
     guard in ::Role::Simulator, an overview in Langertha::Holmgang, and a
     README with status, quick start against the mock targets and a map of
     the module POD (k24)
+  - holmgang: errors relayed to stderr (a report that does not write or
+    read, invalid JSON, a report that does not evaluate, a target that does
+    not build) no longer carry the Perl location, Path::Tiny's temporary
+    file or the @INC listing; the message names the path as given, exit
+    codes unchanged (k41)
+  - Langertha::Holmgang::Role::Simulator: the methods are documented under
+    METHODS instead of under RULES (k41)
   - Initial release
   - Langertha::Holmgang::Report: write and read the JSON report (holmgang_report 1,
     ADR 0006), merge reports without double counting, map cai-platform --report

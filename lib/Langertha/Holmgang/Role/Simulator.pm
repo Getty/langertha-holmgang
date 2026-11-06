@@ -122,6 +122,8 @@ gap, but it must still be fixed in the simulator.
 
 =back
 
+=head1 METHODS
+
 =method device_type
 
   sub device_type { 'linux' }
