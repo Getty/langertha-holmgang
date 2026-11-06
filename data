@@ -1,0 +1,27 @@
+---
+claimed_at: 2026-11-06T04:56:18Z
+claimed_by: cai-holmgang
+class: standard
+completed: 2026-11-06T04:56:18Z
+created: 2026-11-06T00:39:57Z
+id: 42
+priority: medium
+started: 2026-11-06T04:24:34Z
+status: done
+tags:
+- cli
+title: 'CLI run: Exit 0, wenn alle Fälle error enden'
+updated: 2026-11-06T04:56:18Z
+---
+
+Aus k41: holmgang run gegen ein Ziel, das jede Anfrage ablehnt (z. B. fehlender Key), endet mit Exit 0, weil ohne Schwelle nur harte Fälle das Verdikt entscheiden. Ein Lauf ohne einen einzigen gemessenen Fall sollte nicht 'ok' sein. Entscheidung nötig (Getty): Exit-Code bei nur error/context_exceeded/no_vision. Dazu aus k41: Engine-Konstruktor-Warnungen (z. B. Temperatur-Hinweis) gehen mit Perl-Ort direkt auf STDERR; gemeinsame Ortsregel lässt ', <FH> line N.' stehen (World hat die volle Regel).
+
+2026-11-06 04:24 Entscheidung Getty 2026-11-06: vor dem Release. Vorschlag cai-admin-entwicklung: Exit 1, wenn kein einziger Fall eine Antwort des Ziels bekam (nur error/context_exceeded/no_vision).
+
+Leeres Suite-Verzeichnis: Loader verweigert eine Suite ohne Fälle (Loader.pm, 'cases: no cases'), sie erreicht den Lauf nie -> bleibt Setup-Fehler Exit 2, kein eigener Fall nötig; Test in t/cli/no_answer.t. Urteil 'keine Antwort' über den ganzen Lauf (alle Suiten, alle Wiederholungen); Suite ohne Antwort neben gemessenen: nur stderr-Notiz. Abgebrochener Lauf bleibt 2 (zuerst geprüft). Gemeinsame Ortsregel: $Langertha::Holmgang::Target::LOCATION, World baut $PERL_ERROR daraus (World lädt jetzt Target).
+
+Erledigt: holmgang run endet mit Exit 1, wenn das Ziel im ganzen Lauf keinen Fall beantwortet hat (jedes Ergebnis error/context_exceeded/no_vision); stderr: 'holmgang: no case got an answer from the target (N error, ...)'; Report wird unverändert geschrieben. Suite ohne Antwort neben gemessenen: stderr-Notiz, Exit nach Verdikten. Abgebrochen bleibt 2. Leere Suite: der Loader verweigert sie ('cases: no cases') -> Exit 2, keine Abweichung im Code nötig. Nebenpunkte gemacht: Konstruktor-Warnungen der Engine gehen gesäubert auf stderr; gemeinsame Ortsregel $Langertha::Holmgang::Target::LOCATION (aus World übernommen, World nutzt sie) entfernt auch ', <FH> line N'. ADR 0009 Nachtrag, POD (CLI.pm, bin/holmgang), README, Changes. Verifiziert: prove -lr t 74 Dateien/2426 Tests PASS (2 Akzeptanz übersprungen ohne Env); mit Akzeptanz-Env 74/2521 PASS, nichts übersprungen; dzil test --release 76/2478 PASS, mit Env 76/2573 PASS. Offen: nichts; neue Dateien per git add -N vorgemerkt, nicht committet.
+
+Committed 0d13fe3 on k42, merged to main as dead72f (--no-ff, local only, nothing pushed). On main: prove -lr t/ 74 files 2426 tests PASS; dzil test --release 76 files 2478 tests PASS; with acceptance env (suites+baseline) prove -lr t/ 74 files 2521 tests PASS, dzil test --release 76 files 2573 tests PASS. No failures, no skipped tests reported by prove in any run.
+
+2026-11-06 04:56 Abnahme cai-admin-entwicklung: main dead72f. Diff gelesen (CLI.pm, Target.pm LOCATION, World.pm, Doku). Selbst gefahren mit HOLMGANG_ACCEPTANCE_*: prove -lr t/ 74/2521 PASS, t/cli/no_answer.t alle ok; demo-linux mock-solution Exit 0, mock-text Exit 1. dzil test --release 76/2573 PASS (Log /tmp/acc_dzil.txt gesehen). Leere Suite bleibt Exit 2 über den Loader. Abgenommen.
