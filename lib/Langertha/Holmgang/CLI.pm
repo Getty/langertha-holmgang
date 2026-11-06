@@ -92,7 +92,18 @@ sub _usage_error {
   return 2;
 }
 
-sub _text { my ( $self, $err ) = @_; return ( blessed $err ? "$err" : $err // '' ) =~ s/\s+\z//r }
+# Every die text the CLI relays goes through here (k41): a Path::Tiny error
+# down to its reason (the message names the path already, not a temporary file
+# next to it), no Perl location (Target's rule), no module search path.
+sub _text {
+  my ( $self, $err ) = @_;
+  my $text = blessed $err && $err->isa('Path::Tiny::Error') ? $err->{err} =~ s/\A.*: //sr
+           : blessed $err ? "$err"
+           :                $err // '';
+  $text = $self->target_class->_strip_location($text);
+  $text =~ s/\s*\(\@INC (?:contains|entries checked): [^)]*\)//;
+  return $text =~ s/\s+\z//r;
+}
 
 sub _options {
   my ( $self, $args, @spec ) = @_;
@@ -325,7 +336,7 @@ sub cmd_run {
   $report->finish;
   if ( defined $o->{report} ) {
     eval { $report->write( $o->{report} ); 1 }
-      or return $self->_usage_error( 'report not written: '.$self->_text($@) );
+      or return $self->_usage_error( 'report '.$o->{report}.' not written: '.$self->_text($@) );
   }
   my $ev = $self->evaluation_class->new( report => $report, thresholds => $self->_thresholds($suites) );
   $self->_say( '', $ev->to_text );

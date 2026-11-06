@@ -185,6 +185,10 @@ my $VALUE = qr{ [^\s"',;&#]+ }x;
 # A path segment: anything but whitespace, a slash and the usual delimiters.
 my $SEG = qr{ [^\s/\\"'<>:,;()\[\]{}]+ }x;
 
+# die and Carp locations: " at FILE line N." anywhere, "called at" included.
+# Dist-internal: the CLI cuts relayed errors with the same rule (k41).
+sub _strip_location { my ( $class, $text ) = @_; return $text =~ s/ at \S+ line \d+\.?//gr }
+
 sub scrub {
   my ( $self, $text ) = @_;
   return $text unless defined $text;
@@ -194,8 +198,7 @@ sub scrub {
     my $key = $engine->can('api_key') ? eval { $engine->api_key } : undef;
     $text =~ s/\Q$key\E/***/g if defined $key && !ref $key && length $key >= 4;
   }
-  # die and Carp locations: " at FILE line N." anywhere, "called at" included
-  $text =~ s/ at \S+ line \d+\.?//g;
+  $text = $self->_strip_location($text);
   # credentials in URLs: userinfo and secret query parameters
   $text =~ s{ ( \b [a-z][a-z0-9+.-]* :// ) [^/\s\@"']+ \@ }{$1***\@}gxi;
   $text =~ s{ ( [?&;] $SECRET_PARAM = ) $VALUE }{$1***}gx;
