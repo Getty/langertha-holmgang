@@ -50,6 +50,8 @@ Revision history for Langertha-Holmgang
     not build) no longer carry the Perl location, Path::Tiny's temporary
     file or the @INC listing; the message names the path as given, exit
     codes unchanged (k41)
+  - Langertha::Holmgang::Role::Simulator: the methods are documented under
+    METHODS instead of under RULES (k41)
   - Initial release
   - Langertha::Holmgang::Report: write and read the JSON report (holmgang_report 1,
     ADR 0006), merge reports without double counting, map cai-platform --report
