@@ -1,0 +1,36 @@
+---
+claimed_at: 2026-11-08T02:42:25Z
+claimed_by: cai-holmgang
+class: standard
+completed: 2026-11-05T17:51:26Z
+created: 2026-11-04T19:34:08Z
+depends_on:
+- 10
+- 12
+id: 13
+priority: high
+started: 2026-11-05T01:28:45Z
+status: done
+tags:
+- abnahme
+title: 'Abnahme 2: Mock-Lauf über alle Suites gleich wie der cai-platform-Runner'
+updated: 2026-11-08T02:42:25Z
+---
+
+Mock-Lauf über alle 15 Suites in Holmgang und in cai-platform, Berichte vergleichen. Jede Abweichung ist ein Fehler, bis sie erklärt ist (ADR 0001). Keine echten Fälle in Repo, Karte oder Commit (ADR 0003).
+
+2026-11-04 cai-holmgang: bekannte, erklärte Abweichung für den Vergleich: Sim::Kueche (k8) legt beim Lesen (liste_lesen, vorrat_lesen, plan_lesen, gescheitertes von_liste_nehmen) keine leeren Einträge mehr im Zustand an; cai-platform tut es (Diff-Rauschen, unchanged_except). Gegenkarte auf dem cai-platform-Board nötig — nicht angelegt, weil unter ~/cai-* nichts geschrieben wird; an cai-admin gemeldet.
+
+2026-11-05 01:30 Baseline-Vorbereitung (cai-platform-Seite, af7561a5) auf Orchestrator-STOP angehalten. Erledigt: nur Analyse, nichts gelaufen, nichts geschrieben (baseline-af7561a5/ existiert nicht; leeres Scratch-Verz. /home/frank/holmgang-abnahme/scratch). Befund: CLI evals run --fake braucht die DB; Umgehung = Runner::run_case je Fall mit FakeTarget (in-process, wie t/eval_context_exceeded.t), Zähler wie EvalRun::recount, Bericht wie Evals::Run --report (_run_hash, by_topic all=>1, verdicts, usage), grading wie Runner::_store (JSON-Roundtrip), repeat je Suite aus suite.yaml mit seed=Runde wie Batch::run. share/evals hat 32 Verzeichnisse, die pii-Suite ist Format pii-* und wird von Suite::list übersprungen -> 31 Eval-Suites. Module laden unter perl 5.40.1 mit -I current/lib ohne Zusatz-libs. Offen: Treiber schreiben; Lint über Suite::list; je Suite x {solution,text} eine Datei {report, grading, suites} (= Argumente von Report->from_cai_platform), plus Sidecar calls (Werkzeug/args/sim_gap je Aufruf, vom Konverter nicht gelesen); README.txt. Nächster Schritt: Treiber in scratch/ schreiben und laufen lassen.
+
+Stand 2026-11-05 (Halt cai-admin): FERTIG: nur Analyse. OFFEN: Treiber in ~/holmgang-abnahme/scratch/ (leer) schreiben: Runner::run_case je Fall gegen In-Process-FakeTarget (wie t/eval_context_exceeded.t), Modi Lösung+Text, Ausgabe je Suite×Modus nach ~/holmgang-abnahme/baseline-af7561a5/ im Eingabeformat von Report::from_cai_platform; cai-platform-Lint über alle Suites. 31 Eval-Suites (die pii-Suite hat Format pii-*, wird übersprungen). NÄCHSTER SCHRITT: Treiber schreiben und laufen lassen; danach Holmgang-Seite, sobald k2+k9 stehen.
+
+2026-11-05T17:19:09Z cai-holmgang: neu aufgenommen, Worktree k13 von main e6e046f.
+
+holmgang-worker 2026-11-05: ERLEDIGT: Mock-Lauf über alle Eval-Suites der Kopie af7561a5 (pii-* übersprungen), beide Modi. cai-Seite in-process (Runner::run_case + FakeTarget, repeat je Suite mit seed=Runde, Zähler wie recount, Bericht wie --report, by_topic/verdicts), cai-Lint grün; Holmgang-Seite bin/holmgang run --target mock-solution|mock-text. Treiber/Ausgaben in ~/holmgang-abnahme/scratch/k13/, Baseline in ~/holmgang-abnahme/baseline-af7561a5/ (README.txt, Treiber kopiert). VERIFIZIERT: je Suite×Modus×Fall×Wiederholung identisch: Status (nach ADR-0006-Abbildung), score, Regeln, diff, calls mit args und sim_gap, sim_gaps, forbidden_calls, injection_held, Runden, error; Prüfsumme, Thema, Fallliste; Zähler (recount); Urteile (passed, rate, pass_k, pass_any, hard_failed, case_results, ok); Rate je Thema über alle Suites. Erklärte Abweichungen: reason englisch (Grader k2; nach Übersetzung der festen cai-Phrasen identisch), tokens null (Mock schätzt keine, ADR 0005 k9), seed null bei repeat>1 (CLI sendet keinen, ADR 0009), Gesamtrate = Mittel der Themenraten (ADR 0008). Keine unerklärte Abweichung, kein Code-Fix nötig. Neu: t/acceptance_mock_runs.t (skippt ohne HOLMGANG_ACCEPTANCE_SUITES + HOLMGANG_ACCEPTANCE_BASELINE; mit beiden grün; gegen manipulierte Baseline rot bei Status/Argument/Reason), ADR 0006 Amendment k13. prove -lr t/ grün (beide acceptance-Tests ohne env geskippt, mit env grün), dzil test grün. OFFEN/Hinweise: (1) Mock-Läufe erreichen nur passed/failed — sim_gap, turn_limit, error, uncertain kommen nicht vor; k32/k35/k38-Pfade sind damit nicht abgenommen. (2) Kueche-Abweichung (k8) zeigt sich nicht: keine Suite der Kopie nutzt Kueche. (3) Drift: CONTEXT.md Abnahme 1 nennt eine feste Suite-Zahl, die zur Kopie nicht passt — Prosa-Korrektur für den Hauptagenten. Nichts committet; Vorschlag Commit: 'Compare mock runs with the cai-platform baseline (k13)'.
+
+
+
+2026-11-05 Abnahme cai-admin-entwicklung: main b2ad13f. Diff gelesen (nur t/acceptance_mock_runs.t, ADR-0006-Nachtrag, CONTEXT-Zahl entfernt), Leak-Check ohne Treffer. Selbst gefahren: acceptance_mock_runs.t gegen Kopie af7561a5 + Baseline ~/holmgang-abnahme/baseline-af7561a5 63/63 PASS, prove -lr t/ PASS. Abgenommen. Einschränkung laut Bericht: Mock-Läufe erreichen nur passed/failed — sim_gap/turn_limit/error/uncertain und die Leck-Pfade k32/k35/k38 sind damit nicht gegen cai abgenommen (nur durch eigene Tests).
+
+Committed on k13: 2edc3f5 (test + ADR 0006 amendment), fea5bde (CONTEXT.md); merged to main as b2ad13f (no conflicts). On main: prove -lr t/ 71 files 2306 tests PASS; dzil test 73 files 2356 tests PASS; acceptance_load + acceptance_mock_runs with env set: 2 files 95 tests PASS, no skips. No Changes entry (test-only). Not pushed.
