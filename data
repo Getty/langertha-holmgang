@@ -1,0 +1,25 @@
+---
+claimed_at: 2026-11-08T03:16:30Z
+claimed_by: cai-holmgang
+class: standard
+completed: 2026-11-08T03:16:30Z
+created: 2026-11-08T02:10:56Z
+id: 44
+priority: high
+started: 2026-11-08T02:10:58Z
+status: done
+tags:
+- cli
+- release
+title: 'k42-Nachträge: Fehlertext in No-Answer-Meldung, ADR-0009-Tabelle, gemeinsame
+  Ortsregel in World/Structure'
+updated: 2026-11-08T03:16:30Z
+---
+
+Getty 2026-11-08 (über frank-11): (1) Antwortet das Ziel in keinem Fall, zitiert die Meldung den ersten Fehlertext, bereinigt wie Target, eine Zeile, ~200 Zeichen. (2) Exit-Code-Tabelle oben in ADR 0009 mit dem Wortlaut der neuen Regel. (3) Regexe World.pm (~463) und Structure.pm (~382) nutzen die gemeinsame Ortsregel $Langertha::Holmgang::Target::LOCATION.
+
+worker: tests rot auf main (t/location_rule.t 6 Fehler, t/cli/no_answer.t 4 Fehler), Umsetzung grün; prove -lr t/ 75/2458 PASS (2 Akzeptanz übersprungen ohne Env). Akzeptanzläufe und dzil test --release laufen.
+
+Erledigt: (1) Run-Meldung ohne Antwort zitiert den ersten Fehlertext: 'holmgang: no case got an answer from the target (N error, ...); first: <Text>'. Text = result->{error}, von Target::chat_turn_f schon mit Engine-Key gescrubbt, nicht doppelt bearbeitet; Whitespace zu einem Leerzeichen, >200 Zeichen abgeschnitten + ' …'. Erster = erstes Ergebnis des Laufs (fällt mit Suite/Fall/Wiederholung zusammen); ohne Fehlertext kein '; first:'. (2) ADR 0009: Tabelle Zeile 1 mit k42-Regel, k42-Nachtrag bleibt, Nachtrag k44 ergänzt. (3) World::_apply und Structure::_resolve nutzen $Langertha::Holmgang::Target::LOCATION; kein Zyklus (Target lädt kein Holmgang-Modul, Structure lud Target schon über World; jetzt explizit use ... Target ()). POD CLI.pm/bin/holmgang, Changes. Tests: t/location_rule.t (neu), t/lib/Holmgang/LongFailEngine.pm (neu), t/cli/no_answer.t erweitert; rot auf main (6 bzw. 4 Fehler). Verifiziert: prove -lr t/ 75/2458 PASS (2 Akzeptanz übersprungen ohne Env); mit Akzeptanz-Env 75/2553 PASS, nichts übersprungen; dzil test --release 77/2510 PASS (2 übersprungen), mit Env 77/2605 PASS. Offen: nichts; neue Dateien per git add -N, nicht committet.
+
+Committed 80a5ae7 on k44 (one commit: note and location rule share the card, Changes entry and ADR amendment), merged as a25fe65 (no push). Without acceptance env: prove -lr t/ 75 files 2458 tests PASS; dzil test --release 77 files 2510 tests PASS. With HOLMGANG_ACCEPTANCE_SUITES/BASELINE set: prove 75 files 2553 tests PASS; dzil test --release 77 files 2605 tests PASS. No test skips reported.
