@@ -27,12 +27,12 @@ my @ALLOW = (
 );
 
 my @files;
-for my $top (qw( lib bin t share )) {
+for my $top (qw( lib bin t share docs )) {
   my $dir = File::Spec->catdir( $root, $top );
   next unless -d $dir;
   File::Find::find( { no_chdir => 1, wanted => sub { push @files, $_ if -f $_ } }, $dir );
 }
-for my $f (qw( README.md Changes )) {
+for my $f (qw( README.md Changes CONTEXT.md )) {
   my $p = File::Spec->catfile( $root, $f );
   push @files, $p if -f $p;
 }
