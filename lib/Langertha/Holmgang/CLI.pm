@@ -306,6 +306,7 @@ sub cmd_run {
   my $aborted = 0;
   my ( @unanswered, @silent );   # the statuses without an answer; suites with nothing else
   my $measured = 0;
+  my $first_error;   # the first error text of the run, for the no-answer note (k44)
   for my $suite ( @$suites ) {
     my $repeat = $o->{repeat} // $suite->repeat // 1;
     my ( @results, $error );
@@ -327,6 +328,9 @@ sub cmd_run {
       }
     }
     $aborted++ if defined $error;
+    # @results run repetition by repetition, case by case; the first of them is also
+    # the first in suite, case and repetition order
+    ( $first_error ) = grep { defined && length } map { $_->{error} } @results unless defined $first_error;
     my @none = grep { $NO_ANSWER{$_} } map { $_->{status} } @results;
     push @unanswered, @none;
     $measured += @results - @none;
@@ -362,11 +366,21 @@ sub cmd_run {
   # no answer over the whole run: nothing was measured, whatever the verdicts (k42)
   unless ( $measured ) {
     print { $self->err } 'holmgang: no case got an answer from the target ('
-      .$self->_tally(@unanswered).')'."\n";
+      .$self->_tally(@unanswered).')'
+      .( defined $first_error ? '; first: '.$self->_one_line($first_error) : '' )."\n";
     return 1;
   }
   print { $self->err } 'holmgang: suite '.$_->[0].': no case got an answer from the target ('.$_->[1].')'."\n" for @silent;
   return ( grep { !$_->{ok} } @{ $ev->verdicts } ) ? 1 : 0;
+}
+
+# an error text for a note: on one line, cut to 200 characters with an ellipsis.
+# The result's error went through the target's scrub already (chat_turn_f).
+sub _one_line {
+  my ( $self, $text ) = @_;
+  $text = join ' ', split ' ', $text;
+  return $text if length $text <= 200;
+  return substr( $text, 0, 200 ) =~ s/\s+\z//r." \x{2026}";
 }
 
 # "2 error, 1 context_exceeded" in the order of the statuses
@@ -391,7 +405,9 @@ or an aborted run.
 When the target answered no case of the whole run -- every result, over all
 suites and repetitions, is C<error>, C<context_exceeded> or C<no_vision> -- the
 run measured nothing: it says so on the error handle with the count per status
-and returns 1, whatever the verdicts. The report is written as always. When at
+and the first error text of the run (the first result in suite, case and
+repetition order; already scrubbed by the target, put on one line, cut to 200
+characters with an ellipsis) and returns 1, whatever the verdicts. The report is written as always. When at
 least one result was measured, the verdicts decide; a suite in which no case
 got an answer then gets a note on the error handle. An aborted run stays 2.
 The engine's warnings while it is built go to the error handle, cleaned like

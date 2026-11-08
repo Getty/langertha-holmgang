@@ -64,6 +64,10 @@ Revision history for Langertha-Holmgang
     answer next to measured ones gets a stderr note; the engine's
     constructor warnings reach stderr without the Perl location; the shared
     location rule also drops ", <FH> line N" (k42, ADR 0009)
+  - holmgang run: the note for a run without an answer quotes the first
+    error text, scrubbed, on one line, cut to 200 characters with an
+    ellipsis; World and Structure cut a trailing die location with the
+    shared rule, ", <FH> line N" included (k44, ADR 0009)
   - Initial release
   - Langertha::Holmgang::Report: write and read the JSON report (holmgang_report 1,
     ADR 0006), merge reports without double counting, map cai-platform --report

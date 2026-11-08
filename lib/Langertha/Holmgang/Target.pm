@@ -187,7 +187,8 @@ my $SEG = qr{ [^\s/\\"'<>:,;()\[\]{}]+ }x;
 
 # A die or warn location: " at FILE line N", with the line of the last read
 # handle (", <FH> line N" or "chunk N") when Perl adds one; FILE is $1. The one
-# rule of the dist (k42): World builds its Perl-error line from it, the CLI
+# rule of the dist (k42): World builds its Perl-error line from it, World and
+# Structure cut a trailing one with it (k44), the CLI
 # cuts relayed errors and warnings with _strip_location (k41).
 our $LOCATION = qr/ at (\S+) line \d+(?:, <[^>]*> (?:line|chunk) \d+)?/;
 

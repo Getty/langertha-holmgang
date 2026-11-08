@@ -461,7 +461,7 @@ sub _apply {
       splice @$l, $to, 0, $item;
     }
     1;
-  } or $err = ( $@ =~ s/ at \S+ line \d+\.?\n?\z//r =~ s/\s+\z//r );
+  } or $err = ( $@ =~ s/$Langertha::Holmgang::Target::LOCATION\.?\n?\z//r =~ s/\s+\z//r );
   return $err;
 }
 

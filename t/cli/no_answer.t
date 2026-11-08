@@ -122,4 +122,37 @@ my $NOTE = qr/^holmgang: no case got an answer from the target\b/m;
   unlike( $err, qr/ line \d+|\.p[ml]\b|<\$fh>/, '... without the location or the handle line' );
 }
 
+{
+  # the run note quotes the first error text (k44): scrubbed as Target scrubs it,
+  # on one line, cut to 200 characters with an ellipsis; the counts stay
+  require Holmgang::LongFailEngine;
+  no warnings 'once';
+  local $Holmgang::LongFailEngine::N = 0;
+  my $key = $Holmgang::LongFailEngine::KEY;
+  my ( $code, undef, $err ) = cli( run => '--suite', $good, '--suite', $other, '--target', 'Holmgang::LongFailEngine',
+    '--repeat', 2 );
+  is( $code, 1, 'a long multi-line error everywhere: exit 1' );
+  my @notes = grep { /no case got an answer/ } split /\n/, $err;
+  is( scalar @notes, 1, '... one note line for the run' ) or diag $err;
+  my ( $tally, $first ) = ( $notes[0] // '' ) =~ /\Aholmgang: no case got an answer from the target \(([^)]*)\); first: (.*)\z/;
+  is( $tally, '4 error', '... the count per status still in it' );
+  like( $first, qr/\AHTTP 401 Unauthorized \(request 1\): the key \*\*\* was refused POST /,
+    '... the first error of the run, in suite, case and repetition order, its lines joined' );
+  ok( length( $first // '' ) <= 202, '... cut to 200 characters, then a space and an ellipsis (got '.length( $first // '' ).')' );
+  like( $first, qr/\S \x{2026}\z/, '... the cut shown by an ellipsis' );
+  unlike( $err, qr/\Q$key\E/, 'the key is nowhere on stderr' );
+  unlike( $err, qr{/home/someone|\.config/invented}, '... nor the host path' );
+  unlike( $err, qr/ line \d+|\.p[ml]\b/, '... nor a Perl location' );
+}
+
+{
+  # a short error is quoted whole, without an ellipsis; the first one, not the second
+  my $SECOND = { error => { status => 401, message => 'second refusal' } };
+  my ( $code, undef, $err ) = cli( run => '--suite', $good, '--target', 'Virtual', script( $FAIL, $SECOND ), '--repeat', 2 );
+  is( $code, 1, 'two different errors: exit 1' );
+  like( $err, qr/^holmgang: no case got an answer from the target \(2 error\); first: [^\n]*invalid credentials$/m,
+    '... the first one quoted whole, no ellipsis' );
+  unlike( $err, qr/second refusal/, '... not the second' );
+}
+
 done_testing;
