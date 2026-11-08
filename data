@@ -1,0 +1,23 @@
+---
+claimed_at: 2026-11-08T03:16:44Z
+claimed_by: cai-holmgang
+class: standard
+completed: 2026-11-08T03:16:44Z
+created: 2026-11-08T02:47:51Z
+id: 46
+priority: high
+started: 2026-11-08T02:48:01Z
+status: done
+tags:
+- release
+title: 'Release-Aufräumen fürs erste Release: Changes, Tarball-Inhalt, cpanfile'
+updated: 2026-11-08T03:16:44Z
+---
+
+Aus Release-Audit 2026-11-08: (1) Changes als Endstand des ersten Release: Initial release zuerst, nutzerseitige Beschreibung, keine Kartennummern/ADR-Nummern, keine Fixes an nie ausgelieferten Ständen. (2) .claude/ und CLAUDE.md (ggf. .worktreeinclude, .github/) aus dem Tarball per gather_exclude. (3) Core-Module konsistent in cpanfile (POSIX, MIME::Base64, Digest::MD5, Socket, IO::Compress::Gzip, IO::Uncompress::Gunzip; test: File::Spec, FindBin, Storable).
+
+Commits c7eabed (tarball excludes), 68f0b54 (cpanfile core modules), 8107bfe (Changes), docs commit + merge 63a8a95 (docs/ ships, id test scans docs/ and CONTEXT.md). Audit rerun of previous main: all green; final audit waits for k47.
+
+Final audit on main 9da1100: build clean, podchecker 0/0, 2557 tests green with acceptance, dzil test --release 2514 green; dist.ini carries no gather_exclude lines (c7eabed reverted in dad9d08).
+
+review: see note
