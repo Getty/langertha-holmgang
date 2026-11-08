@@ -9,7 +9,7 @@ use JSON::MaybeXS ();
 
 use Holmgang::TestSim qw( run_command write_file prepare clone diff get throws_ok need_parts );
 
-# Linux-Simulator fuer Server-Faelle (platform#91, Suite linux-server).
+# Linux-Simulator fuer Server-Faelle.
 # Behauptet wird: Platten (df/du) rechnen aus den Dateien; eine geloeschte, noch
 # offene Datei belegt weiter Platz, bis der Dienst neu startet; Rechte
 # (ls -l, chmod, chown, usermod) wirken auf die Startbedingungen von Diensten;
@@ -148,7 +148,7 @@ subtest 'Unit-Datei und daemon-reload' => sub {
     like( sh('getent hosts db.example.internal'), qr/^10\.0\.0\.20/, '... und der Name loest auf' );
 }
 
-# --- Anwendungsdienste (platform#124) ----------------------------------------
+# --- Anwendungsdienste ----------------------------------------
 # Behauptet: ein Dienst mit reload_config liest seine Datei auch beim reload
 # (gunicorn/prometheus: SIGHUP), ohne Neustart zu zaehlen; ohne die Angabe nur
 # beim Neustart. Programme mit Pfad laufen, wenn es die Datei gibt (Luecke der
@@ -186,7 +186,7 @@ subtest 'Unit-Datei und daemon-reload' => sub {
     ok( $gap && $o !~ /command not found/, 'python3 ist installiert (Luecke statt command not found)' );
 }
 
-# --- Journal nach Start/Neustart, find -type d (platform#124) ---------------
+# --- Journal nach Start/Neustart, find -type d ---------------
 # Behauptet: ein Neustart erscheint im Journal (systemd-Zeilen und die
 # Startmeldungen start_log, als Kolon ueber den Zustand), unter _log; find
 # listet auch Verzeichnisse, die sich nur aus Dateipfaden ergeben.

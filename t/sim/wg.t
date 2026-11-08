@@ -8,7 +8,7 @@ use Test::More;
 
 use Holmgang::TestSim qw( run_command write_file prepare clone diff get throws_ok need_parts );
 
-# WireGuard im Linux-Simulator (platform#123). Behauptet wird: eine AllowedIP
+# WireGuard im Linux-Simulator. Behauptet wird: eine AllowedIP
 # gehoert genau einem Peer (wie wg); wg-quick up/down und die Unit wg-quick@
 # setzen Address, MTU und Routen zu den AllowedIPs, fuehren PostUp/PostDown aus,
 # und SaveConfig = true schreibt beim Herunterfahren die laufende Konfiguration
@@ -110,7 +110,7 @@ subtest 'stop' => sub {
     ok( !( grep { ( $_->{dev} // '' ) eq 'wg0' } @{ $st->{gw}{routes} } ), 'Routen weg' );
 };
 
-subtest 'Shell: 2>/dev/null, 2>&1, $? (Fix aus #120)' => sub {
+subtest 'Shell: 2>/dev/null, 2>&1, $?' => sub {
     my $st  = fresh();
     my $out = sub { ( run_command( $st, 'gw', $_[0] ) )[0] };
     like( $out->('cat /etc/wireguard/wg0.conf 2>/dev/null'), qr/ListenPort = 51820/, '2>/dev/null laesst die Ausgabe' );

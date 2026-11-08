@@ -13,28 +13,28 @@ use JSON::MaybeXS ();
 use Holmgang::EvalReport qw( evaluation );
 
 my @runs = (
-  { target => 'mock-a', variant => 'plain', suite => 'net-1', topic => 'netzwerk',
+  { target => 'mock-a', variant => 'plain', suite => 'net-1', topic => 'netz',
     cases => [ 'n1', { id => 'inj', hard => 1 } ], repeat => 2,
     results => [ [ 'n1', 1, 'passed' ], [ 'n1', 2, 'passed' ], [ 'inj', 1, 'passed' ], [ 'inj', 2, 'failed', 1 ] ] },
   { target => 'mock-a', variant => 'plain', suite => 'db-1', topic => 'datenbank',
     results => [ [ 'd1', 1, 'failed' ] ] },
-  { target => 'mock|b', variant => undef, suite => 'net-1', topic => 'netzwerk',
+  { target => 'mock|b', variant => undef, suite => 'net-1', topic => 'netz',
     results => [ [ 'n1', 1, 'passed' ], [ 'n2', 1, 'failed' ] ] },
 );
 my $e = evaluation( \@runs, thresholds => { 'net-1' => { pass_rate => 0.5, pass_k => 0.5 } } );
 
 subtest 'comparison' => sub {
   my $c = $e->comparison;
-  is_deeply $c->{topics}, [qw( datenbank netzwerk )], 'columns: topics by name';
+  is_deeply $c->{topics}, [qw( datenbank netz )], 'columns: topics by name';
   is_deeply $c->{rows}, [
-    { target => 'mock-a', variant => 'plain', rates => { datenbank => 0, netzwerk => 0.75 }, overall => 0.375 },
-    { target => 'mock|b', variant => undef, rates => { netzwerk => 0.5 }, overall => 0.5 },
+    { target => 'mock-a', variant => 'plain', rates => { datenbank => 0, netz => 0.75 }, overall => 0.375 },
+    { target => 'mock|b', variant => undef, rates => { netz => 0.5 }, overall => 0.5 },
   ], 'rows: target and variant, overall the mean';
 };
 
 subtest 'text' => sub {
   my $t = $e->to_text;
-  like $t, qr/^target\s+variant\s+datenbank\s+netzwerk\s+overall$/m, 'header';
+  like $t, qr/^target\s+variant\s+datenbank\s+netz\s+overall$/m, 'header';
   like $t, qr/^mock-a\s+plain\s+0\.0%\s+75\.0%\s+37\.5%$/m, 'row a';
   like $t, qr/^mock\|b\s+-\s+-\s+50\.0%\s+50\.0%$/m, 'row b: no variant, topic not run';
   like $t, qr/^mock-a\s+plain\s+net-1\s+3\/4\s+75\.0%\s+50\.0%\s+50\.0% \(k=2\)\s+50\.0%\s+NOT PASSED$/m,
@@ -48,7 +48,7 @@ subtest 'text' => sub {
 subtest 'markdown' => sub {
   my $m = $e->to_markdown;
   like $m, qr/^### Comparison by topic/m, 'heading';
-  like $m, qr/^\| target \| variant \| datenbank \| netzwerk \| overall \|$/m, 'header row';
+  like $m, qr/^\| target \| variant \| datenbank \| netz \| overall \|$/m, 'header row';
   like $m, qr/^\|---\|---\|---\|---\|---\|$/m, 'separator';
   like $m, qr/^\| mock\\\|b \| - \| - \| 50\.0% \| 50\.0% \|$/m, 'pipe in a label escaped';
   like $m, qr{^- mock-a / plain / net-1: hard: inj - 1 forbidden call\(s\) in 1 of 2$}m, 'hard case as a list item, naming its row';

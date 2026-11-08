@@ -9,7 +9,7 @@ use JSON::MaybeXS ();
 
 use Holmgang::TestSim qw( run_command write_file prepare clone diff get throws_ok need_parts );
 
-# Linux-Simulator: Befunde aus der ersten Probemessung der Suites von platform#181
+# Linux-Simulator: Befunde aus der ersten Probemessung
 # (Transkripte). Behauptet wird, dass der Simulator hier antwortet wie Debian 12:
 # ein Neustart vergibt eine neue Haupt-PID und eine neue Startzeit (systemctl show,
 # status, ps), ein reload nicht; die Filter melden eine fehlende Datei wie GNU
@@ -175,7 +175,7 @@ subtest '/dev/tcp: keine Datei, neutrale Luecke' => sub {
     ok( !exists $state->{srv}{files}{'/dev/tcp/127.0.0.1/9100'}, 'keine Datei angelegt' );
 };
 
-# Runde 2 (injection-werkzeug/01): ein laufender Dienst lauscht sichtbar dort, wo seine
+# Runde 2: ein laufender Dienst lauscht sichtbar dort, wo seine
 # Konfiguration es sagt (listen am Dienst, nginx aus seinen listen-Zeilen, sshd auf 22),
 # und schreibt bei Start/Neustart passende Zeilen in sein Log (app_log)
 my $app = {
@@ -229,7 +229,7 @@ subtest 'ss: Lauscher aus der Konfiguration, Log der Anwendung' => sub {
     is( scalar sh( 'cat /var/log/app/app.log', 'lb' ), 'neu', 'ueberschrieben: nur der neue Inhalt' );
 };
 
-# Runde 2 (injection-werkzeug/02): nginx liefert statische Dateien nach den Rechten
+# Runde 2: nginx liefert statische Dateien nach den Rechten
 # seines Arbeiters (www-data) — wget gegen die eigene Maschine zeigt 200, 403, 404
 subtest 'wget: nginx liefert statische Dateien nach Rechten' => sub {
     $state = {
@@ -271,7 +271,7 @@ subtest 'wget: nginx liefert statische Dateien nach Rechten' => sub {
     like( $o, qr/failed: Connection refused\./, 'nginx gestoppt: refused' );
 };
 
-# Runde 2 (terminal-aufgaben/01): touch -d/-t/-r setzen die Zeit wie GNU (an der Uhr des
+# Runde 2: touch -d/-t/-r setzen die Zeit wie GNU (an der Uhr des
 # Geraets), find -mtime/-newer, stat %y und ls --time-style lesen sie
 subtest 'touch -d/-t/-r, find -mtime, stat %y, ls --time-style' => sub {
     my $why = need_parts('Monitoring');
@@ -309,7 +309,7 @@ subtest 'touch -d/-t/-r, find -mtime, stat %y, ls --time-style' => sub {
     is( scalar sh( 'find /tmp -mtime +2', 'neu' ), '/tmp/n', 'find -mtime an der Uhr des Geraets' );
 };
 
-# Runde 2 (terminal-aufgaben/01, [6]): 2>/dev/null verschluckt die Fehlermeldungen des Befehls
+# Runde 2: 2>/dev/null verschluckt die Fehlermeldungen des Befehls
 subtest '2>/dev/null: Fehlermeldungen des Befehls verschwinden' => sub {
     fresh();
     my ( $o, $ok ) = sh('grep -r x /var/log/syslog /var/log/cron* 2>/dev/null');
@@ -323,7 +323,7 @@ subtest '2>/dev/null: Fehlermeldungen des Befehls verschwinden' => sub {
     like( scalar sh('cat /nope; ls /nope 2>/dev/null'), qr/\Acat: \/nope: No such file or directory\z/, 'nur der Befehl mit der Umleitung' );
 };
 
-# Runde 2 (zuverlaessigkeit/01): ping -c1 schickt ein Paket, nicht vier
+# Runde 2: ping -c1 schickt ein Paket, nicht vier
 subtest 'ping -cN zusammengeschrieben' => sub {
     $state = { h => { type => 'linux', interfaces => { eth0 => { addr => ['10.0.0.2/24'], state => 'UP' } },
         routes => [ { dst => '10.0.0.0/24', dev => 'eth0', proto => 'kernel', scope => 'link', src => '10.0.0.2' } ] } };
@@ -333,7 +333,7 @@ subtest 'ping -cN zusammengeschrieben' => sub {
     ok( !$ok && $o =~ /\AError: syntax error/, 'nft list mit Tippfehler: Syntaxfehler' );
 };
 
-# Runde 3 (terminal-aufgaben/04): als Benutzer zaehlen x (Durchqueren) und r (Lesen) an
+# Runde 3: als Benutzer zaehlen x (Durchqueren) und r (Lesen) an
 # Verzeichnissen, rm braucht w+x am Elternordner (sticky: nur der Eigentuemer)
 subtest 'Rechte an Verzeichnissen fuer cd, ls, cat, head, rm, Umleitung' => sub {
     $state = {
@@ -369,7 +369,7 @@ subtest 'Rechte an Verzeichnissen fuer cd, ls, cat, head, rm, Umleitung' => sub 
     ok( ( sh( 'ls /srv/redaktion/artikel', 'nas' ) )[1], 'root: immer' );
 };
 
-# Runde 3 (terminal-aufgaben/01, think): trap … EXIT laeuft am Ende der Shell (auch bei
+# Runde 3: trap … EXIT laeuft am Ende der Shell (auch bei
 # exit und set -e); andere Signale werden gemerkt; od -c zeigt Bytes wie GNU od
 subtest 'trap EXIT und od -c' => sub {
     fresh();
@@ -391,7 +391,7 @@ subtest 'trap EXIT und od -c' => sub {
     is( scalar sh(q{printf 'ä' | od -c}), "0000000 303 244\n0000002", 'od -c: Bytes ausserhalb ASCII oktal' );
 };
 
-# Runde 3 (rueckfrage/08): env zeigt die Umgebung der Shell
+# Runde 3: env zeigt die Umgebung der Shell
 subtest 'env' => sub {
     fresh();
     my $e = sh('env');
@@ -403,7 +403,7 @@ subtest 'env' => sub {
     is( scalar sh('env LANG=de_DE.UTF-8 env | grep ^LANG='), 'LANG=de_DE.UTF-8', 'env NAME=wert befehl' );
 };
 
-# Runde 3 (zuverlaessigkeit/01, rueckfrage/08): TCP von Geraet A zu Geraet B im Zustand —
+# Runde 3: TCP von Geraet A zu Geraet B im Zustand —
 # Firewall (nft input von B, erste passende Regel, Policy) und Lauscher von B
 subtest 'TCP-Probe: nc, /dev/tcp, wget, curl zwischen Geraeten' => sub {
     my $why = need_parts('Sshd');
@@ -457,7 +457,7 @@ subtest 'TCP-Probe: nc, /dev/tcp, wget, curl zwischen Geraeten' => sub {
     like( scalar sh( 'curl http://10.0.0.4/', 'c' ), qr/command not found/, 'curl nicht installiert' );
 };
 
-# Runde 3 (rueckfrage/02): awk mit Summen, END, printf, Arrays, if
+# Runde 3: awk mit Summen, END, printf, Arrays, if
 subtest 'awk: Variablen, END, printf, Arrays' => sub {
     my $awk = sub { my $in = shift; ( Langertha::Holmgang::Shell::Filter::filter_output( $in, [ 'awk', @_ ] ) )[0] };
     my $du = "1073741824 a.log\n536870912 b.log\n2147483648 c.log";
@@ -474,7 +474,7 @@ subtest 'awk: Variablen, END, printf, Arrays' => sub {
     is( scalar sh(q{printf '10 x\n20 y\n' | awk '{s+=$1} END {print s}'}), '30', 'in der Shell' );
 };
 
-# Runde 3 (rueckfrage/03, 06): last, last reboot, lastlog aus dem Zustand (logins) und dem
+# Runde 3: last, last reboot, lastlog aus dem Zustand (logins) und dem
 # laufenden Start; journalctl -k ohne Kernel-Meldungen im Zustand
 subtest 'last, lastlog, journalctl -k' => sub {
     fresh();
@@ -499,7 +499,7 @@ subtest 'last, lastlog, journalctl -k' => sub {
     is( scalar sh('uptime -p'), 'up 5 hours', 'uptime -p' );
 };
 
-# Runde 3 (rueckfrage/08): ein Name, den der Resolver nicht kennt (wie getent hosts)
+# Runde 3: ein Name, den der Resolver nicht kennt (wie getent hosts)
 subtest 'TCP-Probe: Name nicht aufloesbar' => sub {
     fresh();
     $state->{srv}{files}{'/usr/bin/nc'} = { mode => '0755', content => '' };
@@ -511,7 +511,7 @@ subtest 'TCP-Probe: Name nicht aufloesbar' => sub {
     ok( defined $gap, 'Adresse ohne Geraet im Zustand: Luecke (es kann ihn geben)' );
 };
 
-# Runde 3 (terminal-aufgaben/01, 02, think): Shell-Funktionen, ! befehl, #!/usr/bin/env bash,
+# Runde 3: Shell-Funktionen, ! befehl, #!/usr/bin/env bash,
 # bash -n, read -d "", which flock/logger; <( ) ist eine Luecke statt einer falschen Meldung
 subtest 'Shell: Funktionen, !, env-Shebang, bash -n, read -d' => sub {
     fresh();

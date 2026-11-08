@@ -8,8 +8,8 @@ use Test::More;
 
 use Holmgang::TestSim qw( run_command write_file prepare clone diff get throws_ok need_parts );
 
-# Linux-Simulator: leere Zuweisung OnCalendar= (platform#181, Suite
-# zuverlaessigkeit). Behauptet wird wie systemd.timer(5): eine leere Zuweisung
+# Linux-Simulator: leere Zuweisung OnCalendar=.
+# Behauptet wird wie systemd.timer(5): eine leere Zuweisung
 # setzt die Liste der Kalender-Ausloeser zurueck — ein Drop-in mit
 # "OnCalendar=" und danach "OnCalendar=…" ersetzt den Ausloeser der Unit; ohne
 # die leere Zeile kommt der neue Ausloeser HINZU (beide gelten).

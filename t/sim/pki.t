@@ -10,7 +10,7 @@ use JSON::MaybeXS ();
 use Holmgang::TestSim qw( run_command write_file prepare clone diff get throws_ok need_parts );
 use Langertha::Holmgang::Sim::Linux::Pki ();
 
-# Zertifikate als Daten (Suite tls-zertifikate, platform#119). Behauptet wird:
+# Zertifikate als Daten. Behauptet wird:
 # PEM-Bloecke verweisen auf den Katalog, Dateien bleiben Text (cat a b >
 # kette); openssl x509/rsa/verify/s_client/req antworten wie OpenSSL 3; nginx
 # laedt Blatt + Kette aus ssl_certificate und weist einen unpassenden oder

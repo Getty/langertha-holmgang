@@ -9,7 +9,7 @@ use Test::More;
 use Holmgang::TestSim qw( run_command write_file prepare clone diff get throws_ok need_parts );
 use Langertha::Holmgang::Sim::Linux::SshAccess ();
 
-# Anmeldung per SSH (platform#123). Behauptet wird: die Pruefung folgt sshd —
+# Anmeldung per SSH. Behauptet wird: die Pruefung folgt sshd —
 # geladene Konfiguration (eine Aenderung wirkt erst nach reload), Match-
 # Abschnitte fuer diese Verbindung, Konto, Allow/Deny, authorized_keys mit
 # StrictModes und from=, Port und Firewall; das Journal zeigt die Zeilen von sshd.

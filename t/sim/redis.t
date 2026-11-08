@@ -9,7 +9,7 @@ use JSON::MaybeXS ();
 
 use Holmgang::TestSim qw( run_command clone need_parts );
 
-# Redis auf dem Linux-Simulator (platform#124, Suite weitere-datenbanken).
+# Redis auf dem Linux-Simulator.
 # Behauptet wird: redis-cli spricht nur mit einem laufenden, gebundenen Redis
 # und verlangt das Passwort; CONFIG GET/SET pruefen wie Redis 7.0 (Bytes,
 # Werteliste, unveraenderlich); CONFIG REWRITE schreibt die laufenden Werte in

@@ -10,7 +10,7 @@ use JSON::MaybeXS ();
 use Holmgang::TestSim qw( run_command write_file prepare clone diff get throws_ok need_parts );
 use Langertha::Holmgang::Sim::Linux::Pki ();
 
-# nginx auf dem Linux-Simulator (Suite webserver-proxy, platform#119).
+# nginx auf dem Linux-Simulator.
 # Behauptet wird: nginx -t meldet Fehler wie nginx; geladen ist, was beim
 # letzten Start/reload galt (reload mit Fehler laesst die alte Konfiguration
 # laufen, restart mit Fehler laesst nginx aus); Anfragen folgen listen,

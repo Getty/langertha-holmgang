@@ -10,7 +10,7 @@ use Langertha::Holmgang::Shell ();
 use Holmgang::TestSim qw( run_command write_file prepare clone diff get throws_ok need_parts );
 use Langertha::Holmgang::Shell ();
 
-# Shell-Grammatik des Linux-Simulators (platform#120/#121, Befund des Leitstands:
+# Shell-Grammatik des Linux-Simulators (Befund des Leitstands:
 # Schleifen in Skripten als legitimer Weg). Behauptet wird: Glieder, Heredocs,
 # Kommentare und Fortsetzungszeilen werden wie von bash getrennt; Variablen,
 # ${…}-Formen, $(( )) und $( ) werden zur Laufzeit eines Glieds eingesetzt (in
@@ -55,7 +55,7 @@ subtest 'Bloecke' => sub {
     is_deeply( $n->[0]{arms}[0]{pats}, [ 'a', 'b' ], 'case: Muster' );
     is( $p->('for x in a; echo $x'), "bash: syntax error near unexpected token `echo'", 'for ohne do' );
     like( $p->('if true; then echo'), qr/unexpected end of file/, 'if ohne fi' );
-    is( $p->('f() { echo; }')->[0]{type}, 'func', 'Funktion (Runde 3 von platform#181): Knoten func' );
+    is( $p->('f() { echo; }')->[0]{type}, 'func', 'Funktion: Knoten func' );
 };
 
 subtest 'Expansion' => sub {
@@ -174,9 +174,9 @@ subtest 'case, Heredoc, Skripte' => sub {
     ok( !$rok, '... Status: Fehler' );
     my $gap;
     ( $o, $ok, $gap ) = sh('f() { echo x; }; f');
-    ok( !$gap && $o eq 'x', 'Funktion: laeuft (Runde 3 von platform#181)' );
+    ok( !$gap && $o eq 'x', 'Funktion: laeuft' );
     ( $o, $ok, $gap ) = sh('( cd /tmp && ls ) ; pwd');
-    ok( !$gap && $o eq '/root', 'Subshell (platform#181): laeuft, cd bleibt drinnen' );
+    ok( !$gap && $o eq '/root', 'Subshell: laeuft, cd bleibt drinnen' );
 };
 
 done_testing;

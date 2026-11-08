@@ -10,7 +10,7 @@ use JSON::MaybeXS ();
 use Holmgang::TestSim qw( run_command write_file prepare clone diff get throws_ok need_parts );
 
 # Linux-Simulator: Werkzeuge rund um Dateien, Journal und Zeit, nachgezogen aus
-# der ersten Messrunde von systemd-timer-logs (platform#121). Behauptet wird, dass
+# einer Messrunde mit Timer- und Log-Aufgaben. Behauptet wird, dass
 # sie antworten wie Debian 12: ls zeigt . und .. (-a), versteckt Punkt-Dateien,
 # zeigt leere Verzeichnisse und -R rekursiv, *.wants als Verweise; find liefert auch
 # Verzeichnisse, kennt -maxdepth, -exec, -printf, -o, -not, -path, -newermt; das
@@ -134,7 +134,7 @@ sub sh {
     like( sh('journalctl -u job'), qr/app\[77\]: 12 records written\n.*Deactivated successfully/s, '... und schreibt ins Journal' );
 }
 
-# Kleine Werkzeuge, die in den Bench-Laeufen still Falsches lieferten (platform#120/#121):
+# Kleine Werkzeuge, die in den Bench-Laeufen still Falsches lieferten:
 # printf nahm nur die erste Runde des Formats, tr kannte keine Bereiche/Klassen/-c,
 # head -n -1 gab eine Zeile, wc nannte keine Dateinamen.
 subtest 'printf, tr, head/tail, wc, md5sum wie coreutils' => sub {

@@ -30,7 +30,7 @@ Mechanics of this suite:
   only checks "failed" passes for the wrong reason.
 - Leak tests assert on the request the mock engine received: no state, observation, rule,
   solution or `untrusted` mark in it.
-- Lint tests show each lint point per case, as cai-platform's `t/eval_netzwerk_lint.t` does.
+- Lint tests show each lint point per case, as cai-platform's per-suite lint tests do.
 
 Workflow: read the code under test and its cai-platform counterpart → identify the behavior
 → write the test in the style of its nearest neighbor in `t/` → run `prove -lv t/<file>`

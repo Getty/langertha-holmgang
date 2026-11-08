@@ -58,7 +58,7 @@ sub run_args {
     target  => { label => 'mock-a', engine => 'Virtual', model => 'mock-1',
                  url => 'https://user:hunter2@llm.example:8443/v1?api_key=sk-abc&x=1#frag', api_key => 'sk-abc' },
     variant => { name => 'plain', settings => { temperature => 0 } },
-    suite   => { id => 'demo-suite', version => 2, topic => 'netzwerk', digest => 'd1' },
+    suite   => { id => 'demo-suite', version => 2, topic => 'netz', digest => 'd1' },
     repeat  => 1, status => 'complete', error => undef,
     cases   => cases(), results => results(),
     %over,

@@ -9,7 +9,7 @@ use JSON::MaybeXS ();
 
 use Holmgang::TestSim qw( run_command prepare clone );
 
-# MariaDB auf dem Linux-Simulator (platform#124, Suite weitere-datenbanken).
+# MariaDB auf dem Linux-Simulator.
 # Behauptet wird: root kommt ueber unix_socket hinein, andere Konten nur mit
 # Passwort und passendem Host; SET GLOBAL nur fuer dynamische Variablen, der
 # Rest erst nach Neustart aus den Optionsdateien; eine unbekannte Variable

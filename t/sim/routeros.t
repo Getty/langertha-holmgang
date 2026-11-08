@@ -12,7 +12,7 @@ use Holmgang::TestSim qw( run_command write_file );
 binmode Test::More->builder->$_, ':encoding(UTF-8)' for qw(output failure_output todo_output);
 use Storable qw( dclone );
 
-# Der RouterOS-Simulator der Test-Suites (platform#91). Behauptet wird: print
+# Der RouterOS-Simulator der Test-Suites. Behauptet wird: print
 # zeigt Nummern, Flags und Kommentare wie RouterOS; add/set/remove/move/
 # disable/enable/comment aendern den Zustand und der naechste print zeigt es;
 # move setzt Eintrag a VOR den Eintrag, der jetzt Nummer b hat; find-Varianten
@@ -308,7 +308,7 @@ subtest 'ping und traceroute folgen den Routen' => sub {
 {
     my $st = { r => { type => 'routeros', menus => {} } };
     my ( $o, $ok, $gap ) = run_command( $st, 'r', '/log print where topics~"dhcp"' );
-    like( $gap, qr{/log print}, 'echtes Menue ohne Nachbildung: Luecke (platform#91)' );
+    like( $gap, qr{/log print}, 'echtes Menue ohne Nachbildung: Luecke' );
     is( $o, '', '... neutrale (leere) Antwort' );
     ok( $ok, '... kein Fehler des Modells' );
     ( $o, $ok, $gap ) = run_command( $st, 'r', '/ip firewall filter print stats' );

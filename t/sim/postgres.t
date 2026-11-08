@@ -9,7 +9,7 @@ use JSON::MaybeXS ();
 
 use Holmgang::TestSim qw( run_command write_file clone );
 
-# PostgreSQL auf dem Linux-Simulator (Suite postgres-betrieb). Behauptet wird:
+# PostgreSQL auf dem Linux-Simulator. Behauptet wird:
 # psql spricht als der Benutzer aus sudo -u/su; pg_hba wirkt in der geladenen
 # Reihenfolge und erst nach reload; Einstellungen mit Kontext postmaster
 # wirken erst nach Neustart; ein Neustart (auch stop+start) steht als
@@ -135,7 +135,7 @@ subtest 'Einstellungen: postmaster erst nach Neustart' => sub {
     is( $pg->()->{settings}{max_connections}, 300, 'nach stop+start: 300' );
     is( $state->{db1}{services}{'postgresql@15-main'}{restarts}, 1, 'stop+start zaehlt als Neustart' );
 
-    # Herkunft eines Werts (platform#118): auto.conf gewinnt, pg_settings zeigt es
+    # Herkunft eines Werts: auto.conf gewinnt, pg_settings zeigt es
     ( $o, $ok ) = sh( db1 => q{sudo -u postgres psql -At -c "select sourcefile, sourceline from pg_settings where name = 'max_connections'"} );
     is( $o, '/var/lib/postgresql/15/main/postgresql.auto.conf|2', 'sourcefile/sourceline: postgresql.auto.conf' ) or diag $o;
     ( $o, $ok ) = sh( db1 => q{sudo -u postgres psql -At -c "select source, sourcefile from pg_settings where name = 'shared_buffers'"} );
@@ -205,7 +205,7 @@ subtest 'VACUUM und autovacuum' => sub {
     my ( $o, $ok ) = sh( db1 => q{sudo -u postgres psql -d appdb -c "select relname, n_dead_tup from pg_stat_user_tables order by n_dead_tup desc limit 1"} );
     like( $o, qr/events\s+\|\s+38000000/, 'pg_stat_user_tables, ORDER BY, LIMIT' );
 
-    # echter Katalog ohne Nachbildung: Luecke statt erfundenem Fehler (platform#118)
+    # echter Katalog ohne Nachbildung: Luecke statt erfundenem Fehler
     my $gap;
     ( $o, $ok, $gap ) = sh( db1 => q{sudo -u postgres psql -d appdb -c "select * from pg_default_acl"} );
     ok( $ok && !$gap, 'pg_default_acl ist nachgebildet' ) or diag $o;
@@ -214,7 +214,7 @@ subtest 'VACUUM und autovacuum' => sub {
     unlike( $o, qr/does not exist/, '... kein "does not exist"' );
     ( $o, $ok, $gap ) = sh( db1 => q{sudo -u postgres psql -d appdb -c "select relname, seq_scan from pg_stat_user_tables"} );
     like( $gap, qr/seq_scan/, 'echte, nicht nachgebildete Spalte: Luecke' );
-    # SQL, das Modelle tatsaechlich schreiben (platform#118)
+    # SQL, das Modelle tatsaechlich schreiben
     ( $o, $ok, $gap ) = sh( db1 => q{sudo -u postgres psql -At -c "select pid || '|' || usename || '|' || state from pg_stat_activity where usename = 'api' limit 1"} );
     is( $o, '4001|api|idle', '|| verkettet' ) or diag $gap;
     ( $o, $ok, $gap ) = sh( db1 => q{sudo -u postgres psql -At -c "select usename, wait_event, extract(epoch from now() - state_change)::int as idle from pg_stat_activity where usename = 'api' limit 1"} );
@@ -224,11 +224,11 @@ subtest 'VACUUM und autovacuum' => sub {
     ( $o, $ok, $gap ) = sh( db1 => q{sudo -u postgres psql -d appdb -At -c "select nspname, nspacl from pg_namespace where nspname = 'app'"} );
     like( $o, qr/\Aapp\|\{.*api=U\/app_owner.*\}\z/, 'pg_namespace.nspacl' ) or diag $gap;
 
-    # libpq-Verbindungszeichenkette (platform#118)
+    # libpq-Verbindungszeichenkette
     ( $o, $ok, $gap ) = sh( db1 => q{sudo -u postgres psql "dbname=appdb user=postgres" -At -c "select current_database()"} );
     is( $o, 'appdb', 'psql "dbname=… user=…"' ) or diag "$o / " . ( $gap // '' );
 
-    # JOIN, Rechte-Funktionen, pg_default_acl (platform#118, Pruefung des Leitstands)
+    # JOIN, Rechte-Funktionen, pg_default_acl (Pruefung des Leitstands)
     ( $o, $ok, $gap ) = sh( db1 => q{sudo -u postgres psql -d appdb -At -c "SELECT n.nspname, c.relname FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = 'app' ORDER BY 2 LIMIT 1"} );
     like( $o, qr/\Aapp\|\w+\z/, 'JOIN pg_class/pg_namespace mit Aliassen' ) or diag "$o / " . ( $gap // '' );
     ( $o, $ok, $gap ) = sh( db1 => q{sudo -u postgres psql -d appdb -At -c "select has_database_privilege('api', 'appdb', 'CONNECT'), has_schema_privilege('api', 'app', 'USAGE')"} );

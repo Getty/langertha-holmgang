@@ -10,7 +10,7 @@
 ## Context
 
 cai-platform knows four case statuses on the wire (`passed`, `failed`, `ungraded`, `error`)
-plus `context_exceeded` since platform#195. Hitting `max_turns` is not a status there: the
+plus `context_exceeded`, added later. Hitting `max_turns` is not a status there: the
 grader appends a synthetic, failed rule of kind `turns`, the case becomes `failed` or
 `ungraded`, and a separate flag `exceeded` marks it. Its `--report` JSON nests one run per
 repetition, per-case numbers (`prompt_tokens`, `completion_tokens`, `prompt_tokens_max`,

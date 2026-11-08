@@ -9,7 +9,7 @@ use JSON::MaybeXS ();
 
 use Holmgang::TestSim qw( run_command write_file prepare clone diff get throws_ok need_parts );
 
-# Linux-Simulator: Dienste mit Konfigurationsdatei und reload (platform#126).
+# Linux-Simulator: Dienste mit Konfigurationsdatei und reload.
 # Behauptet wird: ohne reload_config (dnsmasq & Co.) uebernimmt erst ein
 # Neustart die Datei; mit reload_config (nginx & Co.) auch ein reload, und der
 # zaehlt nicht als Neustart.

@@ -9,7 +9,7 @@ use JSON::MaybeXS ();
 
 use Holmgang::TestSim qw( run_command write_file prepare clone diff get throws_ok need_parts );
 
-# logrotate im Linux-Simulator (platform#121, Suite systemd-timer-logs). Behauptet
+# logrotate im Linux-Simulator. Behauptet
 # wird: -d liest die Konfiguration (auch ueber include) und zeigt den Plan ohne
 # etwas zu aendern; Fehler in der Konfiguration meldet logrotate mit Datei und
 # Zeile; -f rotiert wirklich: copytruncate kopiert und leert, ohne dass der Dienst

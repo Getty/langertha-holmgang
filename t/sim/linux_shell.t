@@ -8,8 +8,8 @@ use Test::More;
 
 use Holmgang::TestSim qw( run_command write_file prepare clone diff get throws_ok need_parts );
 
-# Shell-Hilfen des Linux-Simulators, die Modelle in den Suites webserver-proxy und
-# tls-zertifikate (platform#119) staendig nutzen. Behauptet wird: for-Schleifen
+# Shell-Hilfen des Linux-Simulators, die Modelle bei Webserver- und
+# Zertifikatsaufgaben staendig nutzen. Behauptet wird: for-Schleifen
 # laufen je Wort (auch mit Muster), grep -r durchsucht Verzeichnisse und nennt
 # die Datei (Verweise nur mit -R), -l nennt nur Dateien; ln -s ziel verzeichnis/
 # legt den Verweis im Verzeichnis an; eine Datei, die nur als Text im Zustand

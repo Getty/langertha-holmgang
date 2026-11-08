@@ -31,7 +31,7 @@ sub report {
       target  => { label => $run->{target} // 'mock-a', engine => 'Virtual', model => 'mock-1', url => undef },
       variant => { name => exists $run->{variant} ? $run->{variant} : 'plain', settings => {} },
       suite   => { id => $run->{suite} // 's', version => '1',
-                   topic => exists $run->{topic} ? $run->{topic} : 'netzwerk', digest => 'd' },
+                   topic => exists $run->{topic} ? $run->{topic} : 'netz', digest => 'd' },
       repeat  => $repeat,
       status  => 'complete',
       error   => undef,
