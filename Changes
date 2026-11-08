@@ -1,109 +1,47 @@
 Revision history for Langertha-Holmgang
 
 {{$NEXT}}
-  - Langertha::Holmgang::Loader, Structure, Suite, Case: suite format 2 loads
-    unchanged into objects that keep the values as written; list, locate,
-    select_suites; checksum as cai-platform's digest (ADR 0005)
-  - Langertha::Holmgang::World, Template, ToolSchema: tool dispatch
-    (observations, simulators, handlers), Kolon output, parameter schema
-  - Langertha::Holmgang::Grader, Lint: rules at the end state with the
-    statuses of ADR 0006; the self-check of every case on load, with a hook
-    for the runner's mock runs
-  - Langertha::Holmgang::Error and Expectation: the error class and the
-    expectations the grader checks
-  - Langertha::Holmgang::Target: a Langertha engine plus variant settings;
-    chat_turn_f runs one turn and classifies a failed one as context_exceeded
-    (signatures of OpenAI, vLLM, llama.cpp, SGLang, TGI, LiteLLM, Ollama,
-    Anthropic), no_vision or error
-  - Langertha::Holmgang::Runner: the model loop of one case over any Langertha
-    engine through ::Target — turns, turn_limit, tokens/finish_reason/calls
-    per turn, error/context_exceeded/no_vision; results in the report's shape;
-    Langertha::Engine::Virtual mock model; lint's two mock runs, on by
-    default in the loader
-  - Langertha::Holmgang::Target: scrub the error text of a failed turn —
-    the engine's key, URL credentials and query keys, Authorization/Bearer/
-    api-key values, provider key shapes, die locations and host paths — so
-    the runner's result carries none of them
-  - Langertha::Holmgang::Evaluation: per-topic rates with case weights,
-    overall as the mean of topics, length-tier curves, verdicts with
-    threshold, pass^k and hard cases, comparison as text, Markdown and JSON
-    (ADR 0008)
-  - Langertha::Holmgang::World: a simulator that fails in Perl no longer
-    hands its error text and host file path to the model — the call answers
-    a generic tool error, the original goes into the sim_gap (k32)
-  - Sim::Linux::Backup: restic forget latest no longer dies; picks the
-    newest snapshot under --host/--path/--tag like restic 0.14 (k32)
-  - bin/holmgang, Langertha::Holmgang::CLI: the command line (ADR 0009) —
-    lint (loads exactly as a run does, ok/FAIL per suite and case), run
-    (any Langertha engine by name with --model/--url/--option, or the
-    network-free mock-solution/mock-text; --variant, --repeat, --report;
-    sequential, no key on the command line) and report (per-topic evaluation
-    of report files as text, Markdown or JSON, thresholds from --suite);
-    exit 0 ok, 1 refused or verdict not ok, 2 usage/setup error (k21)
-  - Documentation: suite format 2 reference in Langertha::Holmgang::Loader,
-    rules and statuses in ::Grader, simulator registration and the die
-    guard in ::Role::Simulator, an overview in Langertha::Holmgang, and a
-    README with status, quick start against the mock targets and a map of
-    the module POD (k24)
-  - holmgang: errors relayed to stderr (a report that does not write or
-    read, invalid JSON, a report that does not evaluate, a target that does
-    not build) no longer carry the Perl location, Path::Tiny's temporary
-    file or the @INC listing; the message names the path as given, exit
-    codes unchanged (k41)
-  - Langertha::Holmgang::Role::Simulator: the methods are documented under
-    METHODS instead of under RULES (k41)
-  - share/suites: three invented example suites to learn format 2 from —
-    demo-linux (a linux device), demo-lamp (a world without devices, its
-    tool described by handlers), demo-haystack (generated input); installed
-    as the distribution's share directory, found with
-    File::ShareDir::dist_dir('Langertha-Holmgang').'/suites'; the README
-    quick start runs demo-linux (k22, ADR 0010)
-  - holmgang run: exit 1 when the target answered no case of the run (every
-    result error, context_exceeded or no_vision), said on stderr with the
-    count per status, the report written as always; a suite without an
-    answer next to measured ones gets a stderr note; the engine's
-    constructor warnings reach stderr without the Perl location; the shared
-    location rule also drops ", <FH> line N" (k42, ADR 0009)
-  - holmgang run: the note for a run without an answer quotes the first
-    error text, scrubbed, on one line, cut to 200 characters with an
-    ellipsis; World and Structure cut a trailing die location with the
-    shared rule, ", <FH> line N" included (k44, ADR 0009)
   - Initial release
-  - Langertha::Holmgang::Report: write and read the JSON report (holmgang_report 1,
-    ADR 0006), merge reports without double counting, map cai-platform --report
-    for the acceptance comparison
-  - Simulator plugin contract (Role::Simulator, Role::AnswerWorld, Simulators
-    registry) and the linux device simulator with the bash grammar, nftables
-    evaluation and systemd calendar
-  - Linux simulator: Prometheus/Alertmanager with promtool and amtool, sshd
-    configuration and reload/restart, logrotate, accounts and sudo
-    (Sim::Linux::Monitoring, ::Sshd, ::Logrotate, ::Accounts)
-  - Simulators for device types routeros (RouterOS console: menus,
-    print/add/set/remove/move, find, export, ping) and ios (Cisco IOS switch
-    CLI: show, configure terminal, interfaces, VLANs)
-  - Sim::Linux::Kubernetes: kubectl against a simulated cluster — stored
-    resources, derived pods and status, endpoints, reachability, Ingress,
-    cert-manager, RBAC
-  - Sim::Linux parts Backup (tar, gzip, sha256sum, rsync, restic, cp
-    attributes), Storage (mount, LVM, mkfs, resize, swap, partitions, mdadm),
-    Dns (BIND: rndc, named-check*, dig, host) and Postfix (postconf, postmap,
-    queue)
-  - Linux simulator parts PostgreSQL (psql), MariaDB (mysql/mariadb/mysqladmin),
-    Redis (redis-cli, CONFIG, INFO, BGSAVE) and RedisService (Redis from the
-    service alone)
-  - Sim::Linux parts Http (curl, applications, probes), Nginx (nginx -t,
-    loading, serving), Pki (openssl, update-ca-certificates, client
-    verification) and SshAccess (SSH login check behind the login rule)
-  - Linux simulator parts Docker (Engine 26 with Compose v2), Git (working
-    copy, index, push to a Forgejo server with hooks) and Helm 3 (releases,
-    values, revisions against the Kubernetes part)
-  - Langertha::Holmgang::Sim::Kueche: the answer world kueche (recipes,
-    pantry, shopping list, week plan, unit table); reading tools no longer
-    create empty entries in the state
-  - Langertha::Holmgang::Haystack: generate long, deterministic contents
-    (logs, configs, manifests, runbooks) from a spec, byte-identical to
-    cai-platform; estimate_tokens
-  - Lint refuses an unknown argument filter ({name|filter}) in a handler's
-    change or a when path at load time, even where no solution reaches it;
-    Expectation filter_value dies with the world's generic refusal instead of
-    the filter's name, so a tool result never carries it (k35)
+  - Deterministic tool-use benchmarks for language models: a case gives the
+    model a task and tools in a simulated world, and the rules grade the
+    end state of that world, never the wording of the answer
+  - Suite format 2 (suite.yaml plus cases/*.yaml) loads into objects that
+    keep the values as written; every case is linted on load, including two
+    mock runs, and a case that fails lint does not load
+  - Worlds with tool dispatch, observations, handlers and Kolon output, and
+    simulators for the device types linux (bash grammar and many services),
+    routeros and ios, plus the answer world kueche; a simulator plugin
+    contract (Role::Simulator, Role::AnswerWorld, registry); a simulator
+    that fails in Perl never shows its error to the model, the call answers
+    a generic tool error and the gap is recorded
+  - Grader with rules on the end state and on the calls, and seven statuses:
+    passed, failed, uncertain (a simulation gap was hit), turn_limit, and
+    the not-measured error, context_exceeded and no_vision
+  - Runner over any Langertha engine through Target, with turn limit and
+    tokens, finish reason and calls per turn; Langertha::Engine::Virtual
+    mock models run a case without a network; Haystack generates long,
+    deterministic inputs
+  - Target classifies a failed turn as context_exceeded, no_vision or error
+    and scrubs its error text: the engine's key, credentials in URLs,
+    Authorization and Bearer values, provider key shapes, die locations and
+    host paths never reach a result
+  - Report: the JSON report (holmgang_report 1), written, read and merged
+    without double counting
+  - Evaluation: rates per topic with case weights, overall as the mean of
+    topics, curves per length tier, verdicts against a threshold with pass^k
+    and hard cases, and the comparison of targets as text, Markdown or JSON
+  - bin/holmgang with the commands lint, run and report. lint loads exactly
+    as a run does; run takes any Langertha engine by name (--model, --url,
+    --option) or the network-free mock-solution and mock-text, with
+    --variant, --repeat and --report, and no key on the command line;
+    report evaluates report files with thresholds from --suite. Exit 0 ok,
+    1 refused, verdict not ok or no case answered by the target, 2 usage or
+    setup error. Errors on stderr carry no Perl location
+  - Three invented example suites under share/suites: demo-linux,
+    demo-lamp and demo-haystack, found with
+    File::ShareDir::dist_dir('Langertha-Holmgang').'/suites'
+  - Documentation: an overview in Langertha::Holmgang, the suite format 2
+    reference in ::Loader, rules and statuses in ::Grader, the simulator
+    contract in ::Role::Simulator, and a README with a quick start
+  - Not yet: cases and suites written in a Perl DSL; Langertha::Holmgang
+    exports nothing so far
