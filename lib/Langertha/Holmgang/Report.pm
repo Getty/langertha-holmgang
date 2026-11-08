@@ -400,7 +400,7 @@ sub image_entry {
     my $placeholder = $report->image_entry( 'scan-1.png', $raw_bytes );
     # { image => 'scan-1.png', sha256 => '…', bytes => 48213 }
 
-The only form an image takes in a report (ADR 0006, k27). Also callable on the
+The only form an image takes in a report (ADR 0006). Also callable on the
 class.
 
 =cut
@@ -770,7 +770,7 @@ sub from_cai_platform {
     );
 
 Maps a cai-platform C<evals run --report> file onto format 1 for the acceptance
-comparison (k13), following the table in ADR 0006. Rows with the same target
+comparison, following the table in ADR 0006. Rows with the same target
 and suite, in their order in C<runs> (start order), become repetitions 1..n of
 one run; C<repeat> comes from C<repeat_by_suite>. Statuses: C<passed> stays,
 C<failed>/C<ungraded> with C<exceeded> become C<turn_limit>, C<ungraded> becomes

@@ -1564,6 +1564,12 @@ sub _acl_letters {
 
 =func pg_lsclusters
 
+  my ( $out, $ok ) = pg_lsclusters( $dev, \@argv, $ctx );
+
+Ausgabe von C<pg_lsclusters>: Kopfzeile und eine Zeile für den Cluster des
+Geräts mit Version, Name, Port und C<online>/C<down> nach dem Dienst; leer
+ohne PostgreSQL auf dem Gerät.
+
 =cut
 
 sub pg_lsclusters {

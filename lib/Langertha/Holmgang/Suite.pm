@@ -45,11 +45,19 @@ has $_ => ( is => 'ro' ) for qw( version title description license source thresh
 
 =attr version
 
+The suite's version, an integer from 1 up; format 2 requires it.
+
 =attr title
+
+Required. The suite's title, a non-empty text.
 
 =attr description
 
+Optional free text describing the suite, or C<undef>.
+
 =attr license
+
+Optional license text of the suite, or C<undef>.
 
 =attr source
 

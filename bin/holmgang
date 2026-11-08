@@ -94,7 +94,8 @@ else the engine name.
 
 C<run>, repeatable: request settings added to every turn (C<max_tokens>,
 C<temperature>, C<reasoning_effort>, C<chat_template_kwargs> ...), values as
-for C<--option>. Named variants and several per target come later (k15).
+for C<--option>. One variant per target, its settings passed through
+unchecked.
 
 =opt --repeat N
 

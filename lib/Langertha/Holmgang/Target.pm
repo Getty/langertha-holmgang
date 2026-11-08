@@ -18,7 +18,7 @@ our $VERSION = '0.001';
 
   my $target = Langertha::Holmgang::Target->new(
     engine  => Langertha::Engine::Virtual->new( rules => [ qr/./ => answer('done') ] ),
-    variant => { max_tokens => 4000 },     # chat_f options, k15 gives them names and checks
+    variant => { max_tokens => 4000 },     # chat_f options, passed through unchecked
   );
 
   my $turn = $target->chat_turn_f(
@@ -39,7 +39,7 @@ our $VERSION = '0.001';
 
 A target is what a run measures (C<CONTEXT.md>): one Langertha engine -- any
 engine, L<Langertha::Engine::Virtual> in tests -- plus the settings of the
-variant under which it runs. The runner (k9) asks it for one model turn at a
+variant under which it runs. The runner asks it for one model turn at a
 time and gets a normalised result back: either the engine's
 L<Langertha::Response>, or the error text and its class.
 
@@ -76,9 +76,8 @@ has variant => (
 Optional, default C<{}>. The variant's settings as C<chat_f> options
 (C<max_tokens>, C<temperature>, C<reasoning_effort>, C<chat_template_kwargs>
 ...). They are added to every turn and win over the turn's own options of the
-same name, as cai-platform's variant C<max_tokens> beats the case's. Named
-variants with checked fields are k15; until then this is a plain HashRef,
-passed through unchecked.
+same name, as cai-platform's variant C<max_tokens> beats the case's. A plain
+HashRef, passed through unchecked.
 
 =cut
 
@@ -224,9 +223,9 @@ sub scrub {
 
   my $clean = $target->scrub($text);    # also callable on the class, without the key
 
-The text of a failed turn with what must not leave the run removed (k38,
-ADR 0006: "error texts pass the engine's scrubbing first" -- Langertha has
-no scrubber yet, langertha k389). L</chat_turn_f> scrubs its C<error>; the
+The text of a failed turn with what must not leave the run removed (ADR
+0006: "error texts pass the engine's scrubbing first" -- Langertha has no
+scrubber of its own, so the target does it). L</chat_turn_f> scrubs its C<error>; the
 class of the failure is read off the raw text before. What goes:
 
 =over

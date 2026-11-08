@@ -60,7 +60,12 @@ has $_ => ( is => 'ro' ) for qw(
 
 =attr title
 
+Required. The case's title, a non-empty text.
+
 =attr tags
+
+A list of texts, or C<undef>; L</tier> and L</is_hard> read them through
+L</tag_list>.
 
 =attr difficulty
 
@@ -82,7 +87,13 @@ L</initial_state>.
 
 =attr observe
 
+The observations as written: C<[ { match, when, output, error } ]>, answers to
+diagnostic commands that may depend on the state but never change it.
+
 =attr rules
+
+The rules as written; the grader checks them on the end state, and a case
+passes when every required one is met.
 
 =attr solution
 
@@ -90,17 +101,32 @@ A list of C<{ tool, args }>; C<[]> in the "no tool" family.
 
 =attr alternatives
 
+Other correct paths, C<[ { title, calls } ]>; lint replays each and it must
+pass like the reference solution.
+
 =attr wrong_solutions
 
 C<[ { title, calls } ]>.
 
 =attr temperature
 
+The case's own temperature (0..2) or C<undef>; L</effective> falls back to the
+suite's default, else 0.
+
 =attr max_tokens
+
+The case's own token limit per turn (1..200000) or C<undef>; L</effective>
+falls back to the suite's default, else 2000.
 
 =attr max_turns
 
+The case's own turn limit (1..50) or C<undef>; L</effective> falls back to
+the suite's default, else 12.
+
 =attr source
+
+Where the case comes from, C<{ title, authors, license, url, location }>, or
+C<undef>.
 
 =attr weight
 
