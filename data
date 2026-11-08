@@ -1,0 +1,23 @@
+---
+claimed_at: 2026-11-08T02:42:24Z
+claimed_by: cai-holmgang
+class: standard
+completed: 2026-11-04T21:37:29Z
+created: 2026-11-04T19:33:59Z
+depends_on:
+- 3
+id: 4
+priority: medium
+started: 2026-11-04T21:31:18Z
+status: done
+tags:
+- sim
+title: 'Simulatoren portieren: RouterOS und IOS'
+updated: 2026-11-08T02:42:24Z
+---
+
+Sim::RouterOS und Sim::IOS mit t/eval_sim_routeros.t und t/eval_sim_ios.t. Quelle: ~/cai-platform auf agent-lab (Übersicht im Skill holmgang-core).
+
+2026-11-04 21:35 Done in worktree k4 (uncommitted, files untracked): lib/Langertha/Holmgang/Sim/RouterOS.pm, lib/Langertha/Holmgang/Sim/IOS.pm (Moose classes, with Role::Simulator, device_type routeros/ios, run_command -> source run; source body unchanged apart from package names, POD header and make_immutable; no write_file), t/sim/routeros.t, t/sim/ios.t (ported from t/eval_sim_*.t with Test::More, gap blocks through the Simulators registry, plus contract checks: type is built in, write_file refused with state unchanged, gap answer empty). cai-platform's per-suite lint test not ported: it only lints the real share/evals suites (ADR 0003), nothing in it tests the simulators alone. No shared file touched. Verified: prove -lr t -> Files=29, Tests=1053, PASS; skipped linux_haertung, pruefwege, werkzeuge (need other Linux parts, none of them need routeros/ios).
+
+Committed 9c9419d
