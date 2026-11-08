@@ -33,7 +33,7 @@ concurrency, resume). The choices below are the worker's (k21), not the maintain
 | Code | Meaning |
 |---|---|
 | 0 | everything loaded / ran, every verdict ok |
-| 1 | a suite was refused (`lint`), or a verdict is not ok (`run`, `report`) |
+| 1 | a suite was refused (`lint`), a verdict is not ok (`run`, `report`), or the target answered no case of the run — every result `error`, `context_exceeded` or `no_vision` (`run`; said on stderr, the report written all the same) |
 | 2 | usage or setup error: unknown option or command, missing argument, a path that is no suite, a target that does not build, a report that does not read or write, a run that aborted |
 
 ### `holmgang lint <dir>...`
@@ -128,3 +128,19 @@ and written to stderr as `holmgang: <text>`, cleaned like a relayed error (k41).
 `Target::_strip_location` and World's Perl-error line share one location rule,
 `$Langertha::Holmgang::Target::LOCATION`, which also covers Perl's `, <FH> line N` /
 `chunk N` suffix.
+
+**Amendment 2026-11-08 (k44).** The exit-code table at the top now carries the k42 rule;
+the amendment above stays as its history. The maintainer decided that the run's
+no-answer note quotes the first error text, cleaned as the target cleans it, on one line,
+cut to about 200 characters with a visible ellipsis, the counts kept:
+`holmgang: no case got an answer from the target (2 error); first: HTTP 401 Unauthorized …`. The
+worker's choices: the text is the result's `error` as `Target::chat_turn_f` stored it,
+already through `scrub` with the engine's key, so the CLI does not scrub it again; its
+whitespace runs collapse to one space; past 200 characters it is cut there, trailing
+space dropped, and ` …` (U+2026) appended. "First" is the first result in suite order,
+then case order, then repetition order — the first result the run produced, since the
+first case of the first repetition comes first in both orders; a result without error
+text is passed over, and with none the note has no `; first:` part. World's handler
+changes and Structure's generated-content errors cut a trailing die location with the
+same `$LOCATION` rule (Structure loaded Target through World already, so no new
+dependency and no cycle: Target loads no Holmgang module).

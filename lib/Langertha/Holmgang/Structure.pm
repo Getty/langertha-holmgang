@@ -12,6 +12,7 @@ use Langertha::Holmgang::Error;
 use Langertha::Holmgang::Expectation ();
 use Langertha::Holmgang::Haystack;
 use Langertha::Holmgang::Simulators;
+use Langertha::Holmgang::Target ();
 use Langertha::Holmgang::ToolSchema qw( check_schema );
 use Langertha::Holmgang::World;
 
@@ -379,7 +380,7 @@ sub _resolve {
   return $text unless $@;
   my $err = $@;
   die $err if blessed $err;
-  $err =~ s/ at \S+ line \d+\.?\n?\z//;
+  $err =~ s/$Langertha::Holmgang::Target::LOCATION\.?\n?\z//;
   $err =~ s/\s+\z//;
   if ( index( $err, $field ) == 0 ) {
     my $rest = substr( $err, length $field );
