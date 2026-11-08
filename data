@@ -1,0 +1,27 @@
+---
+claimed_at: 2026-11-08T02:42:24Z
+claimed_by: cai-holmgang
+class: standard
+completed: 2026-11-04T21:44:32Z
+created: 2026-11-04T19:34:03Z
+depends_on:
+- 3
+id: 8
+priority: medium
+started: 2026-11-04T21:31:49Z
+status: done
+tags:
+- sim
+title: 'Antwortwelten ohne Gerät: Sim::Kueche portieren, Antwort-Werkzeuge'
+updated: 2026-11-08T02:42:24Z
+---
+
+Sim::Kueche mit t/eval_sim_kueche.t als Vorbild für Welten ohne Gerät: Antwort abgeben, Befund melden, Klausel bewerten, Übersetzung abgeben. Werkzeuge verraten nichts. Quelle: ~/cai-platform auf agent-lab (Übersicht im Skill holmgang-core).
+
+2026-11-04 21:37 Ported Sim::Kueche -> lib/Langertha/Holmgang/Sim/Kueche.pm (Moose, Role::AnswerWorld, device_type kueche; tools/tool as methods, tool handlers _t_<name> as methods on $self; number/show_number/unit_of/parse_amount/portions stay plain functions and @DAYS/%UNIT/%COUNT package vars for a later Gen::Rezepte port). Test t/sim/kueche.t (invented states, via Simulators->tool_call). Output texts, exit status and state changes as in source af7561a5, with one fix: source autovivified zutaten.<name>={} on reads (liste_lesen/vorrat_lesen of a list item without zutaten entry, failed von_liste_nehmen) and rezepte.<id>={} in plan_lesen for an unknown recipe — a read showed up in the end-state diff. Reproduced against the source, fixed, regression subtest 'Lesen aendert nichts' (fails with the source _base). Tool name must be in %TOOLS (source: any _t_ method) — same answers for every real name. Source subtest via CAI World dropped (World is k2); covered through Simulators instead.
+
+2026-11-04 21:37 Answer tools (Antwort abgeben, Befund melden, Klausel bewerten, Uebersetzung abgeben): the acceptance snapshot (share/evals, af7561a5, read in place) has no suite of these categories. The only answer-shaped tool today is a question tool in one suite — a handler data world (apply push + fixed output 'Zugestellt.'), nothing to build here; handlers are World (k2). A shared answer world is only needed where the answer must be normalised before grading (units, dates, amounts — what k27 'sehen' asks for); proposal in the report, not built.
+
+2026-11-04 21:37 Done: lib/Langertha/Holmgang/Sim/Kueche.pm + t/sim/kueche.t (untracked, uncommitted). prove -lr t: Files=28, Tests=928, PASS; skips unchanged and unrelated (linux_haertung, pruefwege, werkzeuge + subtests waiting on other parts). No shared file edited (Simulators.pm already lists kueche; t/00-load.t untouched). Deviation: reads no longer autovivify zutaten/rezepte (regression test). Proposed commit: 'Port Sim::Kueche as answer world kueche (k8)'.
+
+Committed 3b75ec4
