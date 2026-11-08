@@ -1,0 +1,24 @@
+---
+claimed_at: 2026-11-08T03:16:37Z
+claimed_by: cai-holmgang
+class: standard
+completed: 2026-11-08T03:16:37Z
+created: 2026-11-08T02:19:14Z
+id: 45
+priority: critical
+started: 2026-11-08T02:19:19Z
+status: done
+tags:
+- release
+- leak
+title: 'Release-Blocker: cai-Suite-IDs und platform#NNN aus lib/ und t/ entfernen'
+updated: 2026-11-08T03:16:37Z
+---
+
+Aus Release-Audit 2026-11-08 (main dead72f): Suite-IDs der cai-platform-Abnahmekopie stehen in Kommentaren/POD unter lib/ und t/ (~74 Zeilen, 36 Dateien, teils falsche Treffer), dazu ~68 Verweise platform#NNN (verlinken auf GitHub als Issues dieses Repos). Bereinigen: Kommentare beschreiben, was der Code tut; POD-Beispiele mit Demo-IDs; Wächtertest, der mit HOLMGANG_ACCEPTANCE_SUITES gesetzt prüft, dass keine Suite-ID der Kopie im ausgelieferten Baum vorkommt. Keine IDs in Karte/Commit.
+
+Kommentare/POD/Testnamen bereinigt (49 Dateien), Topic-Fixtures umbenannt, Waechtertest t/no_private_suite_ids.t angelegt, schlaegt auf gepflanzte Treffer fehl. Verifikation laeuft.
+
+Erledigt: Suite-Verweise und platform#-Nummern aus Kommentaren, POD und Testnamen entfernt (49 Dateien geaendert, dazu ein neuer Test); POD-Beispiele in Loader/Report nutzen Demo-IDs/-Topic; Topic-Fixture in 6 Testdateien umbenannt, Assertions gleich; 4 nackte #NNN-Verweise mit entfernt; Waechtertest t/no_private_suite_ids.t (platform# immer, Suite-IDs mit HOLMGANG_ACCEPTANCE_SUITES, Freigabe je Datei+Zeilenmuster, 2 Eintraege). Verifiziert: git grep 3 Treffer, alle freigegebene Nicht-Verweise (Compose-Dateinamen, v1-Binary); platform# 0; Test schlaegt auf gepflanzte Treffer fehl; prove -lr t PASS (75 Dateien, 2 Akzeptanztests uebersprungen ohne env; mit env PASS 2525 Tests); dzil test --release PASS ohne env (2482) und mit env (2577). Offen: .claude/agents/holmgang-test-writer.md nennt eine cai-platform-Testdatei mit einer Suite-ID im Namen (nicht ausgeliefert, nicht Scope).
+
+Committed e98399d on k45, merged as 92e961e (no conflicts with k44). On main: prove -lr t/ with acceptance env PASS (76 files, 2557 tests); dzil test --release PASS (78 files, 2514 tests); t/no_private_suite_ids.t with suites env PASS. No Changes entry (test-only guard). Not pushed.
