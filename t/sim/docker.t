@@ -13,7 +13,7 @@ BEGIN {
   plan skip_all => $why if $why;
 }
 
-# Docker Compose auf einem simulierten Server (platform#119). Behauptet wird je
+# Docker Compose auf einem simulierten Server. Behauptet wird je
 # Fallstrick: die wirksame Konfiguration (Interpolation aus .env, $$), was up
 # neu erzeugt und was nicht, dass restart Aenderungen nicht uebernimmt, dass
 # down -v Daten loescht, Portkonflikte, Warten auf Gesundheit, Wettlauf beim
@@ -163,7 +163,7 @@ ok( !$ok, 'Port 80 vom Host belegt' );
 like( $o, qr/listen tcp4 0\.0\.0\.0:80: bind: address already in use/, '... Meldung von Docker' );
 is( C('shop-api-1')->{status}, 'created', '... Container nur erzeugt' );
 ( $o, $ok ) = sh('cd /srv/shop && docker compose start api');
-ok( !$ok, 'start meldet den Portkonflikt erneut (Lauf platform#119: frueher still „Started")' );
+ok( !$ok, 'start meldet den Portkonflikt erneut (frueher still „Started")' );
 like( $o, qr/address already in use/, '... mit der Meldung' );
 ( $o, $ok ) = sh('docker start shop-api-1');
 ok( !$ok && $o =~ /failed to start containers: shop-api-1/, 'docker start ebenso' );
@@ -228,7 +228,7 @@ is( $state->{srv}{dirs}{'/srv/shop/uploads'}{owner}, 'root', '... Verzeichnis ge
 sh('chown 1000:1000 /srv/shop/uploads; chown deploy:deploy /srv/shop/uploads; cd /srv/shop && docker compose restart api');
 is( C('shop-api-1')->{status}, 'running', 'nach chown laeuft api' );
 
-# --- Speichergrenze: OOM-Kill mit Exit 137 (platform#119) --------------------------
+# --- Speichergrenze: OOM-Kill mit Exit 137 --------------------------
 fresh();
 push @{ $state->{srv}{docker}{images}{'registry.example.com/shop/api:2.4.1'}{needs} }, { memory => '600M', log => ['starting'] };
 $state->{srv}{files}{'/srv/shop/compose.yaml'} =~ s/    restart: unless-stopped\n/    restart: unless-stopped\n    mem_limit: 256m\n/;

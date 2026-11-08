@@ -9,7 +9,7 @@ use JSON::MaybeXS ();
 
 use Holmgang::TestSim qw( run_command write_file prepare clone diff get throws_ok need_parts );
 
-# Linux-Simulator: was die Auftraege der Suite terminal-aufgaben (platform#181)
+# Linux-Simulator: was Alltagsaufgaben im Terminal
 # brauchen. Behauptet wird, dass diese Befehle antworten und wirken wie auf Debian 12:
 # mkdir (-p legt Eltern an, ohne -p fehlt der Elternordner; -m; Rechte; setgid
 # erbt), rm laesst das Verzeichnis stehen, umask (eingebaut), Anlegen als Benutzer

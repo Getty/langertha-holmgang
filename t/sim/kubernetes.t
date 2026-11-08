@@ -10,7 +10,7 @@ use Holmgang::TestSim qw( run_command write_file clone );
 use JSON::MaybeXS ();
 
 
-# Kubernetes hinter kubectl auf dem Linux-Simulator (Suite kubernetes-betrieb).
+# Kubernetes hinter kubectl auf dem Linux-Simulator.
 # Behauptet wird: der Status der Pods wird aus den Ressourcen abgeleitet
 # (Image fehlt -> ImagePullBackOff, fehlender Secret-Schluessel bei optional
 # -> CrashLoopBackOff, Readiness auf falschem Port -> 0/1, PVC ohne
@@ -137,7 +137,7 @@ subtest 'Service, NetworkPolicy, exec' => sub {
     ok( $gap, 'interaktive Shell: Luecke der Simulation' );
 };
 
-subtest 'Service-Ports, Secret aendern (platform#118)' => sub {
+subtest 'Service-Ports, Secret aendern' => sub {
     fresh();
     $K->()->{services}{api}{ports} = [ { name => 'http', port => 80, target => 8000 }, { name => 'metrics', port => 9100, target => 9100 } ];
     my ( $o, $ok ) = k(q{kubectl -n shop patch svc api -p '{"spec":{"ports":[{"port":80,"targetPort":8080}]}}'});
@@ -171,7 +171,7 @@ subtest 'Service-Ports, Secret aendern (platform#118)' => sub {
     like( k('kubectl -n shop get deploy api -o yaml'), qr/rotated-at/, '... und steht in der Vorlage' );
 };
 
-subtest 'Flags, die echtes kubectl kennt (platform#118)' => sub {
+subtest 'Flags, die echtes kubectl kennt' => sub {
     fresh();
     $state->{admin1}{kubernetes}{namespaces}{staging} = { deployments => { api => clone($api) } };
     my ($all) = k('kubectl get pods -A');
@@ -186,7 +186,7 @@ subtest 'Flags, die echtes kubectl kennt (platform#118)' => sub {
     ok( $gap, '--field-selector: Luecke der Simulation, kein unknown flag' );
     unlike( $o, qr/unknown flag/, '... keine falsche Fehlermeldung' );
     ( $o, $ok, $gap ) = k(q{kubectl get deploy api -n shop -o jsonpath='{.spec.template.spec.containers[0].image}'});
-    ok( $ok && !$gap && $o eq 'registry.example.com/shop/api:1.4.2', '-o jsonpath: nachgebildet (platform#125)' ) or diag $o;
+    ok( $ok && !$gap && $o eq 'registry.example.com/shop/api:1.4.2', '-o jsonpath: nachgebildet' ) or diag $o;
     is_deeply( $state, clone($start), 'nichts geaendert' );
 };
 

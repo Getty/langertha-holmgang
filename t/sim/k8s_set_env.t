@@ -9,8 +9,8 @@ use Test::More;
 use Holmgang::TestSim qw( run_command write_file clone );
 
 
-# Kubernetes-Simulator: kubectl set env wie kubectl 1.30 (platform#181, Suite
-# zuverlaessigkeit). Behauptet wird: (1) ohne -c gilt die Zuweisung fuer jeden
+# Kubernetes-Simulator: kubectl set env wie kubectl 1.30.
+# Behauptet wird: (1) ohne -c gilt die Zuweisung fuer jeden
 # Container, mit -c/--containers NAME (auch NAME=, Komma-Liste, *) nur fuer
 # diese; ein unbekannter Container ist ein Fehler und aendert nichts;
 # (2) --from=secret/NAME legt je Schluessel eine Variable mit secretKeyRef an

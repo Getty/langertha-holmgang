@@ -29,8 +29,8 @@ our $VERSION = '0.001';
   my $list = $loader->list( '/srv/suites:/data/suites' );
   # [ { id, version, title, description, topic, cases, tools, checksum, error }, … ]
 
-  my $dir = $loader->locate( '/srv/suites:/data/suites', 'example-lamp' );
-  my @ids = $loader->select_suites( $list, topics => ['netzwerk'], suites => ['example-lamp'] );
+  my $dir = $loader->locate( '/srv/suites:/data/suites', 'demo-lamp' );
+  my @ids = $loader->select_suites( $list, topics => ['demo'], suites => ['demo-lamp'] );
 
 =description
 
@@ -240,7 +240,7 @@ sub locate {
 
 =method locate
 
-  my $dir = $loader->locate( '/srv/suites:/data/suites', 'example-lamp' );
+  my $dir = $loader->locate( '/srv/suites:/data/suites', 'demo-lamp' );
 
 The directory of suite C<$id> in the search directories, or C<undef>. The
 same id in more than one of them is a refusal (field C<suite>) — which one is
@@ -269,7 +269,7 @@ sub select_suites {
 
 =method select_suites
 
-  my @ids = $loader->select_suites( $list, topics => ['netzwerk'], suites => ['example-lamp'], all => 0 );
+  my @ids = $loader->select_suites( $list, topics => ['demo'], suites => ['demo-lamp'], all => 0 );
 
 Picks suites for a run from a L</list>: all that load (C<all>), those of one
 or more topics, and single suites — joined, without duplicates, sorted by id.

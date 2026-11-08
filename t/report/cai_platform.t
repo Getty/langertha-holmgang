@@ -27,17 +27,17 @@ my $cai = {
   suites   => ['inv-suite'],
   repeat   => undef,
   repeat_by_suite => { 'inv-suite' => 2 },
-  topics   => [ { target => 'model-x', topic => 'netzwerk', cases => 4 } ],
+  topics   => [ { target => 'model-x', topic => 'netz', cases => 4 } ],
   verdicts => [ { target => 'model-x', suite_id => 'inv-suite', ok => $T } ],
   runs => [
-    { id => 'run-a', target => 'model-x', suite_id => 'inv-suite', topic => 'netzwerk', status => 'done', error => undef,
+    { id => 'run-a', target => 'model-x', suite_id => 'inv-suite', topic => 'netz', status => 'done', error => undef,
       cases_total => 2, cases_passed => 1, usage => {},
       cases => [
         row(),
         row( case_id => 'k-2', title => 'Case two', status => 'ungraded', score => 0.5, exceeded => $T,
           sim_gaps => ['wobble'], prompt_tokens => 0, completion_tokens => 0, prompt_tokens_max => 0, turns => 3, tool_calls => 3 ),
       ] },
-    { id => 'run-b', target => 'model-x', suite_id => 'inv-suite', topic => 'netzwerk', status => 'cancelled',
+    { id => 'run-b', target => 'model-x', suite_id => 'inv-suite', topic => 'netz', status => 'cancelled',
       error => 'abgebrochen',
       cases => [
         row( status => 'ungraded', score => 0.5, sim_gaps => ['wobble'], tool_calls => 1, injection_held => $T ),
@@ -68,7 +68,7 @@ is scalar @{ $doc->{runs} }, 1, 'two rows of one target and suite: one run';
 my $run = $doc->{runs}[0];
 is_deeply $run->{target}, { label => 'model-x', engine => undef, model => 'model-x', url => 'https://gpu.example/v1' },
   'target, credentials stripped';
-is_deeply $run->{suite}, { id => 'inv-suite', version => '4', topic => 'netzwerk', digest => 'dd' }, 'suite';
+is_deeply $run->{suite}, { id => 'inv-suite', version => '4', topic => 'netz', digest => 'dd' }, 'suite';
 is_deeply $run->{variant}, { name => undef, settings => undef }, 'variant unknown';
 is $run->{repeat}, 2, 'repeat from repeat_by_suite';
 is $run->{status}, 'cancelled', 'done + cancelled: cancelled';

@@ -10,7 +10,7 @@ use Holmgang::TestSim qw( run_command need_parts );
 use JSON::MaybeXS ();
 
 
-# Kubernetes fuer Fortgeschrittene (Suite kubernetes-fortgeschritten).
+# Kubernetes fuer Fortgeschrittene.
 # Behauptet wird:
 # - Ingress: der Controller behandelt nur Ingresse seiner IngressClass; Host
 #   und Pfad (Prefix elementweise, Exact genau) fuehren zum Service-Port (Zahl

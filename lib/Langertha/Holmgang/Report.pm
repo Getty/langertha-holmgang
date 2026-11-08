@@ -268,7 +268,7 @@ sub add_run {
       target  => { label => 'local-a', engine => 'OpenAI', model => 'm-1',
                    url => 'http://10.0.0.5:8000/v1' },
       variant => { name => 'think-off', settings => { enable_thinking => 0 } },
-      suite   => { id => 'demo', version => '3', topic => 'netzwerk', digest => '…' },
+      suite   => { id => 'demo', version => '3', topic => 'demo', digest => '…' },
       repeat  => 3,
       status  => 'complete',            # complete | cancelled | aborted
       error   => undef,                 # run error, already scrubbed by the engine
@@ -865,7 +865,7 @@ __PACKAGE__->meta->make_immutable;
     $report->add_run(
       target => { label => 'local-a', engine => 'OpenAI', model => 'm-1', url => $url },
       variant => { name => 'default', settings => {} },
-      suite  => { id => 'demo', version => '1', topic => 'netzwerk', digest => $digest },
+      suite  => { id => 'demo', version => '1', topic => 'demo', digest => $digest },
       repeat => 1, status => 'complete', error => undef,
       cases   => [ { case_id => 'demo-01', title => 'Open the port', tags => [], tier => undef,
                      weight => 1, hard => 0, untrusted => 0 } ],

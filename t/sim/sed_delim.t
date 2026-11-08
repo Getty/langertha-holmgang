@@ -8,7 +8,7 @@ use Test::More;
 
 use Holmgang::TestSim qw( run_command write_file prepare clone diff get throws_ok need_parts );
 
-# sed mit eigenem Trenner (platform#192, Fall docker-compose 17): in s|…|…| ist \|
+# sed mit eigenem Trenner: in s|…|…| ist \|
 # das Zeichen | und keine Alternative (GNU sed), in BRE wie in ERE; mit / bleibt \/
 # ein /. Behauptet wird die Ersetzung genau der gemeinten Zeile.
 

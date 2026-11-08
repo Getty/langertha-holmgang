@@ -10,7 +10,7 @@ use Holmgang::TestSim qw( run_command write_file prepare clone diff get throws_o
 
 if ( my $why = need_parts('Http', 'Docker', 'Nginx', 'Pki') ) { plan skip_all => $why }
 
-# Kleine Werkzeuge der Shell und in Containern (platform#119): in den ersten
+# Kleine Werkzeuge der Shell und in Containern: in den ersten
 # Messlaeufen haeufig gefragt und bis dahin Luecken der Simulation (Fall
 # "unsicher"). Behauptet wird je Werkzeug die Ausgabe wie auf Debian 12 bzw.
 # Docker — und dass Lesen den Zustand nicht aendert.

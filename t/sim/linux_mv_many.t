@@ -8,8 +8,8 @@ use Test::More;
 
 use Holmgang::TestSim qw( run_command write_file prepare clone diff get throws_ok need_parts );
 
-# Linux-Simulator: mv und cp mit mehreren Quellen in ein Verzeichnis
-# (platform#126, Suite anweisungstreue). Behauptet wird: wie coreutils landet
+# Linux-Simulator: mv und cp mit mehreren Quellen in ein Verzeichnis.
+# Behauptet wird: wie coreutils landet
 # jede Quelle unter ihrem Namen im Zielverzeichnis, die Belegung wandert mit auf
 # den Einhaengepunkt des Ziels; ist das Ziel kein Verzeichnis, scheitert der
 # Aufruf und nichts bewegt sich; ein Ziel mit / am Ende, das es nicht gibt,

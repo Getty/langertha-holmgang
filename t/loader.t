@@ -235,10 +235,10 @@ refused( $CASE, qr/threshold\.runs/, qr/unknown key/, 'threshold: unknown key',
   my $root_a = Path::Tiny->tempdir;
   my $root_b = Path::Tiny->tempdir;
   suite_dir( root => $root_a, id => 'alpha' );
-  suite_dir( root => $root_a, id => 'beta', head => $HEAD =~ s/^(version: 1\n)/${1}topic: netzwerk\n/mr );
+  suite_dir( root => $root_a, id => 'beta', head => $HEAD =~ s/^(version: 1\n)/${1}topic: netz\n/mr );
   suite_dir( root => $root_a, id => 'broken', cases => { 'c1.yaml' => $CASE."bogus: 1\n" } );
   suite_dir( root => $root_b, id => 'alpha' );
-  suite_dir( root => $root_b, id => 'gamma', head => $HEAD =~ s/^(version: 1\n)/${1}topic: netzwerk\n/mr );
+  suite_dir( root => $root_b, id => 'gamma', head => $HEAD =~ s/^(version: 1\n)/${1}topic: netz\n/mr );
   my $L = loader();
   my $list = $L->list("$root_a:$root_b");
   is_deeply( [ map { $_->{id} } @$list ], [qw( alpha beta broken gamma )], 'list: sorted by id' );
@@ -248,7 +248,7 @@ refused( $CASE, qr/threshold\.runs/, qr/unknown key/, 'threshold: unknown key',
   is( $by{beta}{error}, undef, 'list: a good suite has no error' );
   is( $by{beta}{cases}, 1, '... case count' );
   is( $by{beta}{tools}, 2, '... tool count' );
-  is( $by{beta}{topic}, 'netzwerk', '... topic' );
+  is( $by{beta}{topic}, 'netz', '... topic' );
   like( $by{beta}{checksum}, qr/\A[0-9a-f]{64}\z/, '... checksum' );
 
   is( $L->locate( "$root_a:$root_b", 'beta' ), "$root_a/beta", 'locate' );
@@ -257,8 +257,8 @@ refused( $CASE, qr/threshold\.runs/, qr/unknown key/, 'threshold: unknown key',
   my $e = Langertha::Holmgang::Error->caught( eval { $L->locate( "$root_a:$root_b", 'alpha' ) } // $@ );
   ok( $e && $e->field eq 'suite' && $e->reason =~ /more than one/, 'locate: id in two roots refused' );
 
-  is_deeply( [ $L->select_suites( $list, topics => ['netzwerk'] ) ], [qw( beta gamma )], 'select: topic' );
-  is_deeply( [ $L->select_suites( $list, suites => ['gamma'], topics => ['netzwerk'] ) ], [qw( beta gamma )], 'select: no duplicates' );
+  is_deeply( [ $L->select_suites( $list, topics => ['netz'] ) ], [qw( beta gamma )], 'select: topic' );
+  is_deeply( [ $L->select_suites( $list, suites => ['gamma'], topics => ['netz'] ) ], [qw( beta gamma )], 'select: no duplicates' );
   is_deeply( [ $L->select_suites( $list, all => 1 ) ], [qw( beta gamma )], 'select: all loadable' );
   for ( [ [ topics => ['nix'] ], 'topics', qr/unknown topic 'nix'/ ], [ [ suites => ['broken'] ], 'suites', qr/unknown or broken/ ],
         [ [], 'suites', qr/no suite chosen/ ] ) {

@@ -11,7 +11,7 @@ use Holmgang::TestSim qw( run_command write_file );
 
 binmode Test::More->builder->$_, ':encoding(UTF-8)' for qw(output failure_output todo_output);
 
-# Simulator einer Cisco-IOS-Switch-CLI fuer die Test-Suites (platform#91).
+# Simulator einer Cisco-IOS-Switch-CLI fuer die Test-Suites.
 # Behauptet wird: (1) show running-config, show interfaces trunk und show vlan brief
 # haben das echte IOS-Format und zeigen den Zustand; (2) allowed vlan add/remove und das
 # Ersetzen der Liste (die klassische Falle) aendern den Zustand, der naechste show zeigt
@@ -287,7 +287,7 @@ sub run_ios {
 {
     my $st = { sw => { type => 'ios', hostname => 'sw', interfaces => {} } };
     my ( $o, $ok, $gap ) = run_command( $st, 'sw', 'show mac address-table' );
-    is( $gap, 'show mac address-table', 'echter show-Befehl ohne Nachbildung: Luecke (platform#91)' );
+    is( $gap, 'show mac address-table', 'echter show-Befehl ohne Nachbildung: Luecke' );
     ok( $ok, '... kein Fehler des Modells' );
     ( $o, $ok, $gap ) = run_command( $st, 'sw', 'shw run' );
     is( $gap, undef, 'Tippfehler: keine Luecke' );

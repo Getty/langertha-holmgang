@@ -9,7 +9,7 @@ use Test::More;
 use Langertha::Holmgang::Shell ();
 use Holmgang::TestSim qw( run_command write_file prepare clone diff get throws_ok need_parts );
 
-# Shell der Simulatoren: Umleitungen des Fehlerkanals (platform#126). Modelle
+# Shell der Simulatoren: Umleitungen des Fehlerkanals. Modelle
 # haengen gern 2>&1 oder 2>/dev/null an. Behauptet wird: 2>&1, 1>&2, 2>/dev/null
 # und 2>>datei aendern weder Ausgabe noch Zustand (die Simulation trennt die
 # Kanaele nicht); &>datei leitet wie > um; ein >& mitten in einem Wort bleibt Text.

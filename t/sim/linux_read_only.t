@@ -8,7 +8,7 @@ use Test::More;
 
 use Holmgang::TestSim qw( run_command write_file prepare clone diff get throws_ok need_parts );
 
-# Linux-Simulator: Lesebefehle aendern den Zustand nicht (platform#126). Auf
+# Linux-Simulator: Lesebefehle aendern den Zustand nicht. Auf
 # einem Rechner ohne nftables-Regeln legte "nft list ruleset" bisher einen
 # leeren nft-Eintrag an — die Regel "sonst nichts geaendert" sah dann eine
 # Aenderung, die es nicht gab.

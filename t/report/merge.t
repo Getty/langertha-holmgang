@@ -15,7 +15,7 @@ sub report {
   $r->add_run(
     target  => { label => $o{label} // 'mock-a', engine => 'Virtual', model => 'mock-1', url => undef },
     variant => { name => 'plain', settings => {} },
-    suite   => { id => 'demo-suite', version => '1', topic => 'netzwerk', digest => 'd1' },
+    suite   => { id => 'demo-suite', version => '1', topic => 'netz', digest => 'd1' },
     repeat  => 3, status => $o{status} // 'complete', error => $o{error},
     cases   => [ map { { case_id => $_, title => 'T '.$_, tags => [], weight => 1 } } @{ $o{cases} // ['c-1'] } ],
     results => [ map { my ( $c, $n, $st, $ms ) = @$_;

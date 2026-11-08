@@ -11,7 +11,7 @@ use Holmgang::TestSim qw( run_command need_parts );
 
 use Langertha::Holmgang::Sim::Linux ();
 
-# Platten und Dateisysteme auf dem Linux-Simulator (Suite storage-dateisysteme).
+# Platten und Dateisysteme auf dem Linux-Simulator.
 # Behauptet wird: lvextend ohne -r vergroessert nur das LV, df sieht es erst nach
 # resize2fs; resize2fs auf XFS scheitert, xfs_growfs waechst; pvcreate verweigert
 # eingehaengte Platten; vgextend macht eine leere Platte zum PV; umount legt die

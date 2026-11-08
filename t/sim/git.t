@@ -10,7 +10,7 @@ use JSON::MaybeXS ();
 use Langertha::Holmgang::Sim::Linux::Git ();
 use Holmgang::TestSim qw( run_command clone need_parts );
 
-# git auf dem Linux-Simulator (Suite git-ci). Behauptet wird: cd gilt bis zum
+# git auf dem Linux-Simulator. Behauptet wird: cd gilt bis zum
 # Ende der Befehlszeile und macht Pfade relativ; add/commit/amend/rm --cached
 # arbeiten auf Index und Arbeitsbaum (.gitignore beachtet); push ueberträgt
 # neue Commits zum Server, lehnt Nicht-Fast-Forward ab (fetch first), prueft
@@ -305,7 +305,7 @@ subtest 'xargs und diff' => sub {
 # -o zwischen Bedingungen und -maxdepth/-mindepth.
 subtest 'ls / und find' => sub {
     my $s = clone($start);
-    like( run( $s, 'ls /' ), qr/^home$/m, 'ls / mit den Dateipfaden (und den Verzeichnissen eines Debian, #126)' );
+    like( run( $s, 'ls /' ), qr/^home$/m, 'ls / mit den Dateipfaden (und den Verzeichnissen eines Debian)' );
     like( run( $s, 'ls -la /' ), qr/^drwx\S+ .* home$/m, 'ls -la /' );
     is( run( $s, 'find /home/dev -maxdepth 1' ), "/home/dev\n/home/dev/shop", 'find mit Verzeichnissen und -maxdepth' );
     is( run( $s, 'find /home -type d' ), "/home\n/home/dev\n/home/dev/shop", 'find -type d' );

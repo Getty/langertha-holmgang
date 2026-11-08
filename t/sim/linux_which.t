@@ -8,7 +8,7 @@ use Test::More;
 
 use Holmgang::TestSim qw( run_command write_file prepare clone diff get throws_ok need_parts );
 
-# Linux-Simulator: which (platform#126). Modelle pruefen gern, ob ein Programm
+# Linux-Simulator: which. Modelle pruefen gern, ob ein Programm
 # da ist; bisher war which eine Luecke (leere Antwort), sie fragten dann
 # immer wieder. Behauptet wird: nachgebildete Befehle und Programme im Zustand
 # unter den PATH-Verzeichnissen werden gefunden, nicht installierte (curl,

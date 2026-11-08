@@ -11,7 +11,7 @@ use Holmgang::TestSim qw( run_command write_file prepare clone diff get throws_o
 
 binmode Test::More->builder->$_, ':encoding(UTF-8)' for qw(output failure_output todo_output);
 
-# Der Linux-Simulator (platform#91). Behauptet wird: gaengige Lese- und
+# Der Linux-Simulator. Behauptet wird: gaengige Lese- und
 # Aenderungsbefehle (ip, wg, nft, sysctl, systemctl, nmcli, Dateien) laufen
 # wirklich auf dem Zustand, der naechste Lesebefehl zeigt die Aenderung; was
 # nicht geht, antwortet wie Debian (command not found, RTNETLINK, nft-Fehler)
@@ -210,7 +210,7 @@ fresh();
     is( ( grep { $_->{ifname} eq 'eth1' } @$j )[0]{addr_info}[0]{local}, '10.1.0.1', 'ip -j addr' );
     like( sh('ss -tlnp'), qr/\ANetid\s+State/, 'ss mit Kopf' );
 
-    # sed als Leser (platform#118): Modelle lesen lange Ausgaben abschnittweise
+    # sed als Leser: Modelle lesen lange Ausgaben abschnittweise
     is( sh(q{sed -n '2p' /etc/dnsmasq.conf}), 'dhcp-option=option:dns-server,10.1.0.1', 'sed -n Np' );
     is( sh(q{sed -n '1,1p' /etc/dnsmasq.conf}), 'dhcp-range=10.1.0.100,10.1.0.199,12h', 'sed -n N,Mp' );
     is( sh(q{sed -n '2,$p' /etc/dnsmasq.conf}), 'dhcp-option=option:dns-server,10.1.0.1', 'sed -n N,$p' );
@@ -223,7 +223,7 @@ fresh();
     is( sh(q{echo 'ab12' | sed 's/\([a-z]*\)\([0-9]\+\)/\2\1/'}), '12ab', 'BRE: \( \) und \+ sind Operatoren' );
     is( sh(q{echo 'ab12' | sed -E 's/([a-z]+)([0-9]+)/\2\1/'}), '12ab', 'sed -E: ERE' );
     is( sh(q{echo 'f(x)' | sed 's/(x)/[x]/'}), 'f[x]', 'BRE: blanke ( ) sind Zeichen' );
-    # sed i/a/c und $ (platform#118, Pruefung des Leitstands)
+    # sed i/a/c und $ (Pruefung des Leitstands)
     is( sh(q{printf 'a\nb\n' | sed '$i X'}), "a\nX\nb", 'sed $i: vor der letzten Zeile einfuegen' );
     is( sh(q{printf 'a\nb\n' | sed '/a/a Y'}), "a\nY\nb", 'sed /re/a: nach dem Treffer' );
     is( sh(q{printf 'a\nb\n' | sed '1c Z'}), "Z\nb", 'sed Nc: Zeile ersetzen' );
@@ -231,7 +231,7 @@ fresh();
 ende'}), "a\nb\nende", 'sed $a\\ mit Text auf der naechsten Zeile' );
     unchanged('sed ohne -i aendert nichts');
 
-    # grep mit Kontext und Zeilennummern (platform#118)
+    # grep mit Kontext und Zeilennummern
     is( sh(q{ip route | grep -A 1 default}), "default via 198.51.100.9 dev eth0\n10.1.0.0/24 dev eth1 proto kernel scope link src 10.1.0.1", 'grep -A N (getrennt)' );
     is( sh(q{ip route | grep -A1 default}), "default via 198.51.100.9 dev eth0\n10.1.0.0/24 dev eth1 proto kernel scope link src 10.1.0.1", 'grep -AN' );
     is( sh(q{ip route | grep -B1 '^198'}), "10.1.0.0/24 dev eth1 proto kernel scope link src 10.1.0.1\n198.51.100.8/29 dev eth0 proto kernel scope link src 198.51.100.10", 'grep -B' );
@@ -241,7 +241,7 @@ ende'}), "a\nb\nende", 'sed $a\\ mit Text auf der naechsten Zeile' );
     is( sh(q{ip route | grep -m 1 dev}), 'default via 198.51.100.9 dev eth0', 'grep -m N' );
     is( sh(q{grep -A 10 range /etc/dnsmasq.conf | wc -l}), '2', 'Kontext endet am Dateiende' );
 
-    # ls /proc/sys, Prozesse, date/sleep (platform#118)
+    # ls /proc/sys, Prozesse, date/sleep
     like( sh('ls /proc/sys/net/ipv4/'), qr/\bip_forward\b/, 'ls /proc/sys/net/ipv4/ aus sysctl' );
     like( sh('ls /proc/sys/net'), qr/\bipv4\b.*\bnetfilter\b/s, 'ls /proc/sys/net: Unterverzeichnisse' );
     like( sh('ps aux'), qr/\A USER\s+PID/x, 'ps aux mit Kopf' );
@@ -254,7 +254,7 @@ ende'}), "a\nb\nende", 'sed $a\\ mit Text auf der naechsten Zeile' );
     like( sh('date'), qr/2026/, 'date' );
     unchanged('Lesebefehle aendern nichts');
 
-    # stderr-Umleitungen (platform#118): nur ein Ausgabestrom
+    # stderr-Umleitungen: nur ein Ausgabestrom
     is( sh(q{cat /proc/sys/net/ipv4/ip_forward 2>&1 | head -n 1}), '0', '2>&1 entfaellt (keine Datei "&1")' );
     is( sh(q{cat /proc/sys/net/ipv4/ip_forward 2>/dev/null}), '0', '2>/dev/null entfaellt' );
     ok( !exists $state->{gw}{files}{'&1'}, '... keine Datei &1' );
@@ -262,7 +262,7 @@ ende'}), "a\nb\nende", 'sed $a\\ mit Text auf der naechsten Zeile' );
     is( sh('cat /tmp/x.txt'), '0', '&> wirkt wie >' );
     delete $state->{gw}{files}{'/tmp/x.txt'};
 
-    # grep ueber Verzeichnisse und mehrere Dateien, sed mit mehreren Befehlen (platform#118)
+    # grep ueber Verzeichnisse und mehrere Dateien, sed mit mehreren Befehlen
     sh(q{echo 'DATABASE_URL=postgres://db1/appdb' > /etc/app/app.env});
     sh(q{echo 'LOG=info' > /etc/app/log.env});
     is( sh(q{grep -rn DATABASE_URL /etc/app/}), '/etc/app/app.env:1:DATABASE_URL=postgres://db1/appdb', 'grep -rn ueber ein Verzeichnis' );
@@ -274,7 +274,7 @@ ende'}), "a\nb\nende", 'sed $a\\ mit Text auf der naechsten Zeile' );
     is( sh(q{echo abc | sed -e 's/a/A/' -e 's/c/C/'}), 'AbC', 'sed: mehrere -e' );
     delete $state->{gw}{files}{$_} for '/etc/app/app.env', '/etc/app/log.env';
 
-    # nft: unbekannte ICMP-Typnamen lehnt nft ab (platform#118)
+    # nft: unbekannte ICMP-Typnamen lehnt nft ab
     {
         my $st = clone($state);
         my ( $o, $ok ) = run_command( $st, 'gw', q{nft add rule inet filter forward icmpv6 type { router-solicitation, neighbor-solicitation } accept} );
@@ -287,7 +287,7 @@ ende'}), "a\nb\nende", 'sed $a\\ mit Text auf der naechsten Zeile' );
         ok( $ok, 'icmp type echo-request' ) or diag $o;
     }
 
-    # readlink (platform#118)
+    # readlink
     $state->{gw}{files}{'/etc/resolv.conf'} = { link => '../run/systemd/resolve/stub-resolv.conf' };
     is( sh('readlink /etc/resolv.conf'), '../run/systemd/resolve/stub-resolv.conf', 'readlink: Ziel wie gespeichert' );
     is( sh('readlink -f /etc/resolv.conf'), '/run/systemd/resolve/stub-resolv.conf', 'readlink -f: aufgeloest' );
@@ -295,7 +295,7 @@ ende'}), "a\nb\nende", 'sed $a\\ mit Text auf der naechsten Zeile' );
     ok( !$rlok && $rl eq '', 'readlink auf eine normale Datei: leer, Exit 1' );
     delete $state->{gw}{files}{'/etc/resolv.conf'};
 
-    # base64 (platform#118): Secrets von Hand kodieren
+    # base64: Secrets von Hand kodieren
     is( sh(q{echo -n 'Vq8-Lm3r' | base64}), 'VnE4LUxtM3I=', 'base64 von stdin' );
     is( sh(q{printf '%s' 'Vq8-Lm3r' | base64 -w0}), 'VnE4LUxtM3I=', 'base64 -w0' );
     is( sh(q{echo 'VnE4LUxtM3I=' | base64 -d}), 'Vq8-Lm3r', 'base64 -d' );
@@ -306,7 +306,7 @@ ende'}), "a\nb\nende", 'sed $a\\ mit Text auf der naechsten Zeile' );
     is( sh(q{echo 'a b c' | wc -w}), '3', 'wc -w' );
     delete $state->{gw}{files}{'/tmp/w.txt'};
 
-    # $? und nft nur lesen (platform#118)
+    # $? und nft nur lesen
     is( sh(q{cat /etc/nix; echo "rc=$?"}), "cat: /etc/nix: No such file or directory\nrc=1", '$? nach Fehler' );
     is( sh(q{true; echo $?}), '0', '$? nach Erfolg' );
     {
@@ -315,7 +315,7 @@ ende'}), "a\nb\nende", 'sed $a\\ mit Text auf der naechsten Zeile' );
         ok( !exists $st->{h}{nft}, 'nft list legt keinen leeren Regelsatz an' );
     }
 
-    # Befehlsersetzung (platform#118)
+    # Befehlsersetzung
     is( sh(q{echo $(cat /proc/sys/net/ipv4/ip_forward)}), '0', '$(...) wird ersetzt' );
     is( sh(q{echo "forward=$(cat /proc/sys/net/ipv4/ip_forward)"}), 'forward=0', '... in doppelten Anfuehrungszeichen' );
     is( sh(q{echo '$(hostname)'}), '$(hostname)', '... nicht in einfachen' );
@@ -377,7 +377,7 @@ ende'}), "a\nb\nende", 'sed $a\\ mit Text auf der naechsten Zeile' );
     unlike( sh('ip route'), qr/2001:db8/, 'ip route nur IPv4' );
 }
 
-# Umleitungen der Fehlerausgabe und der Eingabe (platform#119): frueher wurde
+# Umleitungen der Fehlerausgabe und der Eingabe: frueher wurde
 # aus 2>&1 eine Datei „&1“ und aus </dev/null ein Argument.
 {
     fresh();
@@ -391,7 +391,7 @@ ende'}), "a\nb\nende", 'sed $a\\ mit Text auf der naechsten Zeile' );
     ( $o, $ok ) = sh('cat /etc/dnsmasq.conf &>/dev/null');
     ok( $ok && $o eq '', '&>/dev/null verwirft alles' );
     unchanged('keine Datei "&1" oder "/dev/null" angelegt');
-    # sed: BRE/ERE wie GNU sed (platform#119) — ${…} und Klammern sind in BRE woertlich
+    # sed: BRE/ERE wie GNU sed — ${…} und Klammern sind in BRE woertlich
     $state->{gw}{files}{'/tmp/c.yaml'} = qq{ports:\n  - "\${WEB_PORT:-80}:8080"\nimage: a/b:1.2 # (x)\n};
     sh(q{sed -i 's/${WEB_PORT:-80}:8080/8081:8080/' /tmp/c.yaml});
     like( $state->{gw}{files}{'/tmp/c.yaml'}, qr/"8081:8080"/, 'sed: $ und { } mitten im BRE-Muster sind woertlich' );

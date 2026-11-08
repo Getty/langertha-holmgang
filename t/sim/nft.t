@@ -9,7 +9,7 @@ use Test::More;
 use Holmgang::TestSim qw( run_command write_file prepare clone diff get throws_ok need_parts );
 use Langertha::Holmgang::Sim::Linux::Nft ();
 
-# Der nft-Auswerter (platform#123). Behauptet wird: das Urteil fuer ein Paket
+# Der nft-Auswerter. Behauptet wird: das Urteil fuer ein Paket
 # folgt dem Weg durch die Basisketten wie im Kernel — Reihenfolge der Regeln,
 # policy, mehrere Basisketten nach priority, jump/goto/return, benannte Sets,
 # vmap; gleichwertige Schreibweisen (Dienstname, Menge, Bereich) urteilen

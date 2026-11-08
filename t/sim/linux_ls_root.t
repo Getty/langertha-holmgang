@@ -8,7 +8,7 @@ use Test::More;
 
 use Holmgang::TestSim qw( run_command write_file prepare clone diff get throws_ok need_parts );
 
-# Linux-Simulator: ls / (platform#126). Bisher leer — ein Modell fragte 16 Mal
+# Linux-Simulator: ls /. Bisher leer — ein Modell fragte 16 Mal
 # hintereinander "ls -la /". Behauptet wird: "/" zeigt die ueblichen
 # Verzeichnisse eines Debian und alles, was im Zustand direkt darunter liegt
 # (Dateien, Verzeichnisse, Einhaengepunkte); Unterverzeichnisse erscheinen,

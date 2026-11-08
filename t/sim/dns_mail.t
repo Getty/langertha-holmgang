@@ -12,7 +12,7 @@ use Holmgang::TestSim qw( run_command need_parts );
 use Langertha::Holmgang::Sim::Linux::Dns ();
 use Langertha::Holmgang::Sim::Linux ();
 
-# BIND und Postfix auf dem Linux-Simulator (Suite dns-mail). Behauptet wird:
+# BIND und Postfix auf dem Linux-Simulator. Behauptet wird:
 # Zonendateien werden wie von named gelesen (relative Namen, $ORIGIN, Klammern,
 # geerbter Besitzer, TXT in Teilen) und wie von named-checkzone geprueft; erst
 # rndc reload bzw. systemctl reload laedt, eine fehlerhafte Zone behaelt den

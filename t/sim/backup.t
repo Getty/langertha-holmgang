@@ -10,7 +10,7 @@ use JSON::MaybeXS ();
 use Holmgang::TestSim qw( run_command need_parts );
 use Langertha::Holmgang::Shell::Filter ();
 
-# Sichern und Wiederherstellen auf dem Linux-Simulator (Suite backup-restore).
+# Sichern und Wiederherstellen auf dem Linux-Simulator.
 # Behauptet wird: tar entfernt das fuehrende /, packt ohne -C ins aktuelle
 # Verzeichnis (cd, sonst /root) aus, erhaelt als root Eigentuemer/Rechte/Zeit,
 # -k ueberschreibt nicht, ein beschaedigtes Archiv bricht ab; rsync kopiert mit

@@ -9,7 +9,7 @@ use JSON::MaybeXS ();
 
 use Holmgang::TestSim qw( run_command write_file prepare clone diff get throws_ok need_parts );
 
-# Monitoring auf dem Linux-Simulator (platform#124, Suite monitoring-alerting).
+# Monitoring auf dem Linux-Simulator.
 # Behauptet wird: Prometheus mit mehreren Dateien liest beim reload nur, was
 # reload_config nennt (prometheus.yml, nicht die Startoptionen), samt den
 # Regeldateien; eine fehlerhafte Datei laesst beim reload alles, wie es lief

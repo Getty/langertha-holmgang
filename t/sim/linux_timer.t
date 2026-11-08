@@ -10,8 +10,8 @@ use JSON::MaybeXS ();
 use Holmgang::TestSim qw( run_command write_file prepare clone diff get throws_ok need_parts );
 use Langertha::Holmgang::Sim::Linux::Calendar ();
 
-# Linux-Simulator: systemd-Timer und Logs (platform#121, Suite
-# systemd-timer-logs). Behauptet wird: Kalenderausdruecke werden wie von systemd
+# Linux-Simulator: systemd-Timer und Logs.
+# Behauptet wird: Kalenderausdruecke werden wie von systemd
 # angenommen oder abgewiesen und normalisiert, der naechste Ablauf stimmt (Ortszeit
 # Europe/Berlin, UTC auf Wunsch); Timer heissen x.timer (nicht x.timer.service),
 # starten nur mit gueltigem Ausloeser und vorhandener Ziel-Unit; ein Timer wird in

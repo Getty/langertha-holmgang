@@ -11,7 +11,7 @@ use Holmgang::TestSim qw( run_command write_file prepare clone diff get throws_o
 
 if ( my $why = need_parts('Postgres', 'Redis') ) { plan skip_all => $why }
 
-# Vierte Runde der Messung von platform#181: Pruefbefehle, die eine Luecke trafen.
+# Vierte Messrunde: Pruefbefehle, die eine Luecke trafen.
 # Behauptet wird: pg_settings hat unit/vartype/boot_val und die Einstellungen mit
 # Vorgabe (source default), Werte in der Grundeinheit; pg_file_settings zeigt jede
 # Zeile der Dateien und welche wirkt; pg_sleep laeuft (auch FROM pg_sleep(x)) und
@@ -147,7 +147,7 @@ subtest 'Shell: flock, PIPESTATUS, done < <( … ) ueber Zeilen, md5sum, ps, lsb
     is( scalar $s->('cat /fehlt | head -n 1; echo "rc=${PIPESTATUS[0]}"'), "cat: /fehlt: No such file or directory\nrc=1", 'PIPESTATUS[0] der ersten Stufe' );
     is( scalar $s->('true; echo "$PIPESTATUS"'), '0', '$PIPESTATUS ohne Index' );
     is( scalar $s->(qq{n=0\nwhile IFS= read -r -d '' f; do\n  echo "got \$f"\n  n=\$((n + 1))\ndone < <(find "/srv/t" -maxdepth 1 -type f \\\n   ! -name '.keep' -mtime +7 -print0)\necho "n=\$n"}),
-        "got /srv/t/alt\nn=1", 'done < <( find … ) ueber zwei Zeilen (terminal-aufgaben/02)' );
+        "got /srv/t/alt\nn=1", 'done < <( find … ) ueber zwei Zeilen' );
     is( scalar $s->('md5sum /etc/app.conf'), _md5("a=1\n") . '  /etc/app.conf', 'md5sum' );
     is( scalar $s->('printf "a=1\n" | sha256sum'), _sha("a=1\n") . '  -', 'sha256sum von stdin' );
     is( scalar $s->('md5sum /fehlt'), 'md5sum: /fehlt: No such file or directory', 'md5sum: fehlt' );

@@ -51,7 +51,7 @@ L<Langertha::Holmgang::Role::Simulator>; Gerätetyp C<linux>). Befehle laufen au
     locked_out: true            # vom Simulator: die eigene Firewall hat diesen Zugang verworfen
     neigh:      [ "10.1.0.20 dev eth1 lladdr 52:54:00:12:34:56 REACHABLE" ]
     reboots:    0
-    # Server-Faelle (Suite linux-server):
+    # Server-Faelle:
     files:      { /var/log/app/debug.log: { size: 14G, owner: app, group: app, mode: "0640",
                   open_by: app, content: "…" },            # Text ODER Eintrag mit Metadaten
                   /etc/resolv.conf: { link: ../run/systemd/resolve/stub-resolv.conf } }
@@ -68,9 +68,9 @@ L<Langertha::Holmgang::Role::Simulator>; Gerätetyp C<linux>). Befehle laufen au
     deleted_open: [ { path, size, by } ]   # vom Simulator: geloescht, aber noch offen
     services:   { api: { …, restarts: 1 } }  # vom Simulator: Neustarts und Stopps eines laufenden Dienstes
     services:   { api: { …, since: "Thu 2026-10-29 06:10:12 CET" } }  # Startzeit ohne Start im Simulator
-    # PostgreSQL (Suite postgres-betrieb): siehe Langertha::Holmgang::Sim::Linux::Postgres
+    # PostgreSQL: siehe Langertha::Holmgang::Sim::Linux::Postgres
     postgres:   { service: postgresql@15-main, settings: {…}, roles: {…}, tables: {…}, slots: {…}, … }
-    # Kubernetes (Suite kubernetes-betrieb): siehe Langertha::Holmgang::Sim::Linux::Kubernetes
+    # Kubernetes: siehe Langertha::Holmgang::Sim::Linux::Kubernetes
     kubernetes: { registry: […], storageclasses: {…}, namespaces: { shop: { deployments: {…}, … } } }
 
 B<Lesen:> C<ip [-4|-6|-br|-d|-s] route|rule|addr|link|neigh [show …]>,
@@ -107,7 +107,7 @@ C<: E<gt> datei>, C<touch>, C<mkdir>, C<cp>, C<mv> (auch mehrere Quellen in ein 
 --vacuum-size|--vacuum-time>, C<systemctl start|restart|enable|disable [--now]|mask|
 unmask|daemon-reload|reset-failed>, C<resolvectl dns|domain IF …|revert>.
 
-B<Härtung> (Suite sicherheit-haertung): C<chmod> auch mit C<s>/C<t>
+B<Härtung>: C<chmod> auch mit C<s>/C<t>
 (C<u-s>, C<g+s>, C<ug-s>, vierstellig oktal), C<ls -l> zeigt C<s>/C<S>/C<t>/C<T>,
 C<find … -perm [-/]oktal|[-/]u=s,g=s> und C<-ls>; C<grep -r|-R|-l|-h|-H> über
 Verzeichnisse und mehrere Dateien mit Dateinamen; C<usermod -L|-U|-s shell|-e datum|
@@ -178,7 +178,7 @@ verlangt, fällt so in „sonst nichts geändert" auf, auch wenn der Dienst dana
 wieder läuft. C<reload> zählt nicht; C<reload-or-restart> lädt einen laufenden
 Dienst mit C<ExecReload> nur neu (wie systemd).
 
-B<Ein Start ist sichtbar> (platform#181): jeder Start und Neustart eines Dienstes
+B<Ein Start ist sichtbar>: jeder Start und Neustart eines Dienstes
 vergibt eine neue Haupt-PID (die PID seiner Startmeldungen im Journal, unter
 C<services.E<lt>dienstE<gt>._pid>) und setzt die Startzeit auf die Zeit der
 Journalzeile „Started" (C<_since>, Uhr C<clock> des Geräts); C<reload> lässt beides
@@ -268,7 +268,7 @@ C<LogsDirectory=> und C<CacheDirectory=> der geladenen Unit für C<User>/C<Group
 an; der laufende Dienst legt seine C<runtime_files> (Socket, PID-Datei: C<path>,
 C<owner>, C<group>, C<mode>, C<type: socket>) an, wenn es das Verzeichnis gibt.
 
-B<Timer und Logs> (Suite systemd-timer-logs): Units heißen mit ihrer Endung
+B<Timer und Logs>: Units heißen mit ihrer Endung
 (C<backup.timer>; ohne Endung ist C<.service> gemeint). Eine neue Unit-Datei
 unter F</etc/systemd/system> bzw. F</lib/systemd/system> lädt beim ersten
 ändernden Zugriff (C<enable>, C<start>); C<status>, C<cat> und C<is-*> zeigen
@@ -335,7 +335,7 @@ Neustart in C<running> ein, beim C<reload> nur mit C<reload_config: true>
 F</etc/wireguard/wgN.conf> in den WireGuard-Zustand. Was nur in der Datei
 steht, wirkt erst danach.
 
-B<Terminal-Aufgaben> (Suite terminal-aufgaben, platform#181): C<mkdir [-p] [-m MODUS]>
+B<Alltag im Terminal>: C<mkdir [-p] [-m MODUS]>
 (ohne C<-p> muss der Elternordner da sein, C<File exists>), C<umask [-S] [MODUS]>
 (eingebaut, je Shell), C<pwd>; als Benutzer ohne Root-Rechte (C<su - x -c>, C<sudo -u x>,
 C<bash -c> darunter) brauchen C<touch>, C<mkdir> und Umleitungen Schreibrecht am
@@ -1928,7 +1928,7 @@ my %CMD = (
     pg_ctlcluster => \&_pg_ctlcluster,
     su            => \&_su,
     runuser       => \&_su,
-    # BIND und Postfix (Suite dns-mail): nur, wo installiert
+    # BIND und Postfix: nur, wo installiert
     rndc              => _ext( 'Dns',     'rndc',      ['bind'] ),
     'named-checkconf' => _ext( 'Dns',     'checkconf', ['bind'] ),
     'named-checkzone' => _ext( 'Dns',     'checkzone', ['bind'] ),
@@ -1943,7 +1943,7 @@ my %CMD = (
     mailq             => _ext( 'Postfix', 'postqueue', ['postfix'], pre => ['-p'] ),
     postsuper         => _ext( 'Postfix', 'postsuper', ['postfix'] ),
     postcat           => _ext( 'Postfix', 'postcat',   ['postfix'] ),
-    # Sichern und Wiederherstellen (Suite backup-restore); restic nur, wo installiert
+    # Sichern und Wiederherstellen; restic nur, wo installiert
     tar               => _ext( 'Backup', 'tar',       [] ),
     rsync             => _ext( 'Backup', 'rsync',     [] ),
     sha256sum         => do { my $x = _ext( 'Backup', 'sha256sum', [] ); sub { ( grep { !/\A-/ } @{ $_[1] } ) ? $x->(@_) : _digest( 'sha256', @_ ) } },    # ohne Datei: stdin
@@ -1979,7 +1979,7 @@ my %CMD = (
         local $IN_TIMEOUT = 1;    # eine haengende Verbindung endet mit 124 statt einer Meldung
         return __PACKAGE__->_command( $d, \@w, $c, $in );
     },
-    # Platten und Dateisysteme (Suite storage-dateisysteme): nur mit storage im Zustand,
+    # Platten und Dateisysteme: nur mit storage im Zustand,
     # sonst wie bisher eine Luecke der Simulation
     ( map { $_->[0] => _ext( 'Storage', $_->[1], ['storage'], prog => $_->[0], gap => 1, ( $_->[0] eq 'mount' ? ( else => \&_mount_cmd ) : $_->[0] eq 'lsblk' ? ( else => \&_lsblk_basic ) : $_->[0] eq 'free' ? ( else => \&_free_mem ) : () ) ) }
         [ lsblk => 'lsblk' ], [ blkid => 'blkid' ], [ findmnt => 'findmnt' ], [ mount => 'mount' ], [ umount => 'umount' ],
@@ -4355,7 +4355,7 @@ sub _nft_cmd {
     }
     @a = map { split /\s+/ } @a if @a == 1;    # nft 'add rule …'
     my $verb = shift @a // return ( "Error: syntax error, unexpected end of file", 0 );
-    # Lesen legt keinen nft-Zustand an (sonst saehe "sonst nichts geaendert" eine Aenderung; wie #126)
+    # Lesen legt keinen nft-Zustand an (sonst saehe "sonst nichts geaendert" eine Aenderung; wie bei allen Lesebefehlen)
     my $T = $verb eq 'list' ? ( ref $dev->{nft} eq 'HASH' ? $dev->{nft} : {} ) : _nft_tables($dev);
     _handles($_) for values %$T;    # Handles stehen fest, bevor sich etwas aendert (wie im Kernel von Anfang an)
     my $syntax = sub { ( "Error: syntax error, unexpected $_[0]\n" . join( ' ', @$av ), 0 ) };
@@ -6894,7 +6894,7 @@ sub _ssh {
         }
     }
     # auf sich selbst (localhost, eigene Adresse, eigener Name): Anmeldung gegen die geladene
-    # sshd-Konfiguration wie in der Suite ssh-zugang
+    # sshd-Konfiguration, wie sshd selbst sie prueft
     my %own = map { $_ => 1 } _own_addrs($dev), 'localhost', ( $ctx || {} )->{host} // ();
     return _ssh_client( $dev, $av, $ctx ) if $own{$host} && ref $dev->{files} eq 'HASH' && exists $dev->{files}{'/etc/ssh/sshd_config'};
     my $state = $CTX ? $CTX->{state} : {};

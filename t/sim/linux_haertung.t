@@ -12,7 +12,7 @@ use Holmgang::TestSim qw( run_command write_file prepare clone diff get throws_o
 # srv meldet sich per ssh_login an: jeder Befehl dort geht durch Sim::Linux::SshAccess
 my $NO_SSH = need_parts('SshAccess');
 
-# Linux-Simulator fuer Haertungs-Faelle (platform#121, Suite sicherheit-haertung).
+# Linux-Simulator fuer Haertungs-Faelle.
 # Behauptet wird: sshd liest seine Konfiguration wie OpenSSH (Include an Ort und
 # Stelle, erster Wert gewinnt, Listen sammeln sich, Fehler wie sshd -t); reload
 # mit kaputter Datei scheitert und behaelt die alte Konfiguration, restart
@@ -257,7 +257,7 @@ subtest 'grep -r mit Dateinamen' => sub {
     is( sh('grep -h Password /etc/ssh/sshd_config /etc/ssh/sshd_config.d/50-cloud-init.conf'), "PasswordAuthentication no\nPasswordAuthentication yes", 'mehrere Dateien, -h' );
 };
 
-# Runde 1 (platform#121): was die Modelle taten und der Simulator falsch beantwortete.
+# Runde 1: was die Modelle taten und der Simulator falsch beantwortete.
 subtest 'for-Schleife' => sub {
     plan skip_all => $NO_SSH if $NO_SSH;
     fresh();
@@ -363,7 +363,7 @@ subtest 'sshd: Journal nach Start und Neuladen' => sub {
     like( sh('journalctl -u ssh -n 1'), qr/Started ssh\.service - OpenBSD Secure Shell server\./, 'restart' );
 };
 
-# Runde 2 (platform#121): find mit Klammern/Operatoren, awk mit Bedingungen.
+# Runde 2: find mit Klammern/Operatoren, awk mit Bedingungen.
 subtest 'find: ( ), -o, -a, !, Vorrang und Aktionen' => sub {
     plan skip_all => $NO_SSH if $NO_SSH;
     fresh();
@@ -394,7 +394,7 @@ subtest 'awk: Bedingungen und print' => sub {
     is( $awk->( 'BEGIN{FS=":"; OFS="|"} NF==7 && $3>999 {print $1,$3}' ), "ops|1000\nnobody|65534\nmmeier|1004", 'BEGIN mit FS/OFS' );
     is( $awk->( '-F:', '{printf "%s=%d\n", $1, $3}' ), "root=0\nops=1000\nnobody=65534\nmmeier=1004", 'printf' );
     is( $awk->( '-F:', '$4 ~ /1004/ {print $1": "$4}' ), 'mmeier: 1004', 'Feld ~ /re/ mit Literal' );
-    # Variablen, Zuweisungen, END und einige Funktionen (Runde 3 von platform#181)
+    # Variablen, Zuweisungen, END und einige Funktionen
     is( $awk->( '-F:', '{ n += $3 } END { print n }' ), '67538', 'Summe mit END' );
     is( $awk->( '-F:', '{print toupper($1)}' ), "ROOT\nOPS\nNOBODY\nMMEIER", 'toupper' );
     is( $awk->( '-F:', '{print substr($1, 1, 2)}' ), "ro\nop\nno\nmm", 'substr' );
@@ -405,7 +405,7 @@ subtest 'awk: Bedingungen und print' => sub {
     ok( !defined $awk->( '-F:', '{print $1 > "/tmp/x"}' ), 'print > datei: Luecke' );
     ok( !defined $awk->( '-F:', '{gsub(/o/, "0"); print}' ), 'gsub: Luecke' );
     ok( !defined $awk->( '-F:', '{ while (n < 3) n++ }' ), 'while: Luecke' );
-    # length (#120) und Rechnen
+    # length und Rechnen
     is( $awk->( '-F:', 'NR==2 {print length($1), length}' ), '3 36', 'length(feld) und length ohne Argument' );
     is( $awk->( '-F:', 'length($1) > 4 {print $1}' ), 'nobody\nmmeier' =~ s/\\n/\n/r, 'length im Muster' );
     is( $awk->( '-F:', 'length() == 31 {print NR}' ), '1', 'length()' );
@@ -415,7 +415,7 @@ subtest 'awk: Bedingungen und print' => sub {
     is( ( Langertha::Holmgang::Shell::Filter::filter_output( "a 1\nb 2", [ 'awk', '{print $2, $1}' ] ) )[0], "1 a\n2 b", 'ohne -F: Leerraum' );
 };
 
-subtest 'awk BEGIN als Rechner (#120)' => sub {
+subtest 'awk BEGIN als Rechner' => sub {
     plan skip_all => $NO_SSH if $NO_SSH;
     my $awk = sub { ( Langertha::Holmgang::Shell::Filter::filter_output( "x\ny", [ 'awk', @_ ] ) ) };
     is( ( $awk->('BEGIN { print 512 * 1024 }') )[0], '524288', 'print mit Zahl' );
