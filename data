@@ -1,0 +1,31 @@
+---
+claimed_at: 2026-11-08T02:42:25Z
+claimed_by: cai-holmgang
+class: standard
+completed: 2026-11-05T17:21:17Z
+created: 2026-11-04T19:34:15Z
+depends_on:
+- 12
+- 14
+- 19
+id: 21
+priority: medium
+started: 2026-11-05T16:54:46Z
+status: done
+tags:
+- cli
+title: 'Kommandozeile holmgang: lint, run, report, export-yaml'
+updated: 2026-11-08T02:42:25Z
+---
+
+Arbeitsnamen aus dem Auftrag: holmgang lint <suite>; holmgang run --suite --target --variant --repeat --report; holmgang report <json> --by topic; holmgang export-yaml. Netzfreie Tests für alles ohne Modell.
+
+holmgang-worker: angefangen im Worktree k21. Plan: ::CLI (Getopt::Long, kein MooseX::App — nicht installiert, Skeid nutzt Getopt::Long) + bin/holmgang; lint/run/report; Ziel = Langertha-Engine-Name + --model/--url/--option, mock-solution/mock-text als netzfreie Ziele; ADR 0009. export-yaml bleibt offen (k19).
+
+holmgang-worker, Worktree k21 (nicht committet). ERLEDIGT: bin/holmgang + Langertha::Holmgang::CLI (Getopt::Long wie bin/skeid, MooseX::App ist nicht installiert), ADR 0009. lint <dir>... = Loader->load (Lint + Mock-Läufe), ok/FAIL je Suite und Fall, stoppt wie der Lader beim ersten abgelehnten Fall. run --suite --target [--model --url --option K=V --label --variant K=V --repeat N --report]: Ziel = Langertha-Engine-Name (oder Klasse mit ::) + Konstruktor-Optionen; mock-solution/mock-text netzfrei; --option api_key abgelehnt (Schlüssel nur aus der Env-Variable der Engine), kein Standard-Ziel. report <json>... [--by topic] [--format text|markdown|json] [--suite DIR für threshold]. Exit 0/1/2. VERIFIZIERT: prove -lr t/ -> 70 Dateien, 2296 Tests, PASS (t/cli/lint.t 24, run.t 40, report.t 22); dzil test -> 72 Dateien, 2346 Tests, PASS; gebauter EXE_FILES enthält bin/holmgang, podchecker OK. Übersprungen: t/acceptance_load.t (HOLMGANG_ACCEPTANCE_SUITES nicht gesetzt). OFFEN: export-yaml (k19); benannte Varianten, mehrere je Ziel, parallel, Wiederaufnahme, cancelled bei Signal (k15/::Batch ersetzt die private Schleife in ::CLI); --transcript; --topic/--all über Suchverzeichnisse; lint meldet nur den ersten abgelehnten Fall je Suite (wie der Lader).
+
+Committed 653593b on k21, merged as e6e046f on main (no push). prove -lr t/: 70 files, 2306 tests PASS; dzil test: 72 files, 2356 tests PASS; acceptance_load.t with the abnahme copy: 32 tests PASS, 0 skipped.
+
+
+
+2026-11-05 Abnahme cai-admin-entwicklung: main e6e046f. prove -lr t/ PASS, acceptance_load gegen af7561a5 PASS selbst gefahren. Von Hand: holmgang --help, lint einer Suite der Kopie (alle ok, exit 0), run --target mock-solution (18/18, verdict ok) mit --report, report (Text), --option api_key abgelehnt (exit 2). Leak-Check ohne Treffer. Abgenommen; export-yaml offen auf k19.
