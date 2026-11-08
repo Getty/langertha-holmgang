@@ -30,7 +30,8 @@ code goes back to the worker as a note on its card, not as your own fix. **Never
    coordinated release stages a floor pointing at a Langertha version released minutes ago
    and not yet on the CPAN mirror — that is staging, not an error; flag it as info only.
 2. **dist.ini** — the `[@Author::GETTY]` pattern of the sibling Langertha dists; `docs/`
-   stays out of the tarball, everything else the bundle gathers ships.
+   ships (the ADRs, referenced from Changes and POD); `.claude/`, `.github/`, `CLAUDE.md`,
+   `.worktreeinclude` and `.gitignore` stay out; everything else the bundle gathers ships.
 3. **No real case** — the built tarball carries only the example suites; anything that looks
    like a measurement case (a cai-platform suite id, a reference solution beyond the
    examples) blocks the release (ADR 0003).
