@@ -1,0 +1,24 @@
+---
+claimed_at: 2026-11-08T03:16:52Z
+claimed_by: cai-holmgang
+class: standard
+completed: 2026-11-08T03:16:52Z
+created: 2026-11-08T02:55:51Z
+id: 47
+priority: high
+started: 2026-11-08T02:55:59Z
+status: done
+tags:
+- release
+- doku
+title: 'POD fürs Release: keine Kartennummern, keine leeren Abschnitte'
+updated: 2026-11-08T03:16:52Z
+---
+
+Hinweise vom Release-Hub perl-developer (Build von 92e961e): (a) POD im Build ohne Kartennummern: bin/holmgang (k15), Target.pm (k15, k9, k38, langertha k389), Report.pm (k27, k13) — in Worten sagen, was der Code heute tut; 'kommt später'/'until then' fallen weg; RouterOS k=v ist Syntax und bleibt. (b) podchecker auf gebautem lib/: 14 WARNING empty section — Case.pm 9, Suite.pm 4, Sim/Linux/Postgres.pm 1; jede Überschrift bekommt einen Satz, was die Methode tut.
+
+erledigt: Kartennummern aus ausgelieferter POD entfernt (bin/holmgang --variant, Target.pm synopsis/description/variant/scrub, Report.pm image_entry/from_cai_report), Text sagt jetzt, was der Code heute tut; 14 leere =attr/=func-Abschnitte gefuellt (Case 9, Suite 4, Sim/Linux/Postgres pg_lsclusters, deutsch wie der Rest der Datei). verifiziert: dzil build + podchecker auf 50 gebauten Dateien in lib/ und bin/: 0 WARNING, 0 ERROR; Kartennummern-grep auf gebauter POD findet nur RouterOS k=v (Syntax); prove -lr t PASS (76 Dateien, 2462 Tests; acceptance_load.t und acceptance_mock_runs.t uebersprungen ohne HOLMGANG_ACCEPTANCE_*); dzil test --release PASS. offen: 12 Kartennummern in Code-Kommentaren unter lib/ und bin/ (36 inkl. t/), nicht angefasst.
+
+Committed d4c1268, merged d5bc1c6; 14 empty sections filled, no card ids in built POD or Changes, podchecker 0 warnings 0 errors.
+
+review: see note
