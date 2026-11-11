@@ -229,7 +229,10 @@ package of its own, and must declare exactly one C<suite> whose id is the
 directory name. It goes through the same structure checks and lint as
 format 2 (L</assemble>). A directory with both files is refused (field
 C<suite>). Running F<suite.pl> runs code with the trust of an installed
-module: load it only from search directories you control.
+module: load it only from search directories you control. The file is UTF-8
+source: it is compiled with C<use utf8> in effect, whether it says so or not,
+so a literal with umlauts is the text the model is sent; a file that is not
+valid UTF-8 is refused (field C<suite.pl>).
 
 =cut
 
@@ -237,6 +240,9 @@ sub _load_dsl {
   my ( $self, $dir, $dirname ) = @_;
   my $code = eval { path( $dir, 'suite.pl' )->slurp_raw };
   $self->_refuse( 'suite.pl', 'not readable: '.( $@ =~ s/\s+\z//r ) ) unless defined $code;
+  # compiled as UTF-8 source (k60): a byte string that is not UTF-8 is refused
+  # here, before Perl's lexer warns about it or reads it as Latin-1
+  $self->_refuse( 'suite.pl', 'not UTF-8: a suite file is UTF-8 source' ) unless utf8::decode( my $chars = $code );
   require Langertha::Holmgang;
   return Langertha::Holmgang::_load_file(
     loader  => $self,

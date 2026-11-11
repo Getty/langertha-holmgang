@@ -425,7 +425,9 @@ sub _load_file {
   local $OPEN;
   my $pkg = 'Langertha::Holmgang::_SuiteFile'.++$PACKAGES;
   ( my $line = $o{path} ) =~ s/["\r\n]/_/g;
-  my $err = _compile( 'package '.$pkg.";\n#line 1 \"".$line."\"\n".$o{code}."\n" );
+  # UTF-8 source whether the file says use utf8 or not (k60): a suite's texts
+  # are what the model is sent, and Latin-1 mojibake is never what was meant
+  my $err = _compile( 'package '.$pkg.";use utf8;\n#line 1 \"".$line."\"\n".$o{code}."\n" );
   if ( ref $err || length $err ) {
     die $err if Langertha::Holmgang::Error->caught($err);
     Langertha::Holmgang::Error->throw( 'suite.pl', "$err" =~ s/\s+\z//r );

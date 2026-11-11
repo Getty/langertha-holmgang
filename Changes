@@ -87,3 +87,4 @@ Revision history for Langertha-Holmgang
   - Verdicts carry unfinished (a cancelled or aborted run is never ok) and repetitions_error (repetitions where the target answered nothing; reported, not deciding ok, ADR 0009 k42), ported from cai-platform's verdicts (k58)
   - Acceptance 1 and 2 pass against cai-platform origin/main 993637ab: 36 suites, 708 cases, mock runs identical (k58)
   - New acceptance test t/acceptance_dsl.t: a suite written in the case DSL loads, matches its format 2 original case by case, gives identical mock runs, and its export-yaml does too (k20)
+  - A suite.pl is compiled as UTF-8 source whether or not it says "use utf8", so non-ASCII text reaches the model as written instead of as Latin-1 mojibake; a suite.pl that is not valid UTF-8 is refused (k60, ADR 0007)
