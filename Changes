@@ -83,3 +83,4 @@ Revision history for Langertha-Holmgang
   - A ctx-<N>k tag is no length tier: it names a context window, not an input length (k56)
   - Reports carry each case's difficulty; reports without it still read and merge (k57)
   - The evaluation shows curves per difficulty next to the tier curves, in text, Markdown and JSON (k57)
+  - Simulators: restic answers for snapshots without paths and no longer adds them on --path; von_liste_nehmen no longer creates an empty liste (k58)

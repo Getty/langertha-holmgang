@@ -191,6 +191,44 @@ subtest 'restic forget latest' => sub {
     is_deeply( $ids->($s), [qw( a1000001 a1000002 a1000003 a1000004 )], '… der neueste ueberhaupt (db1) ist weg' );
 };
 
+# Snapshots ohne paths im Zustand (ein knapp geschriebener Fall) lassen restic
+# nicht sterben: jeder Befehl antwortet wie mit leerer Pfadliste, ohne Luecke
+# (k58).
+subtest 'restic: Snapshots ohne paths' => sub {
+    my $R = '-r sftp:backup1:/srv/restic --password-file /root/.restic-pass';
+    my $bare = sub { my $s = world(); delete $_->{paths} for @{ $s->{backup1}{restic_repos}{'/srv/restic'}{snapshots} }; $s };
+    for my $c ( 'snapshots', 'snapshots --path /srv/www', 'ls a1000002', 'restore a1000002 --target /tmp/r', 'forget --keep-last 1' ) {
+        my $s = $bare->();
+        my ( $o, $ok, $gap ) = run_command( $s, 'web1', "restic $R $c" );
+        unlike( $o, qr/ line \d+|ARRAY|\.pm\b/, "restic $c: keine Perl-Meldung" );
+        is( $gap, undef, '... und keine Luecke' );
+        next unless $c =~ /\A(?:snapshots|ls)\b/;
+        is_deeply( $s->{backup1}{restic_repos}, $bare->()->{backup1}{restic_repos}, '... und legt keine paths an' );
+    }
+    my ( $o ) = run_command( world(), 'web1', "restic $R ls a1000002" );
+    my ( $o2 ) = do { my $x = world(); delete $x->{backup1}{restic_repos}{'/srv/restic'}{snapshots}[1]{paths}; run_command( $x, 'web1', "restic $R ls a1000002" ) };
+    like( $o2, qr/\Asnapshot a1000002 of \[\] at /, 'ls: leere Pfadliste im Kopf' );
+    like( $o, qr/\Asnapshot a1000002 of \[\/srv\/www\] at /, '... mit paths wie bisher' );
+};
+
+# Stirbt restic im Simulator mitten in einer Kette, erreicht kein Perl-Text das
+# Modell; die anderen Glieder laufen, der Fehler ist eine Luecke (k32-Waechter
+# der World; k58).
+subtest 'restic stirbt: kein Perl-Text in der Kette' => sub {
+    require Langertha::Holmgang::World;
+    my $R = '-r sftp:backup1:/srv/restic --password-file /root/.restic-pass';
+    my $tools = [ { name => 'run_command', simulator => 'run_command',
+        parameters => { type => 'object', properties => { host => { type => 'string' }, command => { type => 'string' } } } } ];
+    no warnings qw( redefine once );
+    local *Langertha::Holmgang::Sim::Linux::Backup::restic = sub { my $x; return scalar @$x };
+    my $w = Langertha::Holmgang::World->new( state => world(), tools => $tools );
+    my ( $o, undef, $ok, $gap ) = $w->call( run_command => { host => 'web1', command => "echo vorher; restic $R snapshots | head -1" } );
+    unlike( $o, qr/ line \d+|ARRAY|\.pm\b/, 'keine Perl-Meldung' );
+    like( $o, qr/\Avorher/, '... die anderen Glieder laufen' );
+    ok( !$ok, '... der Aufruf scheitert' );
+    like( $gap // '', qr/simulator error: .*ARRAY/, '... der Fehler ist die Luecke' );
+};
+
 subtest 'Shell: Umleitungen und $?' => sub {
     my $s = world();
     like( run( $s, 'web1', 'ls /fehlt 2>&1 | head -1' ), qr/cannot access/, '2>&1 laesst die Ausgabe in der Pipe' );

@@ -469,12 +469,14 @@ sub _repo {
 
 sub _ts { my ($t) = @_; my @f = $t =~ /(\d+)/g; return Time::Local::timegm( $f[5] // 0, $f[4] // 0, $f[3] // 0, $f[2], $f[1] - 1, $f[0] ) }
 
+# Filter --host/--path/--tag; a filter not given selects all
 sub _sel {
     my ( $snaps, %f ) = @_;
+    $f{$_} ||= [] for qw( host path tag );
     return grep {
         my $s = $_;
         ( !@{ $f{host} } || grep { $_ eq $s->{host} } @{ $f{host} } )
-            && ( !@{ $f{path} } || grep { my $p = $_; grep { $_ eq $p } @{ $s->{paths} } } @{ $f{path} } )
+            && ( !@{ $f{path} } || grep { my $p = $_; grep { $_ eq $p } @{ $s->{paths} || [] } } @{ $f{path} } )
             && ( !@{ $f{tag} } || grep { my $t = $_; grep { $_ eq $t } @{ $s->{tags} || [] } } @{ $f{tag} } )
     } @$snaps;
 }
@@ -489,7 +491,7 @@ sub _find_snap {
 
 sub _snap_line {
     my ($s) = @_;
-    my @p = @{ $s->{paths} };
+    my @p = @{ $s->{paths} || [] };
     my @l = sprintf( '%-9s %-20s %-11s %-11s %s', substr( $s->{id}, 0, 8 ), $s->{time}, $s->{host}, join( ',', @{ $s->{tags} || [] } ), shift(@p) // '' );
     push @l, map { ( ' ' x 54 ) . $_ } @p;
     return @l;
@@ -595,7 +597,7 @@ sub restic {
         if ( $cmd eq 'ls' ) {
             my ($under) = @rest;
             my @n = sort grep { !defined $under || $_ eq $under || index( $_, "$under/" ) == 0 } keys %files;
-            return ( join( "\n", "snapshot " . substr( $s->{id}, 0, 8 ) . " of [@{ $s->{paths} }] at $s->{time}):", @n ), 1 );
+            return ( join( "\n", "snapshot " . substr( $s->{id}, 0, 8 ) . " of [@{ $s->{paths} || [] }] at $s->{time}):", @n ), 1 );
         }
         if ( $cmd eq 'dump' ) {
             my $p = shift(@rest) // return ( 'Fatal: no file and no snapshot ID specified', 0 );
@@ -620,7 +622,7 @@ sub restic {
             $n++;
         }
         return ( "Fatal: there are no files to restore", 0 ) if !$n && @inc;
-        return ( "repository 3c1f2e9a opened (version 2, compression level auto)\nrestoring <Snapshot " . substr( $s->{id}, 0, 8 ) . " of [@{ $s->{paths} }] at $s->{time} by root\@$s->{host}> to $tg\nSummary: Restored $n files/dirs", 1 );
+        return ( "repository 3c1f2e9a opened (version 2, compression level auto)\nrestoring <Snapshot " . substr( $s->{id}, 0, 8 ) . " of [@{ $s->{paths} || [] }] at $s->{time} by root\@$s->{host}> to $tg\nSummary: Restored $n files/dirs", 1 );
     }
     if ( $cmd eq 'forget' ) {
         my @l;
@@ -638,7 +640,7 @@ sub restic {
             my @by = split /,/, $o{group} // 'host,paths';
             my %grp;
             for my $s ( _sel( \@snaps, %f ) ) {
-                my $key = join '|', map { $_ eq 'host' ? $s->{host} : $_ eq 'paths' ? join( ',', sort @{ $s->{paths} } ) : $_ eq 'tags' ? join( ',', sort @{ $s->{tags} || [] } ) : '' } @by;
+                my $key = join '|', map { $_ eq 'host' ? $s->{host} : $_ eq 'paths' ? join( ',', sort @{ $s->{paths} || [] } ) : $_ eq 'tags' ? join( ',', sort @{ $s->{tags} || [] } ) : '' } @by;
                 push @{ $grp{$key} }, $s;
             }
             push @l, 'Applying Policy: keep ' . join( ', ', map {"$keep{$_} $_ snapshots"} sort keys %keep );

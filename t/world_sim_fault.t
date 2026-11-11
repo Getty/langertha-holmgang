@@ -97,15 +97,16 @@ my $PERL = qr{Can't use|\.p[lm]\b|\.t line|line \d+\.|/};
   unlike( $out, $PERL, 'restic forget latest on linux: no Perl text, no host path for the model' );
 
   # a die inside a loaded simulator module that the Linux shell catches and returns:
-  # the old fault of _find_snap, forced back for this call
+  # a Perl error inside Backup.pm, forced for this call (_sel itself no longer dies
+  # without a filter, k58)
   require Langertha::Holmgang::Sim::Linux::Backup;
   no warnings 'redefine';
-  local *Langertha::Holmgang::Sim::Linux::Backup::_find_snap = sub { Langertha::Holmgang::Sim::Linux::Backup::_sel( $_[0]{snapshots} ) };
+  local *Langertha::Holmgang::Sim::Linux::Backup::_find_snap = sub { Langertha::Holmgang::Sim::Linux::Backup::_policy( 'x', {} ) };
   my ( $o2, undef, $ok, $gap ) = $mk->()->call( run_command => { host => 'h', command => 'echo before; restic -r /repo -p /root/pw forget latest' } );
   like( $o2, qr/\Abefore\nFehler: [^\n]*\z/, 'a caught die in a simulator module: its line becomes the tool error' );
   unlike( $o2, $PERL, '… no Perl text, no host path' );
   is( $ok, 0, '… the call failed' );
-  like( $gap // '', qr/simulator error: Can't use an undefined value.*Backup\.pm line \d+/, '… the original is in the gap' );
+  like( $gap // '', qr/simulator error: Can't use .*Backup\.pm line \d+/, '… the original is in the gap' );
 }
 
 # the same line in a log file of a linux device, read through the shell

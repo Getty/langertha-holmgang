@@ -184,6 +184,39 @@ subtest 'Lesen aendert nichts' => sub {
   is_deeply( [ diff( $sparse, $state ) ], [], 'Zustand unveraendert' );
 };
 
+# Lesen und abgelehnte Aufrufe aendern den Zustand nicht, auch bei Luecken im
+# Zustand: Zutaten in Vorrat und Liste ohne Eintrag in zutaten, ein Plan mit
+# einem Rezept, das es nicht gibt, eine Kueche ganz ohne rezepte/liste/zutaten
+# (k58).
+subtest 'Lesen aendert nichts: Matrix' => sub {
+  my %luecken = (
+    mit_luecken => { type => 'kueche', zutaten => { Mehl => { einheit => 'g' } },
+      rezepte => { pfannkuchen => { titel => 'Pfannkuchen', portionen => 4, zutaten => [] } },
+      vorrat  => { Mehl => 500, Zucker => 250, Salz => 'vorhanden' }, liste => { Hefe => 1 },
+      plan    => { Montag => { rezept => 'pfannkuchen', portionen => 2 }, Dienstag => { rezept => 'geloescht', portionen => 1 } } },
+    leer => { type => 'kueche', plan => { Montag => { rezept => 'weg', portionen => 1 } }, vorrat => { Ei => 2 } },
+    ohne_liste => { type => 'kueche', zutaten => { Mehl => { einheit => 'g' } } },
+  );
+  my @calls = ( ['rezepte_suchen'], [ rezepte_suchen => suchbegriff => 'mehl' ], [ rezept_lesen => rezept => 'pfannkuchen' ],
+    [ rezept_lesen => rezept => 'gibtsnicht' ], ['vorrat_lesen'], ['liste_lesen'], ['plan_lesen'],
+    [ von_liste_nehmen => zutat => 'Zucker' ], [ von_liste_nehmen => zutat => 'Mehl' ], [ von_liste_nehmen => zutat => 'Hefe', menge => '5' ],
+    [ auf_liste_setzen => zutat => 'Mehl', menge => '1 l' ], [ plan_setzen => tag => 'Montag', rezept => 'gibtsnicht', portionen => 1 ] );
+  for my $k ( sort keys %luecken ) {
+    for my $c (@calls) {
+      my ( $name, %a ) = @$c;
+      $state = { kueche => clone( $luecken{$k} ) };
+      my ( $o, $ok ) = t( $name, %a );
+      next if $ok && $name !~ /_lesen\z|_suchen\z/;
+      is_deeply( $state->{kueche}, $luecken{$k}, "$k: $name".( %a ? ' '.join( ',', map {"$_=$a{$_}"} sort keys %a ) : '' ).' laesst den Zustand, wie er war' );
+    }
+  }
+  $state = { kueche => clone( $luecken{mit_luecken} ) };
+  my ($o) = t('plan_lesen');
+  like( $o, qr/- Dienstag: geloescht \(ID geloescht\), 1 Portion/, 'Plan mit fehlendem Rezept: zeigt die ID' );
+  ($o) = t('vorrat_lesen');
+  like( $o, qr/- Zucker: 250 Stück/, 'Vorrat ohne Eintrag in zutaten: Stück' );
+};
+
 subtest 'ueber die Registry' => sub {
   fresh();
   my ( $o, $ok ) = t( kochen => () );

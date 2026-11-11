@@ -401,7 +401,7 @@ sub _t_auf_liste_setzen {
 sub _t_von_liste_nehmen {
   my ( $self, $dev, $p ) = @_;
   my $z = $self->_canon( $dev, $p->{zutat} );
-  return ( "Fehler: '".( $p->{zutat} // '' )."' steht nicht auf der Liste.", 0 ) unless $z && $dev->{liste}{$z};
+  return ( "Fehler: '".( $p->{zutat} // '' )."' steht nicht auf der Liste.", 0 ) unless $z && $dev->{liste} && $dev->{liste}{$z};
   if ( !defined $p->{menge} || $p->{menge} eq '' ) {
     delete $dev->{liste}{$z};
     return ( $z.' von der Liste gestrichen.', 1 );
