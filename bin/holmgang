@@ -22,7 +22,16 @@ exit Langertha::Holmgang::CLI->new->run(@ARGV);
 
   holmgang run --suite /srv/suites/demo-fan --target vLLM \
     --url http://10.0.0.5:8000/v1 --model some-model \
-    --variant 'chat_template_kwargs={"enable_thinking":false}' --variant max_tokens=4000
+    --variant max_tokens=4000 --variant enable_thinking=off --concurrency 4
+
+  # two variants of one target, side by side in the report
+  holmgang run --suite /srv/suites/demo-fan --target vLLM --url http://10.0.0.5:8000/v1 \
+    --variant think-off:enable_thinking=off \
+    --variant think-on:enable_thinking=on --variant think-on:deadline=1800 \
+    --report /data/reports/run.json
+
+  # continue a run that was cut off: only the missing results are played
+  holmgang run ... --resume /data/reports/run.json --report /data/reports/run.json
 
   holmgang run --suite /srv/suites/demo-fan --target mock-solution   # dry run, no network
 
@@ -37,10 +46,15 @@ and its two mock runs -- and prints C<ok> with every case, or C<FAIL> with the
 refusal, which names the case file and the field. An argument is a suite
 directory (it holds F<suite.yaml>) or a directory of suites.
 
-B<run> plays every case of the suites against one target, one request at a
-time, repetition after repetition, prints one line per case and repetition and
-then the evaluation per topic; with C<--report> it writes the JSON report
-(ADR 0006). Write reports outside any checkout: a report quotes its cases.
+B<run> plays every case of the suites against one target, under each of its
+variants, repetition after repetition, with at most C<--concurrency> requests
+open at once (L<Langertha::Holmgang::Batch>); it prints one line per case and
+repetition as each ends and then the evaluation per topic. With C<--report> it
+writes the JSON report (ADR 0006), also while the run goes on, so a run that
+is cut off can be continued with C<--resume>. Write reports outside any
+checkout: a report quotes its cases. SIGINT or SIGTERM cancels: no further
+case starts, the cases in play finish, the report is written (the run
+C<cancelled>); a second signal ends the process at once.
 
 B<report> reads report files, joins them, and prints the evaluation per topic:
 the comparison of targets, the verdicts per suite and, where cases have a
@@ -50,7 +64,8 @@ B<Exit codes:> C<0> everything loaded or ran and every verdict is ok; C<1> a
 suite was refused (lint), a verdict is not ok (run, report), or the target
 answered no case of the run -- every result C<error>, C<context_exceeded> or
 C<no_vision> (run; said on standard error with the count per status and the
-first error text, the report is written all the same); C<2> a usage or setup error, or a run that aborted.
+first error text, the report is written all the same); C<2> a usage or setup
+error, or a run that aborted or was cancelled.
 
 B<Keys:> holmgang reads no key. An engine takes its key from where Langertha
 reads it, its environment variable (C<LANGERTHA_OPENAI_API_KEY>,
@@ -92,10 +107,50 @@ else the engine name.
 
 =opt --variant K=V
 
-C<run>, repeatable: request settings added to every turn (C<max_tokens>,
-C<temperature>, C<reasoning_effort>, C<chat_template_kwargs> ...), values as
-for C<--option>. One variant per target, its settings passed through
-unchecked.
+=opt --variant NAME:K=V
+
+C<run>, repeatable: the variants of the target, each a name and its
+settings, values as for C<--option>. C<K=V> adds to the one unnamed variant,
+whose name is its sorted settings (C<max_tokens=4000,temperature=0>);
+C<NAME:K=V> adds to the variant C<NAME>, C<NAME:> names one without
+settings. Every variant runs every suite; the report has one run per variant
+and suite. Without C<--variant> there is one variant, C<default>. The
+settings are named and checked (L<Langertha::Holmgang::Target/check_variant>):
+
+=over
+
+=item * C<enable_thinking=on|off> -- sent as
+C<chat_template_kwargs.enable_thinking>; only to an OpenAI-compatible engine.
+
+=item * C<reasoning_effort=none|minimal|low|medium|high|xhigh|max> -- only to
+an engine that takes it.
+
+=item * C<max_tokens=N> -- 1 to 9999999, beats the case's.
+
+=item * C<temperature=T> -- 0 to 2, beats the case's; only to an engine that
+takes it.
+
+=item * C<deadline=S> -- seconds one request may take (above 0, at most
+86400); a request that runs out ends the case C<error> with C<timeout:
+deadline (S s)>. Needs the engine on an event loop (IO::Async and
+Net::Async::HTTP installed). A timeout without data is the engine's
+C<user_agent_timeout>: C<--option user_agent_timeout=900>.
+
+=back
+
+Anything else is refused, and so is a setting the engine would drop.
+
+=opt --concurrency N
+
+C<run>: at most N requests open against the target at once, 1 to 64; default
+1. Each of the N slots gets its own engine (and connection).
+
+=opt --resume FILE
+
+C<run>: continue the run of an earlier report: every result it holds is taken
+over, only the missing ones are played. The report must come from the same
+suites (unchanged), target, variants and C<--repeat>; anything else is
+refused. C<--report> may name the same file.
 
 =opt --repeat N
 

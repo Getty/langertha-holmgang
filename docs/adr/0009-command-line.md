@@ -34,7 +34,7 @@ concurrency, resume). The choices below are the worker's (k21), not the maintain
 |---|---|
 | 0 | everything loaded / ran, every verdict ok |
 | 1 | a suite was refused (`lint`), a verdict is not ok (`run`, `report`), or the target answered no case of the run — every result `error`, `context_exceeded` or `no_vision` (`run`; said on stderr, the report written all the same) |
-| 2 | usage or setup error: unknown option or command, missing argument, a path that is no suite, a target that does not build, a report that does not read or write, a run that aborted |
+| 2 | usage or setup error: unknown option or command, missing argument, a path that is no suite, a target that does not build, a report that does not read or write, a run that aborted or was cancelled |
 
 ### `holmgang lint <dir>...`
 
@@ -144,3 +144,12 @@ text is passed over, and with none the note has no `; first:` part. World's hand
 changes cut a trailing die location with the same `$LOCATION` rule (no cycle: Target
 loads no Holmgang module); since k29 the haystack throws a `Langertha::Holmgang::Error`
 with no location, so Structure does not use the rule.
+
+**Amendment 2026-11-11 (k15).** The private loop of `holmgang run` is gone; the command builds a `::Batch` (ADR 0005 k15 amendment) with its one target. Chosen by the worker in the overnight run, not by the maintainer; the option names above stay:
+
+- **`--variant`** takes `K=V` as before — the pairs of the one unnamed variant, named by its sorted pairs (`default` without any) — and `NAME:K=V`, a pair of the variant `NAME`; `NAME:` names a variant without settings. A name is `[A-Za-z0-9][A-Za-z0-9_.+-]*`; since a key cannot hold a colon, `K=V` with a colon in the value stays a pair. Variants run in the order first named, the unnamed one first; a name used twice is refused. The settings are checked and normalised (`Target::check_variant`): the variant's name in the report is built from the normalised values (`enable_thinking=off` reads `enable_thinking=false`), and what the engine would drop is refused as a setup error, exit 2. `chat_template_kwargs=…` and other raw `chat_f` options are no longer accepted; `enable_thinking=on|off` replaces the former. With several variants every output line starts with the variant name.
+- **`--concurrency N`** (1..64, default 1): at most N requests open against the target. A real engine is built once per slot from the same `--target`/`--model`/`--url`/`--option` (its build notices are said once); the mocks build their engine per case as before.
+- **`--resume FILE`**: the report of an earlier run of the same command; its results are taken over and only the missing repetitions run (refusals of `::Batch` — another `--repeat`, a changed suite, a run not covered — are exit 2). `--report` may name the same file.
+- **Checkpoints.** With `--report`, the report is also written while the batch runs, after a result once `checkpoint_seconds` (a `::CLI` attribute, default 10, not an option) have passed since the last write; a checkpoint that cannot be written is said once on stderr and the run goes on. So a run killed mid-way leaves a report that `--resume` continues.
+- **Cancel on a signal.** SIGINT or SIGTERM cancels the batch: stderr says so, no further case starts, the cases in play finish, the report is written with the run `cancelled`; a second signal ends the process at once (the default action). A cancelled run exits **2**, like an aborted one: the table row now reads "a run that aborted or was cancelled". The k42 no-answer rule is judged over the report's results in suite, case and repetition order (so the first error is exactly the order k44 names).
+- **Output order.** Lines come as results end, which with `--concurrency` above 1 need not be the load order; with 1 it is the former order.

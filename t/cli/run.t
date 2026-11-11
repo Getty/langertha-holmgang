@@ -8,6 +8,7 @@ use FindBin;
 use lib "$FindBin::Bin/../lib";
 use Test::More;
 use Path::Tiny qw( path );
+use JSON::MaybeXS ();
 
 use Holmgang::CLI qw( cli good_suite threshold_suite );
 use Langertha::Holmgang::Report;
@@ -53,15 +54,19 @@ sub only_run { my ( $file ) = @_; my $r = Langertha::Holmgang::Report->read($fil
   my $file = $out_dir->child('virtual.json');
   my ( $code, $out, $err ) = cli( run => '--suite', $good, '--target', 'Virtual', '--model', 'vm-1',
     '--option', 'script=[{"tool_calls":[["fan_set",{"level":"high"}]]},{"answer":"done"}]',
-    '--variant', 'max_tokens=123', '--variant', 'reasoning_effort=low', '--report', "$file" );
+    '--variant', 'max_tokens=123', '--variant', 'enable_thinking=off', '--report', "$file" );
   is( $code, 0, 'an engine by name with --model and --option: exit 0' ) or diag $err;
   like( $out, qr/^run-fan c1 #1 passed$/m, '... the scripted engine passes the case' );
   my $run = only_run($file);
   is( $run->{target}{engine}, 'Virtual', '... engine name without the namespace' );
   is( $run->{target}{model}, 'vm-1', '... model from --model' );
   is( $run->{target}{label}, 'vm-1', '... label defaults to the model' );
-  is_deeply( $run->{variant}, { name => 'max_tokens=123,reasoning_effort=low', settings => { max_tokens => 123, reasoning_effort => 'low' } },
-    '... --variant settings, numbers as numbers, name from the sorted pairs' );
+  # the settings checked and normalised (k15): on/off becomes a JSON boolean
+  is( $run->{variant}{name}, 'enable_thinking=false,max_tokens=123', '... the variant named from the sorted, normalised pairs' );
+  is( $run->{variant}{settings}{max_tokens}, 123, '... numbers as numbers' );
+  ok( JSON::MaybeXS::is_bool( $run->{variant}{settings}{enable_thinking} ) && !$run->{variant}{settings}{enable_thinking},
+    '... enable_thinking=off as JSON false' );
+  is_deeply( [ sort keys %{ $run->{variant}{settings} } ], [qw( enable_thinking max_tokens )], '... nothing else' );
 }
 
 {

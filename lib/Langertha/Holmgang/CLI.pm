@@ -9,6 +9,7 @@ use JSON::MaybeXS ();
 use Module::Runtime qw( use_module );
 use Path::Tiny qw( path );
 use Scalar::Util qw( blessed );
+use Langertha::Holmgang::Batch;
 use Langertha::Holmgang::Evaluation;
 use Langertha::Holmgang::Loader;
 use Langertha::Holmgang::Report;
@@ -72,11 +73,23 @@ The L<Langertha::Holmgang::Loader> every suite goes through.
 
 =cut
 
+has checkpoint_seconds => ( is => 'ro', default => 10 );
+
+=attr checkpoint_seconds
+
+How often C<run --report> writes the report while the batch runs, at most:
+after a result, when this many seconds have passed since the last write.
+Default 10; C<0> writes after every result. The checkpoint is what
+C<--resume> continues after a crash.
+
+=cut
+
 sub loader_class     { 'Langertha::Holmgang::Loader' }
 sub runner_class     { 'Langertha::Holmgang::Runner' }
 sub target_class     { 'Langertha::Holmgang::Target' }
 sub report_class     { 'Langertha::Holmgang::Report' }
 sub evaluation_class { 'Langertha::Holmgang::Evaluation' }
+sub batch_class      { 'Langertha::Holmgang::Batch' }
 
 # the statuses of a result the target gave no answer for (ADR 0006)
 my %NO_ANSWER = map { $_ => 1 } qw( error context_exceeded no_vision );
@@ -158,7 +171,8 @@ sub help {
     'usage: holmgang lint <suite-dir>...',
     '       holmgang run --suite <dir>... --target <engine|mock-solution|mock-text>',
     '                    [--model M] [--url U] [--option K=V]... [--label L]',
-    '                    [--variant K=V]... [--repeat N] [--report out.json]',
+    '                    [--variant [NAME:]K=V]... [--repeat N] [--concurrency N]',
+    '                    [--resume earlier.json] [--report out.json]',
     '       holmgang report <report.json>... [--by topic] [--format text|markdown|json] [--suite <dir>]...',
     '',
     'Exit codes: 0 ok, 1 a suite refused, a verdict not ok or no case answered, 2 usage or setup error.',
@@ -243,7 +257,7 @@ sub _thresholds {
   return { map { ( $_->id => $_->threshold ) } grep { ref $_->threshold eq 'HASH' } @$suites };
 }
 
-# ( $engine_for_case, $target_meta ) or ( undef, $error )
+# ( $engine_for, $target_meta ) or ( undef, $error ); $engine_for->( $case, $slot )
 sub _target {
   my ( $self, $o ) = @_;
   my $name = $o->{target};
@@ -278,92 +292,131 @@ sub _target {
   my $model = $engine->can('model') ? eval { $engine->model } : undef;
   my $url   = $engine->can('url')   ? eval { $engine->url }   : undef;
   my $short = $class =~ s/\ALangertha::Engine:://r;
-  return ( sub { $engine },
+  # one engine per concurrency slot, each with its own connection: the first
+  # is the one built above, the others are built alike when a slot first
+  # needs one -- their notices were said with the first
+  my @engines = ( $engine );
+  my $engine_for = sub {
+    my ( $case, $slot ) = @_;
+    return $engines[ $slot // 0 ] //= do {
+      local $SIG{__WARN__} = sub { };
+      use_module($class)->new(%$opt);
+    };
+  };
+  return ( $engine_for,
     { label => $o->{label} // $model // $short, engine => $short, model => $model, url => $url } );
+}
+
+# --variant K=V adds to the unnamed variant, --variant NAME:K=V to the variant
+# NAME, --variant NAME: names a variant without settings. ( \@variants ) or
+# ( undef, $error ); each variant { name, settings } with its settings checked
+sub _variants {
+  my ( $self, $list ) = @_;
+  my ( %named, @order, @plain );
+  for my $p ( @{ $list || [] } ) {
+    if ( my ( $name, $rest ) = $p =~ /\A([A-Za-z0-9][A-Za-z0-9_.+-]*):(.*)\z/s ) {
+      push @order, $name unless $named{$name};
+      $named{$name} //= [];
+      push @{ $named{$name} }, $rest if length $rest;
+    }
+    else {
+      push @plain, $p;
+    }
+  }
+  my @variants;
+  for my $group ( ( @plain || !@order ? [ undef, \@plain ] : () ), map { [ $_, $named{$_} ] } @order ) {
+    my ( $name, $pairs ) = @$group;
+    my ( $settings, $bad ) = $self->_pairs( '--variant', $pairs );
+    return ( undef, $bad ) if $bad;
+    my $checked = eval { $self->target_class->check_variant($settings) };
+    return ( undef, '--variant'.( defined $name ? ' '.$name : '' ).': '.$self->_text($@) ) unless $checked;
+    $name //= %$checked
+      ? join( ',', map { $_.'='.$JSON->encode( $checked->{$_} ) =~ s/\A"(.*)"\z/$1/sr } sort keys %$checked )
+      : 'default';
+    return ( undef, '--variant: the variant '.$name.' is named twice' ) if grep { $_->{name} eq $name } @variants;
+    push @variants, { name => $name, settings => $checked };
+  }
+  return ( \@variants, undef );
 }
 
 sub cmd_run {
   my ( $self, @argv ) = @_;
   my ( $o, $bad ) = $self->_options( \@argv,
-    'suite=s@', 'target=s', 'model=s', 'url=s', 'option=s@', 'label=s', 'variant=s@', 'repeat=i', 'report=s' );
+    'suite=s@', 'target=s', 'model=s', 'url=s', 'option=s@', 'label=s', 'variant=s@', 'repeat=i',
+    'concurrency=i', 'resume=s', 'report=s' );
   return $self->_usage_error($bad) if $bad;
   return $self->_usage_error( 'unexpected argument: '.$argv[0] ) if @argv;
   return $self->_usage_error('run needs at least one --suite') unless @{ $o->{suite} || [] };
   return $self->_usage_error('--repeat must be between 1 and 100')
     if defined $o->{repeat} && ( $o->{repeat} < 1 || $o->{repeat} > 100 );
-  my ( $settings, $vbad ) = $self->_pairs( '--variant', $o->{variant} );
+  return $self->_usage_error('--concurrency must be between 1 and 64')
+    if defined $o->{concurrency} && ( $o->{concurrency} < 1 || $o->{concurrency} > 64 );
+  my ( $variants, $vbad ) = $self->_variants( $o->{variant} );
   return $self->_usage_error($vbad) if $vbad;
   my ( $engine_for, $target ) = $self->_target($o);
   return $self->_usage_error($target) unless $engine_for;
   my ( $suites, $sbad ) = $self->_load_suites( $o->{suite} );
   return $self->_usage_error($sbad) if $sbad;
-
-  my $variant = {
-    name     => %$settings ? join( ',', map { $_.'='.$JSON->encode( $settings->{$_} ) =~ s/\A"(.*)"\z/$1/sr } sort keys %$settings ) : 'default',
-    settings => $settings,
-  };
-  my $report = $self->report_class->new;
-  my $aborted = 0;
-  my ( @unanswered, @silent );   # the statuses without an answer; suites with nothing else
-  my $measured = 0;
-  my $first_error;   # the first error text of the run, for the no-answer note (k44)
-  for my $suite ( @$suites ) {
-    my $repeat = $o->{repeat} // $suite->repeat // 1;
-    my ( @results, $error, $no_vision );
-    # a suite with images: can the target see one? once per suite, before its cases (k27)
-    if ( my ( $seeing ) = grep { $_->has_images } @{ $suite->cases } ) {
-      my $check = eval {
-        $self->target_class->new( engine => $engine_for->($seeing), variant => $settings )->vision_check_f->get;
-      };
-      if ( $check ) {
-        $no_vision = $check->{no_vision};
-        $self->_say( $suite->id.' vision check: '.(
-            defined $no_vision               ? 'no_vision -- '.$self->_one_line($no_vision)
-          : defined $check->{added_tokens} ? 'seen (the image added '.$check->{added_tokens}.' input tokens)'
-          :                                  'not ruled out -- '.$self->_one_line( $check->{note} // 'no check decided' ) ) );
-      }
-      else {
-        $error = $self->target_class->scrub( $self->_text($@) );
-        $self->_say( $suite->id.' vision check aborted: '.$error );
-      }
-    }
-    REP: for my $n ( 1 .. ( defined $error ? 0 : $repeat ) ) {
-      for my $case ( @{ $suite->cases } ) {
-        my $result = eval {
-          my $runner = $self->runner_class->new(
-            target => $self->target_class->new( engine => $engine_for->($case), variant => $settings ),
-          );
-          $runner->run_case( $case, repetition => $n, no_vision => $no_vision );
-        };
-        unless ( $result ) {
-          $error = $self->target_class->scrub( $self->_text($@) );
-          $self->_say( $suite->id.' '.$case->id.' #'.$n.' aborted: '.$error );
-          last REP;
-        }
-        push @results, $result;
-        $self->_say( $suite->id.' '.$case->id.' #'.$n.' '.$result->{status} );
-      }
-    }
-    $aborted++ if defined $error;
-    # @results run repetition by repetition, case by case; the first of them is also
-    # the first in suite, case and repetition order
-    ( $first_error ) = grep { defined && length } map { $_->{error} } @results unless defined $first_error;
-    my @none = grep { $NO_ANSWER{$_} } map { $_->{status} } @results;
-    push @unanswered, @none;
-    $measured += @results - @none;
-    push @silent, [ $suite->id, $self->_tally(@none) ] if @results && @results == @none;
-    $report->add_run(
-      target  => $target,
-      variant => $variant,
-      suite   => { id => $suite->id, version => $suite->version, topic => $suite->topic, digest => $suite->digest },
-      repeat  => $repeat,
-      status  => defined $error ? 'aborted' : 'complete',
-      error   => $error,
-      cases   => [ map { $_->report_meta } @{ $suite->cases } ],
-      results => \@results,
-    );
+  my $resume;
+  if ( defined $o->{resume} ) {
+    $resume = eval { $self->report_class->read( $o->{resume} ) };
+    return $self->_usage_error( 'report '.$o->{resume}.' does not read: '.$self->_text($@) ) unless $resume;
   }
-  $report->finish;
+
+  my $several = @$variants > 1;
+  my $batch;
+  my $last_write = time;
+  my $on_event = sub {
+    my ( $e ) = @_;
+    my $at = ( $several ? $e->{variant}.' ' : '' ).$e->{suite}->id;
+    if ( $e->{type} eq 'result' ) {
+      $self->_say( $at.' '.$e->{case}->id.' #'.$e->{repetition}.' '.$e->{result}{status} );
+      $self->_checkpoint( $batch, $o->{report}, \$last_write ) if defined $o->{report};
+    }
+    elsif ( $e->{type} eq 'vision' ) {
+      my $check = $e->{check};
+      my $no_vision = $check->{no_vision};
+      $self->_say( $at.' vision check: '.(
+          defined $no_vision               ? 'no_vision -- '.$self->_one_line($no_vision)
+        : defined $check->{added_tokens} ? 'seen (the image added '.$check->{added_tokens}.' input tokens)'
+        :                                  'not ruled out -- '.$self->_one_line( $check->{note} // 'no check decided' ) ) );
+    }
+    elsif ( $e->{type} eq 'aborted' ) {
+      $self->_say( $e->{case}
+        ? $at.' '.$e->{case}->id.' #'.$e->{repetition}.' aborted: '.$e->{error}
+        : $at.' vision check aborted: '.$e->{error} );
+    }
+    return;
+  };
+  $batch = eval {
+    $self->batch_class->new(
+      suites   => $suites,
+      targets  => [ {
+        target      => $target,
+        engine      => $engine_for,
+        variants    => $variants,
+        concurrency => $o->{concurrency} // 1,
+      } ],
+      ( defined $o->{repeat} ? ( repeat => $o->{repeat} ) : () ),
+      ( $resume ? ( resume => $resume ) : () ),
+      on_event => $on_event,
+    );
+  };
+  return $self->_usage_error( $self->target_class->scrub( $self->_text($@) ) ) unless $batch;
+
+  # a signal cancels: no further case starts, the cases in play finish and
+  # the report is written; a second signal ends the process at once
+  my $cancel = sub {
+    my ( $sig ) = @_;
+    $SIG{$sig} = 'DEFAULT';
+    $batch->cancel;
+    print { $self->err } 'holmgang: '.$sig.': cancelling -- no further case starts, the cases in play finish'."\n";
+  };
+  my $report = do {
+    local @SIG{qw( INT TERM )} = ( $cancel, $cancel );
+    eval { $batch->run };
+  };
+  return $self->_usage_error( 'the batch failed: '.$self->target_class->scrub( $self->_text($@) ) ) unless $report;
   if ( defined $o->{report} ) {
     eval { $report->write( $o->{report} ); 1 }
       or return $self->_usage_error( 'report '.$o->{report}.' not written: '.$self->_text($@) );
@@ -371,7 +424,22 @@ sub cmd_run {
   my $ev = $self->evaluation_class->new( report => $report, thresholds => $self->_thresholds($suites) );
   $self->_say( '', $ev->to_text );
   $self->_say( 'report: '.$o->{report} ) if defined $o->{report};
-  return 2 if $aborted;
+  # an aborted or cancelled run (k15)
+  return 2 if grep { $_->{status} ne 'complete' } @{ $report->runs };
+
+  # the report holds the results in suite, case and repetition order: the
+  # first error text found is the first of the run (k44)
+  my ( @unanswered, @silent, $first_error );
+  my $measured = 0;
+  for my $run ( @{ $report->runs } ) {
+    my @reps = map { @{ $_->{repetitions} } } @{ $run->{cases} };
+    ( $first_error ) = grep { defined && length } map { $_->{error} } @reps unless defined $first_error;
+    my @none = grep { $NO_ANSWER{$_} } map { $_->{status} } @reps;
+    push @unanswered, @none;
+    $measured += @reps - @none;
+    push @silent, [ ( $several ? $run->{variant}{name}.' ' : '' ).$run->{suite}{id}, $self->_tally(@none) ]
+      if @reps && @reps == @none;
+  }
   # no answer over the whole run: nothing was measured, whatever the verdicts (k42)
   unless ( $measured ) {
     print { $self->err } 'holmgang: no case got an answer from the target ('
@@ -381,6 +449,17 @@ sub cmd_run {
   }
   print { $self->err } 'holmgang: suite '.$_->[0].': no case got an answer from the target ('.$_->[1].')'."\n" for @silent;
   return ( grep { !$_->{ok} } @{ $ev->verdicts } ) ? 1 : 0;
+}
+
+# the report as it stands, at most every checkpoint_seconds; a checkpoint
+# that cannot be written is said once and the run goes on
+sub _checkpoint {
+  my ( $self, $batch, $file, $last ) = @_;
+  return unless $batch && time - $$last >= $self->checkpoint_seconds;
+  $$last = time;
+  return if eval { $batch->report->write($file); 1 };
+  print { $self->err } 'holmgang: checkpoint '.$file.' not written: '.$self->_text($@)."\n" unless $self->{_checkpoint_said}++;
+  return;
 }
 
 # an error text for a note: on one line, cut to 200 characters with an ellipsis.
@@ -405,14 +484,21 @@ sub _tally {
   my $code = $cli->cmd_run( '--suite', $dir, '--target', 'mock-solution', '--report', $file );
 
 C<holmgang run>: loads the suites, builds the target (an engine name with
-C<--model>, C<--url>, C<--option>; or C<mock-solution> / C<mock-text>), plays
-every case C<--repeat> times (default the suite's C<repeat>, else 1), one at a
-time, prints a line per result and the evaluation, and writes the report with
-C<--report>. Before the cases of a suite with images it runs the vision
-pre-check once (L<Langertha::Holmgang::Target/vision_check_f>) and prints its
-outcome; when it finds the target blind, every case with images of that suite
-ends C<no_vision> without a request. Returns 1 when a verdict is not ok, 2 for a usage or setup error
-or an aborted run.
+C<--model>, C<--url>, C<--option>; or C<mock-solution> / C<mock-text>) and its
+variants (C<--variant>), and plays them through L<Langertha::Holmgang::Batch>:
+every case C<--repeat> times (default the suite's C<repeat>, else 1) under
+every variant, at most C<--concurrency> requests at once (default 1, one
+engine per slot), continuing the report of C<--resume>. It prints a line per
+result as it ends (prefixed with the variant when there are several) and the
+evaluation, and writes the report with C<--report> -- at the end, and as a
+checkpoint while the batch runs (L</checkpoint_seconds>). Before the cases of
+a suite with images the batch runs the vision pre-check once per variant
+(L<Langertha::Holmgang::Target/vision_check_f>); the outcome is printed; when
+it finds the target blind, every case with images of that suite ends
+C<no_vision> without a request. SIGINT and SIGTERM cancel the batch: no
+further case starts, the cases in play finish, the report is written. Returns
+1 when a verdict is not ok, 2 for a usage or setup error, an aborted or a
+cancelled run.
 
 When the target answered no case of the whole run -- every result, over all
 suites and repetitions, is C<error>, C<context_exceeded> or C<no_vision> -- the

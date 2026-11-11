@@ -7,7 +7,9 @@ use Carp qw( croak );
 use Compress::Zlib ();
 use Future;
 use Future::AsyncAwait;
+use JSON::MaybeXS ();
 use Langertha::Content::Image;
+use Langertha::Holmgang::Error;
 use Langertha::Role::HTTP ();
 use Scalar::Util qw( blessed );
 
@@ -80,7 +82,25 @@ Optional, default C<{}>. The variant's settings as C<chat_f> options
 (C<max_tokens>, C<temperature>, C<reasoning_effort>, C<chat_template_kwargs>
 ...). They are added to every turn and win over the turn's own options of the
 same name, as cai-platform's variant C<max_tokens> beats the case's. A plain
-HashRef, passed through unchecked.
+HashRef, passed through unchecked: this is the wire-level form. The named
+and checked settings of a variant go through L</for_variant>, which builds
+this HashRef from them.
+
+=cut
+
+has deadline => (
+  is        => 'ro',
+  predicate => 'has_deadline',
+);
+
+=attr deadline
+
+Optional. Seconds one turn may take, a number above 0. When the engine runs
+on an event loop (C<async_loop>), L</chat_turn_f> races the request against a
+timer on that loop; a turn that runs out fails with C<timeout: deadline (N s)>
+(class C<error>) and the request is cancelled. On an engine without a loop
+the request has already finished when C<chat_f> returns, so there is nothing
+to race; L</check_variant> refuses a deadline for such an engine.
 
 =cut
 
@@ -90,8 +110,150 @@ sub BUILD {
     unless blessed $self->engine && $self->engine->can('chat_f');
   croak __PACKAGE__.'->new: variant must be a HashRef'
     unless ref $self->variant eq 'HASH';
+  croak __PACKAGE__.'->new: deadline must be a number of seconds above 0'
+    if $self->has_deadline && !( defined $self->deadline && $self->deadline =~ /\A[0-9]+(?:\.[0-9]+)?\z/ && $self->deadline > 0 );
   return;
 }
+
+#### Variants
+
+# The settings a variant may name, in the order a message lists them.
+my @VARIANT_KEYS = qw( enable_thinking reasoning_effort max_tokens temperature deadline );
+my %VARIANT_KEY  = map { $_ => 1 } @VARIANT_KEYS;
+
+# Langertha's reasoning_effort values (Langertha::Role::Chat)
+my %EFFORT = map { $_ => 1 } qw( none minimal low medium high xhigh max );
+
+sub variant_keys { @VARIANT_KEYS }
+
+=method variant_keys
+
+  my @keys = Langertha::Holmgang::Target->variant_keys;
+
+The settings a variant may name: C<enable_thinking>, C<reasoning_effort>,
+C<max_tokens>, C<temperature>, C<deadline>.
+
+=cut
+
+sub check_variant {
+  my ( $self, $settings, $engine ) = @_;
+  my $no = sub { Langertha::Holmgang::Error->throw(@_) };
+  $no->( variant => 'not a hash of settings' ) unless ref $settings eq 'HASH';
+  my %v;
+  for my $k ( sort keys %$settings ) {
+    my $x = $settings->{$k};
+    $no->( 'variant.'.$k => 'unknown setting (known: '.join( ', ', @VARIANT_KEYS ).')' ) unless $VARIANT_KEY{$k};
+    # an empty value names nothing (cai-platform check_variant)
+    next if !defined $x || ( !ref $x && !length $x );
+    if ( $k eq 'enable_thinking' ) {
+      my $on = JSON::MaybeXS::is_bool($x) ? ( $x ? 1 : 0 )
+             : ref $x                     ? undef
+             : $x =~ /\A(?:on|true|1)\z/  ? 1
+             : $x =~ /\A(?:off|false|0)\z/ ? 0
+             :                              undef;
+      $no->( 'variant.enable_thinking' => 'on or off (true/false, 1/0)' ) unless defined $on;
+      $v{$k} = $on ? JSON::MaybeXS::true() : JSON::MaybeXS::false();
+    }
+    elsif ( $k eq 'reasoning_effort' ) {
+      $no->( 'variant.reasoning_effort' => 'one of '.join( ', ', qw( none minimal low medium high xhigh max ) ) )
+        unless !ref $x && $EFFORT{$x};
+      $v{$k} = ''.$x;
+    }
+    elsif ( $k eq 'max_tokens' ) {
+      $no->( 'variant.max_tokens' => 'a whole number from 1 to 9999999' ) unless !ref $x && $x =~ /\A[1-9][0-9]{0,6}\z/;
+      $v{$k} = 0 + $x;
+    }
+    elsif ( $k eq 'temperature' ) {
+      $no->( 'variant.temperature' => 'a number from 0 to 2' )
+        unless !ref $x && $x =~ /\A[0-9]+(?:\.[0-9]+)?\z/ && $x <= 2;
+      $v{$k} = 0 + $x;
+    }
+    else {   # deadline
+      $no->( 'variant.deadline' => 'seconds, a number above 0 and at most 86400' )
+        unless !ref $x && $x =~ /\A[0-9]+(?:\.[0-9]+)?\z/ && $x > 0 && $x <= 86400;
+      $v{$k} = 0 + $x;
+    }
+  }
+  return \%v unless defined $engine;
+  my $name  = ref $engine;
+  my $model = $engine->can('chat_model') ? eval { $engine->chat_model } : undef;
+  my $of    = 'the engine '.$name.( defined $model ? ' (model '.$model.')' : '' );
+  my $takes = sub { !$engine->can('supports') || $engine->supports( $_[0] ) };
+  $no->( 'variant.temperature' => $of.' takes no temperature; Langertha would drop it' )
+    if exists $v{temperature} && !$takes->('temperature');
+  $no->( 'variant.reasoning_effort' => $of.' takes no reasoning_effort; Langertha would drop it' )
+    if exists $v{reasoning_effort} && !$takes->('reasoning_effort');
+  $no->( 'variant.enable_thinking' => $of.' speaks no OpenAI-compatible wire, so chat_template_kwargs has no place' )
+    if exists $v{enable_thinking} && !( $engine->can('does') && $engine->does('Langertha::Role::OpenAICompatible') );
+  $no->( 'variant.deadline' => $of.' runs on no event loop (IO::Async and Net::Async::HTTP), so a deadline cannot cut a request' )
+    if exists $v{deadline} && !( $engine->can('async_loop') && $engine->async_loop );
+  return \%v;
+}
+
+=method check_variant
+
+  my $settings = Langertha::Holmgang::Target->check_variant( \%settings );
+  my $settings = Langertha::Holmgang::Target->check_variant( \%settings, $engine );
+
+Checks the settings of a variant and returns them normalised. A variant names
+only these, each checked (cai-platform C<ModelTester::check_variant>):
+
+=over
+
+=item * C<enable_thinking> -- C<on>/C<off>, C<true>/C<false>, C<1>/C<0> or a
+JSON boolean; normalised to a JSON boolean. Goes out as
+C<< chat_template_kwargs => { enable_thinking => ... } >> (Qwen, Nemotron,
+Gemma under llama.cpp, vLLM, SGLang).
+
+=item * C<reasoning_effort> -- one of Langertha's values C<none minimal low
+medium high xhigh max>.
+
+=item * C<max_tokens> -- a whole number from 1 to 9999999; beats the case's.
+
+=item * C<temperature> -- a number from 0 to 2; beats the case's.
+
+=item * C<deadline> -- seconds per turn, above 0 and at most 86400
+(L</deadline>).
+
+=back
+
+An empty value names nothing and is left out. With an C<$engine> the settings
+are also checked against it: C<temperature> and C<reasoning_effort> only where
+it C<supports> them (Langertha would drop them with a warning, and the report
+would name a setting that never went out), C<enable_thinking> only on an
+engine with L<Langertha::Role::OpenAICompatible>, C<deadline> only on an
+engine with an event loop. Throws a L<Langertha::Holmgang::Error> on the field
+C<variant.E<lt>keyE<gt>>.
+
+=cut
+
+sub for_variant {
+  my ( $self, %arg ) = @_;
+  my $engine = $arg{engine};
+  croak __PACKAGE__.'->for_variant: engine must be a Langertha engine with chat_f'
+    unless blessed $engine && $engine->can('chat_f');
+  my $s = $self->check_variant( $arg{settings} // {}, $engine );
+  my %opts = map { exists $s->{$_} ? ( $_ => $s->{$_} ) : () } qw( reasoning_effort max_tokens temperature );
+  $opts{chat_template_kwargs} = { enable_thinking => $s->{enable_thinking} } if exists $s->{enable_thinking};
+  return ( ref $self || $self )->new(
+    engine  => $engine,
+    variant => \%opts,
+    ( exists $s->{deadline} ? ( deadline => $s->{deadline} ) : () ),
+  );
+}
+
+=method for_variant
+
+  my $target = Langertha::Holmgang::Target->for_variant(
+    engine   => $engine,
+    settings => { enable_thinking => 'off', max_tokens => 4000, deadline => 1800 },
+  );
+
+A target for one variant: the settings checked against the engine
+(L</check_variant>) and turned into L</variant> (the C<chat_f> options) and
+L</deadline>.
+
+=cut
 
 # How much of an error body Langertha keeps in its croak while a turn runs.
 # Its default ($Langertha::Role::HTTP::error_body_max_length, 500 characters)
@@ -413,6 +575,14 @@ sub chat_turn_f {
     $f = Future->fail( $@ || ref( $self->engine ).'->chat_f returned no Future' )
       unless blessed $f && $f->isa('Future');
   }
+  # the variant's deadline: the request races a timer on the engine's loop
+  if ( $self->has_deadline && !$f->is_ready ) {
+    my $loop = $self->engine->can('async_loop') ? $self->engine->async_loop : undef;
+    if ( $loop ) {
+      my $d = $self->deadline;
+      $f = Future->wait_any( $f, $loop->delay_future( after => $d )->then_fail( 'timeout: deadline ('.$d.' s)' ) );
+    }
+  }
   return $f->then(
     sub {
       my ( $response ) = @_;
@@ -456,6 +626,10 @@ C<no_vision>, C<context_exceeded> or C<error> (L</classify_error>); the
 runner ends the case with that status.
 
 =back
+
+With a L</deadline>, a request still running after that many seconds is
+cancelled and the turn fails with C<timeout: deadline (N s)> (class
+C<error>).
 
 Anything C<chat_f> throws or fails with counts as a failed turn, including
 a croak before the request (a capability exclusion, a malformed tool). What

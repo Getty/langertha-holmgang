@@ -29,6 +29,11 @@ requires 'Unicode::Normalize';
 requires 'URI';
 requires 'YAML::XS';
 
+# a deadline and concurrent requests need the engine on an event loop, as
+# Langertha's _f methods do; without them requests run one after another
+recommends 'IO::Async';
+recommends 'Net::Async::HTTP';
+
 on test => sub {
   requires 'File::Find';
   requires 'File::Spec';
