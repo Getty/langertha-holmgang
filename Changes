@@ -73,3 +73,4 @@ Revision history for Langertha-Holmgang
   - New Langertha::Holmgang::Random: a seeded random source in pure Perl for generators, the same on every perl and platform (k18)
   - Cases and suites in a Perl DSL (use Langertha::Holmgang, ADR 0007): a suite.pl in a suite directory loads, lints and runs like a format 2 suite; it covers images, tolerance, tiers, weights and tags; generate seed => N gives the same cases for the same seed, and the loader can override the seed per suite (k18)
   - holmgang lint and holmgang run take a directory with suite.pl (k18)
+  - New answer world denken (Langertha::Holmgang::Sim::Denken): one tool antwort_abgeben, a checker per Reasoning Gym task, only the full score counts as right; cai-platform's suite denken loads unchanged (k53)

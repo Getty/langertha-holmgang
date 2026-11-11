@@ -39,6 +39,7 @@ Built in are:
   ios       Langertha::Holmgang::Sim::IOS        Cisco IOS CLI
   kueche    Langertha::Holmgang::Sim::Kueche     answer world: recipes, pantry, shopping list, week plan
   sehen     Langertha::Holmgang::Sim::Sehen      answer world: hand in what an image shows
+  denken    Langertha::Holmgang::Sim::Denken     answer world: reasoning tasks, the answer handed in by tool, a checker per task
   roost     Langertha::Holmgang::Sim::Roost      answer world: an invented dragon roost (example suite demo-roost)
 
 A built-in type whose class is not installed is not offered (L</types>) and
@@ -61,6 +62,7 @@ my %BUILTIN = (
   ios      => 'Langertha::Holmgang::Sim::IOS',
   kueche   => 'Langertha::Holmgang::Sim::Kueche',
   sehen    => 'Langertha::Holmgang::Sim::Sehen',
+  denken   => 'Langertha::Holmgang::Sim::Denken',
   roost    => 'Langertha::Holmgang::Sim::Roost',
 );
 
