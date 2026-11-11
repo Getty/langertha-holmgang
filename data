@@ -1,0 +1,24 @@
+---
+claimed_at: 2026-11-11T08:09:48Z
+claimed_by: holmgang-main
+class: standard
+completed: 2026-11-11T08:08:28Z
+created: 2026-11-11T07:49:23Z
+id: 55
+priority: high
+started: 2026-11-11T07:50:15Z
+status: done
+tags:
+- sim
+- answer-world
+title: Antwortwelt schichtfehler portieren
+updated: 2026-11-11T08:09:48Z
+---
+
+Aus k23: Eval::Sim::Schichtfehler mit sechs Werkzeugen, antwortet nur aus im Zustand aufgezeichneten Seiten; kein Shell-Aufruf (Aufnahme mit echtem PHP bleibt beim privaten Generator). Testhilfe MockReplay mitnehmen.
+
+sim-worker: reading source (origin/main Sim/Schichtfehler.pm, t/eval_sim_schichtfehler.t, t/lib/MockReplay.pm); porting as Role::AnswerWorld like Sim::Kueche
+
+sim-worker: Sim::Schichtfehler ported (AnswerWorld, 6 tools, answers only from recorded pages), registered in Simulators.pm, t/sim/schichtfehler.t (synthetic). Acceptance: holmgang lint on archived schichtfehler suite = 1 suite ok (19 cases), 0 refused. prove -lr t green (3198 tests). MockReplay not ported: its only consumer is cai's DB run test against the real suite; Holmgang lint's mock runs cover that. Loader.pm POD line 791 still lists only kueche/sehen/roost — outside my lane.
+
+committed 1b3ee3b
