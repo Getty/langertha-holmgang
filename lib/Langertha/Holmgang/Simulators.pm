@@ -39,6 +39,7 @@ Built in are:
   ios       Langertha::Holmgang::Sim::IOS        Cisco IOS CLI
   kueche    Langertha::Holmgang::Sim::Kueche     answer world: recipes, pantry, shopping list, week plan
   sehen     Langertha::Holmgang::Sim::Sehen      answer world: hand in what an image shows
+  roost     Langertha::Holmgang::Sim::Roost      answer world: an invented dragon roost (example suite demo-roost)
 
 A built-in type whose class is not installed is not offered (L</types>) and
 answers like a host without SSH. Further types come by L</register> with a
@@ -60,6 +61,7 @@ my %BUILTIN = (
   ios      => 'Langertha::Holmgang::Sim::IOS',
   kueche   => 'Langertha::Holmgang::Sim::Kueche',
   sehen    => 'Langertha::Holmgang::Sim::Sehen',
+  roost    => 'Langertha::Holmgang::Sim::Roost',
 );
 
 has _classes => (

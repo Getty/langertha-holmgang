@@ -452,7 +452,7 @@ family.
 C<state> is the initial world, nested data. A top-level entry with a C<type>
 is a device (or an answer world): the type picks its simulator from
 L<Langertha::Holmgang::Simulators> — built in are C<linux>, C<routeros>,
-C<ios> and the answer world C<kueche> — and every other key of the entry is
+C<ios> and the answer worlds C<kueche>, C<sehen> and C<roost> — and every other key of the entry is
 whatever that simulator documents in its POD. An unknown type is refused. A
 top-level entry without C<type> is plain data for handlers.
 
@@ -551,6 +551,7 @@ with its origin and license in the head of F<suite.yaml>:
   demo-lamp       a world without devices: one tool described by handlers
   demo-haystack   a message made by generate (Langertha::Holmgang::Haystack)
   demo-sehen      an image on a user message; the answer world sehen
+  demo-roost      a typed answer world plugin: the invented dragon roost (two cases)
 
 In a checkout they are under F<share/suites>; installed, under the
 distribution's share directory:

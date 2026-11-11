@@ -35,10 +35,11 @@ Vision, vocabulary and scope: [CONTEXT.md](CONTEXT.md). Decisions:
 
 ## Quick start
 
-The distribution ships four small, invented example suites under
+The distribution ships five small, invented example suites under
 `share/suites` (ADR 0010): `demo-linux` (a Linux device), `demo-lamp` (a world
 without devices, its tool described by handlers), `demo-haystack` (generated
-input) and `demo-sehen` (an image on a user message, the answer world `sehen`). Installed, they are in the distribution's share directory:
+input), `demo-sehen` (an image on a user message, the answer world `sehen`) and
+`demo-roost` (a typed answer world plugin, an invented dragon roost). Installed, they are in the distribution's share directory:
 
 ```bash
 SUITES="$(perl -MFile::ShareDir=dist_dir -E 'say dist_dir("Langertha-Holmgang")')/suites"
