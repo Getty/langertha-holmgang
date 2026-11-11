@@ -45,7 +45,7 @@ L<Langertha::Holmgang::Error> naming the field — C<format>, C<id>,
 C<suite.yaml: tools[0].name>, C<cases/c1.yaml: rules[0].regex>.
 
 The suite's digest is SHA-256 over C<suite.yaml>, each case file (name and
-bytes) and each generated text — computed exactly as cai-platform computes its
+bytes) and each generated text (an excerpt from F<quellen/> included, k52) — computed exactly as cai-platform computes its
 C<digest>, so a suite has the same value in both — and, for a case with
 images, each image's file, SHA-256, width and height (k27). A suite without
 images has the digest it had before images existed.
@@ -177,7 +177,7 @@ sub load {
     my $f = 'cases/'.$file;
     my ( $data, $bytes ) = $self->_read_yaml( $dir.'/cases/'.$file, $f );
     $sha->add( $f."\0", $bytes, "\0" );
-    $self->_digest_generated( $sha, $data, $f );
+    $self->_digest_generated( $sha, $data, $f, $dir );
     my $case = $st->case( $data, file => $file, tools => $suite{tools}, defaults => $suite{defaults}, dir => $dir );
     $self->_digest_images( $sha, $case, $f );
     $self->lint->lint( $case, $f );
@@ -186,10 +186,11 @@ sub load {
   return Langertha::Holmgang::Suite->new( %suite, cases => \@cases, digest => $sha->hexdigest );
 }
 
-# the generated texts of a case file, by field, as cai-platform's digest takes them
+# the generated texts of a case file, by field, as cai-platform's digest takes
+# them -- excerpts from quellen/ (k52) set in first
 sub _digest_generated {
-  my ( $self, $sha, $data, $f ) = @_;
-  for my $g ( $self->structure->generated( $data, $f ) ) {
+  my ( $self, $sha, $data, $f, $dir ) = @_;
+  for my $g ( $self->structure->generated( $data, $f, dir => $dir ) ) {
     my ( $field, $text ) = @$g;
     $sha->add( $field."\0", Digest::SHA::sha256_hex( Encode::encode( 'UTF-8', $text ) ), "\0" );
   }
@@ -263,7 +264,7 @@ sub assemble {
   $sha->add( "suite.yaml\0", $yaml, "\0" );
 
   my %seen;
-  my ( @cases, %images );
+  my ( @cases, %images, %sources );
   # ordered as the export's file names are, which is format 2's load order
   for my $data ( sort { ( $a->{id} // '' ).'.yaml' cmp( $b->{id} // '' ).'.yaml' } @{ $o{cases} || [] } ) {
     my $id = $data->{id} // '';
@@ -275,15 +276,29 @@ sub assemble {
     my $bytes = $self->_export_yaml( $data, $f, $field );
     push @files, [ $f, $bytes ];
     $sha->add( $f."\0", $bytes, "\0" );
-    $self->_relabel( $field, $f, sub { $self->_digest_generated( $sha, $data, $f ) } );
+    $self->_relabel( $field, $f, sub { $self->_digest_generated( $sha, $data, $f, $o{dir} ) } );
     $self->_digest_images( $sha, $case, $f );
     $self->lint->lint( $case, $field );
     $images{ $_->{file} } //= $_->{path} for values %{ $case->image_files };
+    $self->_excerpt_sources( \%sources, $data, $o{dir} );
     push @cases, $case;
   }
   $self->_refuse( $label, 'no cases' ) unless @cases;
   return Langertha::Holmgang::Suite->new( %suite, cases => \@cases, digest => $sha->hexdigest,
-    _export => { files => \@files, images => \%images } );
+    _export => { files => \@files, images => \%images, sources => \%sources } );
+}
+
+# the fixtures under quellen/ the excerpts of a (checked) case read, by their
+# file relative to the suite directory, with their real path (k52)
+sub _excerpt_sources {
+  my ( $self, $sources, $data, $dir ) = @_;
+  my $ex = $self->structure->excerpt;
+  for my $m ( grep { ref $_ eq 'HASH' } @{ $data->{messages} || [] } ) {
+    for my $file ( $ex->files( $m->{content} ) ) {
+      $sources->{$file} //= $ex->source( $dir, $file, 'quellen' )->{path};
+    }
+  }
+  return;
 }
 
 =method assemble
@@ -292,7 +307,7 @@ sub assemble {
     head    => \%suite_head,    # format 2 keys of suite.yaml, without format
     cases   => \@case_hashes,   # format 2 keys of a case file each
     file    => 'suite.pl',      # starts every field path
-    dir     => $suite_dir,      # images and texts are relative to it
+    dir     => $suite_dir,      # images, texts and quellen/ are relative to it
     dirname => 'example-sums',  # optional: the id must equal it
   );
 
@@ -306,8 +321,9 @@ L</load>; a refusal names C<file> and the case
 
 The digest is the digest L</load> takes of the suite's YAML export
 (L</export>): the head as F<suite.yaml>, each case as
-F<cases/E<lt>idE<gt>.yaml>, in the export's bytes, with the generated texts and
-images. A suite and its export are the same suite, with the same digest.
+F<cases/E<lt>idE<gt>.yaml>, in the export's bytes, with the generated texts
+(excerpts included) and images. A suite and its export are the same suite,
+with the same digest.
 
 =cut
 
@@ -327,10 +343,10 @@ sub export {
     $p->parent->mkpath;
     $p->spew_raw( $file->[1] );
   }
-  for my $name ( sort keys %{ $exp->{images} } ) {
-    my $p = $tmp->child($name);
+  for my $copy ( map { my $h = $exp->{$_} || {}; map { [ $_, $h->{$_} ] } sort keys %$h } qw( images sources ) ) {
+    my $p = $tmp->child( $copy->[0] );
     $p->parent->mkpath;
-    path( $exp->{images}{$name} )->copy($p);
+    path( $copy->[1] )->copy($p);
   }
   rename "$tmp", "$out" or $self->_refuse( 'export', 'cannot move the export to '.$out.': '.$! );
   my $back = eval { $self->load("$out") };
@@ -345,15 +361,17 @@ sub export {
 =method export
 
   my $out = $loader->export( '/srv/dsl-suites/example-sums', '/srv/exported' );
-  # '/srv/exported/example-sums', with suite.yaml, cases/*.yaml and the images
+  # '/srv/exported/example-sums', with suite.yaml, cases/*.yaml, the images and quellen/
 
 Writes a suite in the case DSL (a directory with F<suite.pl>) as suite format
 2 into C<$root>/I<id> -- F<suite.yaml>, one F<cases/E<lt>idE<gt>.yaml> per case,
-and every image a case shows, copied under the same relative path -- and
+every image a case shows and every fixture under F<quellen/> an excerpt reads
+(L<Langertha::Holmgang/excerpt>), copied under the same relative path -- and
 returns that directory. The suite is loaded first (lint included), with the
 L</seeds> of this loader. What a C<file> read and what C<generate> blocks
 built is written out as format 2 has it: texts inline, C<haystack> specs as
-C<generate> specs, generated cases as plain cases. The export then loads back
+C<generate> specs, C<excerpt>s as C<auszug> parts, generated cases as plain
+cases. The export then loads back
 through L</load>; anything but the same digest removes it again and is a
 refusal (field C<export>). A suite directory that already exists under
 C<$root> is a refusal, nothing is overwritten. A directory with F<suite.yaml>
@@ -759,8 +777,11 @@ A tool described in data for a small world without a simulator
 B<Messages> are C<< { role, content, untrusted, images } >>. C<role> is C<user> or
 C<assistant> (the system prompt goes under C<system>), the last message is
 from the user. C<content> is text, a generate spec
-C<< { generate: { ... } } >> or a list of texts and generate specs, joined
-(L<Langertha::Holmgang::Haystack/THE SPEC>). C<untrusted: true> marks content
+C<< { generate: { ... } } >>, an excerpt C<< { auszug: { datei, von, bis } } >>
+or a list of texts, generate specs and excerpts, joined
+(L<Langertha::Holmgang::Haystack/THE SPEC>). An excerpt sets in the
+provisions C<von> to C<bis> of a statute text under F<quellen/> of the suite
+(L<Langertha::Holmgang::Excerpt>). C<untrusted: true> marks content
 that does not come from the user; the mark is for the report only and never
 goes out (L<Langertha::Holmgang::Case/prompt_messages>). A user message may
 carry C<< images: [ { file, untrusted } ] >>, one to four PNG or JPEG files of at

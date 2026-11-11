@@ -10,6 +10,7 @@ use JSON::MaybeXS ();
 use Path::Tiny qw( path );
 use Langertha::Holmgang::Case;
 use Langertha::Holmgang::Error;
+use Langertha::Holmgang::Excerpt;
 use Langertha::Holmgang::Expectation ();
 use Langertha::Holmgang::Haystack;
 use Langertha::Holmgang::Simulators;
@@ -94,6 +95,20 @@ sub _build_haystack { Langertha::Holmgang::Haystack->new }
 =attr haystack
 
 Resolves generated content; shared with the cases, so a text is generated once.
+
+=cut
+
+has excerpt => (
+  is      => 'ro',
+  lazy    => 1,
+  builder => '_build_excerpt',
+);
+sub _build_excerpt { Langertha::Holmgang::Excerpt->new }
+
+=attr excerpt
+
+Sets the excerpts from the suite's F<quellen/> into message contents
+(L<Langertha::Holmgang::Excerpt>, k52).
 
 =cut
 
@@ -388,18 +403,19 @@ sub _source {
 #### Generated content
 
 sub generated {
-  my ( $self, $data, $f ) = @_;
+  my ( $self, $data, $f, %o ) = @_;
   my @out;
   return @out unless ref $data eq 'HASH';
   my $put = sub {
-    my ( $h, $k, $field ) = @_;
-    return unless ref $h->{$k} eq 'HASH' || ref $h->{$k} eq 'ARRAY';
-    push @out, [ $field, $self->haystack->resolve( $h->{$k}, $field ) ];
+    my ( $v, $field ) = @_;
+    return unless ref $v eq 'HASH' || ref $v eq 'ARRAY';
+    push @out, [ $field, $self->haystack->resolve( $v, $field ) ];
   };
   if ( ref $data->{messages} eq 'ARRAY' ) {
     my $i = 0;
     for my $m ( @{ $data->{messages} } ) {
-      $put->( $m, 'content', $f.': messages['.$i.'].content' ) if ref $m eq 'HASH';
+      my $field = $f.': messages['.$i.'].content';
+      $put->( $self->excerpt->expand( $m->{content}, $field, $o{dir} ), $field ) if ref $m eq 'HASH';
       $i++;
     }
   }
@@ -408,7 +424,7 @@ sub generated {
     my $files = ref $data->{state}{$dev} eq 'HASH' ? $data->{state}{$dev}{files} : undef;
     next unless ref $files eq 'HASH';
     for my $p ( sort keys %$files ) {
-      $put->( $files->{$p}, 'content', $f.': state.'.$dev.'.files.'.$p.'.content' ) if ref $files->{$p} eq 'HASH';
+      $put->( $files->{$p}{content}, $f.': state.'.$dev.'.files.'.$p.'.content' ) if ref $files->{$p} eq 'HASH';
     }
   }
   return @out;
@@ -416,12 +432,15 @@ sub generated {
 
 =method generated
 
-  my @texts = $structure->generated( $case_yaml, 'cases/c1.yaml' );
+  my @texts = $structure->generated( $case_yaml, 'cases/c1.yaml', dir => $suite_dir );
   # ( [ 'cases/c1.yaml: messages[0].content', $text ], … )
 
 The generated contents of a case — message contents, then file contents of
 the state by device and path — each with its field and its text, in the order
-the digest takes them. Refuses a broken generate spec with its field.
+the digest takes them. A message content with an excerpt
+(C<< { auszug => … } >>, L<Langertha::Holmgang::Excerpt>) counts as generated:
+the excerpts are set in from C<dir> first, as cai-platform does. Refuses a
+broken generate spec or excerpt with its field.
 
 =cut
 
@@ -449,7 +468,8 @@ sub case {
     my $role = $m->{role} // '';
     $self->_refuse( $mf.'.role', 'user or assistant (the system prompt goes under system:)' )
       unless $role eq 'user' || $role eq 'assistant';
-    my $content = ref $m->{content} ? $self->haystack->resolve( $m->{content}, $mf.'.content' ) : $m->{content};
+    my $content = $self->excerpt->expand( $m->{content}, $mf.'.content', $o{dir} );
+    $content = $self->haystack->resolve( $content, $mf.'.content' ) if ref $content;
     $content = $self->_text( $content, $mf.'.content' );
     if ( exists $m->{images} ) {
       $self->_refuse( $mf.'.images', 'only on a user message' ) unless $role eq 'user';
@@ -540,7 +560,8 @@ Without C<file>, C<field> names the start of every field path. Lint is not
 part of it.
 
 C<dir> is the suite directory, which the C<file> of an image on a user message
-is relative to (L</IMAGES>); a case with images and without C<dir> is refused.
+(L</IMAGES>) and the C<datei> of an excerpt (L<Langertha::Holmgang::Excerpt>)
+are relative to; a case with images or excerpts and without C<dir> is refused.
 
 =cut
 

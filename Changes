@@ -78,3 +78,4 @@ Revision history for Langertha-Holmgang
   - holmgang export-yaml / Loader->export write a DSL suite as suite format 2 (canonical YAML, images copied); a DSL suite's digest is now its export's digest; DSL cases run in file-name order of their export (k19)
   - --seed ID=N on lint, run and export-yaml overrides a DSL suite's generate seeds (k51)
   - New example suite demo-beacons: the case DSL, cases from a seeded generate block (k50)
+  - Format 2 takes the message part auszug: { datei, von, bis }: a range of a statute text under the suite's quellen/, inserted at load and digested as cai-platform does; the DSL constructor excerpt; the YAML export copies the fixtures (k52)

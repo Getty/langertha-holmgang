@@ -23,7 +23,7 @@ my @KEYWORDS = qw(
   system_prompt settings tool handler case generate difficulty weight tags tier
   ask message image device world observe rule
   at unchanged_except calls not_called only_tools check packet login
-  solution alternative wrong call run put file haystack
+  solution alternative wrong call run put file haystack excerpt
 );
 
 Moose::Exporter->setup_import_methods( as_is => \@KEYWORDS );
@@ -374,6 +374,20 @@ sub haystack {
   return { generate => {@_} };
 }
 
+# an excerpt from a statute text under quellen/ (k52): the format 2 part
+# { auszug => { datei, von, bis } }; the file and the range are checked when
+# the suite closes, by Structure through ::Excerpt, with the field path
+sub excerpt {
+  my ( $file, @pairs ) = @_;
+  croak "excerpt: a file under quellen/ expected (excerpt 'quellen/NAME.txt', from => ..., to => ...)"
+    unless defined $file && !ref $file && length $file;
+  my $o = _pairs( 'excerpt', [qw( from to )], @pairs );
+  for my $k (qw( from to )) {
+    croak 'excerpt: '.$k.' => the label of a provision expected' unless defined $o->{$k} && !ref $o->{$k};
+  }
+  return { auszug => { datei => $file, von => $o->{from}, bis => $o->{to} } };
+}
+
 #### closing a suite
 
 # a defensive deep copy of what the blocks recorded, in format 2 terms: a qr//
@@ -627,7 +641,8 @@ The length tier: the tag C<stufe-48k>; one per case.
 =item C<message ROLE =E<gt> CONTENT, untrusted =E<gt> 1, images =E<gt> [ ... ]>
 
 A message (C<ask>: C<role: user>). C<CONTENT> is a text, a
-C<< { generate => ... } >> spec (L</haystack>) or a list of parts. C<images>
+C<< { generate => ... } >> spec (L</haystack>), an L</excerpt> or a list of
+parts. C<images>
 (only on a user message) lists file names relative to the suite directory, or
 L</image> entries; a plain file name C<'img/a.png'> is C<< { file => 'img/a.png' } >>.
 
@@ -686,6 +701,15 @@ boolean (C<JSON::PP::true>), not C<1>.
 A call of the suite's one tool with C<simulator: run_command> (C<write_file>);
 resolved when the suite closes, which dies unless exactly one such tool
 exists.
+
+=item C<excerpt 'quellen/NAME.txt', from =E<gt> LABEL, to =E<gt> LABEL>
+
+A message part with the provisions C<from> to C<to> (such as C<'§ 305'>,
+C<'Artikel 28'>) of a statute text under F<quellen/> of the suite directory:
+the format 2 part C<< { auszug => { datei, von, bis } } >>
+(L<Langertha::Holmgang::Excerpt>), set in when the suite closes. Use it alone
+or in a list of parts: C<< ask [ "The statute:\n\n", excerpt( ... ), "\n\nThe contract: ..." ] >>.
+The YAML export writes the part as it is and copies the fixture.
 
 =item C<file 'NAME'>
 
