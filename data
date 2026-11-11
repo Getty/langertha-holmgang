@@ -1,0 +1,31 @@
+---
+claimed_at: 2026-11-11T07:17:21Z
+claimed_by: holmgang-main
+class: standard
+completed: 2026-11-11T07:17:13Z
+created: 2026-11-04T19:34:09Z
+depends_on:
+- 9
+id: 15
+priority: medium
+started: 2026-11-11T06:51:28Z
+status: done
+tags:
+- runner
+title: Varianten je Ziel, parallele Läufe mit Grenze je Ziel, repeat, Wiederaufnahme
+updated: 2026-11-11T07:17:21Z
+---
+
+Varianten: enable_thinking (chat_template_kwargs), reasoning_effort, max_tokens, Temperatur, Frist. Begrenzte gleichzeitige Anfragen je Ziel, repeat n, ein abgebrochener Lauf setzt fort und überspringt Fälle mit Ergebnis.
+
+
+
+Aus k38 (2026-11-05): Fehler auf Laufebene im Batch müssen ebenfalls durch Target::scrub (ADR-0006-Nachtrag).
+
+holmgang-worker: started. Plan: Target gains check_variant/for_variant (5 named settings: enable_thinking->chat_template_kwargs, reasoning_effort, max_tokens, temperature, deadline raced on the engine's loop as 'timeout: deadline (N s)'), new ::Batch (targets x variants x suites x repeat, Future::Utils fmap_void concurrent per target, slot-indexed engines, resume from an earlier report with digest/repeat checks, cancel, run errors through Target::scrub cut at 2000), CLI loop replaced, --variant NAME:K=V, --concurrency, --resume. cai --deadline/--idle-timeout is WIP on branch worktree-k203-fristen (not main); idle timeout maps to the engine's user_agent_timeout via --option.
+
+holmgang-worker: implemented ::Batch, Target::check_variant/for_variant/deadline, CLI over Batch (--variant NAME:K=V, --concurrency, --resume, checkpoints, SIGINT/TERM cancel -> exit 2). New tests t/batch.t, t/cli/batch.t (+ t/lib HeldEngine/StallEngine/SignalEngine); t/cli/run.t variant test switched from reasoning_effort=low to enable_thinking=off (Virtual takes no reasoning_effort; the batch now refuses a setting the engine would drop). prove -lr t green (83 files, 2623 tests). ADR amendments k15 in 0005, 0006, 0009. Acceptance run pending.
+
+holmgang-worker: acceptance green (acceptance_load, acceptance_mock_runs, no_private_suite_ids: 99 tests, none skipped). Extra: holmgang run --target mock-solution --repeat 2 over the 31 format-2 suites of the acceptance copy, --concurrency 1 vs 4: both exit 0, reports identical apart from volatile fields (1026 repetitions). Not mine in the tree: Expectation.pm, Grader.pm, Structure.pm, ToolSchema.pm, t/tool_schema.t, t/tolerance.t (another worker). Ready for review; not moved.
+
+committed dae729e
