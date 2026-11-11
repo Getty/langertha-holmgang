@@ -1,0 +1,25 @@
+---
+claimed_at: 2026-11-11T08:27:08Z
+claimed_by: holmgang-main
+class: standard
+completed: 2026-11-11T08:26:58Z
+created: 2026-11-11T07:48:58Z
+id: 52
+priority: high
+started: 2026-11-11T08:10:43Z
+status: done
+tags:
+- format
+- loader
+- dsl
+title: 'Format 2: Nachrichtenteil auszug mit Gesetzestexten aus quellen/'
+updated: 2026-11-11T08:27:08Z
+---
+
+Aus k23: CAI::Platform::Eval::Auszug portieren (cai origin/main): Teil { auszug: { datei, von, bis } } setzt einen Bereich aus einer Fixture unter quellen/ der Suite ein; SHA-256 in den Digest, Fehler mit Feldpfad. DSL-Konstruktor und Export-Form per ADR-Nachtrag (0005/0007). Ohne ihn lädt vertragscheck nicht.
+
+Worker: Langertha::Holmgang::Excerpt ported from cai Eval::Auszug (same text byte for byte), Structure sets excerpts in before Haystack (case + generated with dir), confinement like k27, digest as cai (vertragscheck digest b816a3... equal to cai Suite::load on origin/main; all 15 prompt texts SHA-equal). DSL constructor excerpt FILE, from=>, to=>; export copies quellen/ fixtures, round trip same digest. ADR 0005/0007 amendments k52. vertragscheck lint: 15/15 ok. Tests t/excerpt.t, t/dsl/excerpt.t. Full prove + acceptance running.
+
+Worker: prove -lr t green (97 files, 3268 tests); acceptance (af7561a5) green: load, mock runs, no private ids (99 tests). Ready for review; not moved per instruction.
+
+committed 9407d1c
