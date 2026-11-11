@@ -1,0 +1,23 @@
+---
+claimed_at: 2026-11-11T06:24:34Z
+claimed_by: holmgang-main
+class: standard
+completed: 2026-11-11T06:24:34Z
+created: 2026-11-05T13:01:06Z
+id: 29
+priority: low
+started: 2026-11-11T05:56:06Z
+status: done
+tags:
+- haystack
+title: Haystack wirft Error statt croak
+updated: 2026-11-11T06:24:42Z
+---
+
+Aus k2: Haystack->resolve croakt noch (TODO); Structure verpackt den croak derzeit in Langertha::Holmgang::Error. Haystack direkt Error werfen lassen, Umverpackung in Structure entfernen.
+
+2026-11-11 05:58 holmgang-worker: Haystack::_refuse throws Langertha::Holmgang::Error->throw(field, reason) (Carp import dropped, POD of generate/resolve updated); Structure::_resolve with its eval/string-parse re-wrapping removed, the three call sites call haystack->resolve directly (blessed import dropped). Test t/haystack.t: refusal isa Error, field = full path, reason without source location — red on the old Haystack, green now. t/loader.t (field of a broken generate spec through the loader) still green.
+
+2026-11-11 06:03 holmgang-worker: t/location_rule.t (k44) asserted the Structure re-wrapping this card removes (a string-dying fake haystack turned into an Error with the location cut). Claim replaced, not kept: its Structure half is dropped and the header says why; the real Haystack now throws Error without a location (pinned in t/haystack.t). Stale prose left for others' lanes: ADR 0009 lines 144-146 ('Structure's generated-content errors cut a trailing die location') and the comment over $LOCATION in Target.pm line 189 ('World and Structure cut a trailing one') — Structure no longer uses $LOCATION.
+
+Committed as aca4062
