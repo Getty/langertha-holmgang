@@ -4,7 +4,10 @@ package Langertha::Holmgang::Target;
 use Moose;
 use namespace::autoclean;
 use Carp qw( croak );
+use Compress::Zlib ();
 use Future;
+use Future::AsyncAwait;
+use Langertha::Content::Image;
 use Langertha::Role::HTTP ();
 use Scalar::Util qw( blessed );
 
@@ -257,6 +260,143 @@ The status line, the provider's reason and the URL's host and path stay
 readable. This is a net for what Langertha's error text can carry, not a
 proof: a credential the engine does not hold and that has none of these
 shapes passes.
+
+=cut
+
+#### Vision (k27)
+
+# The input tokens an image must add at least before the sight test counts it
+# as seen (k27: "Mindestkosten des Bildes, ~200").
+sub sight_test_min_tokens { 200 }
+
+=method sight_test_min_tokens
+
+  Langertha::Holmgang::Target->sight_test_min_tokens;   # 200
+
+How many input tokens the sight test image (L</sight_test_image>) must add to
+a request before L</vision_check_f> counts it as seen. Common vision models
+spend 256 (Gemma 3, InternVL) to over 1000 (Pixtral) on a 512 by 512 image;
+a template that drops the image adds next to nothing.
+
+=cut
+
+my $SIGHT_PNG;
+
+sub sight_test_image {
+  return $SIGHT_PNG //= do {
+    my ( $w, $h ) = ( 512, 512 );
+    # 8-bit grey, a checkerboard of 64-pixel squares; filter byte 0 per row
+    my $raw = join '', map {
+      my $y = $_;
+      "\0".join '', map { ( int( $_ / 64 ) + int( $y / 64 ) ) % 2 ? "\xFF" : "\x40" } 0 .. $w - 1;
+    } 0 .. $h - 1;
+    my $chunk = sub {
+      my ( $type, $data ) = @_;
+      return pack( 'N', length $data ).$type.$data.pack( 'N', Compress::Zlib::crc32( $type.$data ) );
+    };
+    "\x89PNG\r\n\x1a\n"
+      .$chunk->( 'IHDR', pack( 'NNCCCCC', $w, $h, 8, 0, 0, 0, 0 ) )
+      .$chunk->( 'IDAT', Compress::Zlib::compress( $raw, 9 ) )
+      .$chunk->( 'IEND', '' );
+  };
+}
+
+=method sight_test_image
+
+  my $png = Langertha::Holmgang::Target->sight_test_image;   # bytes
+
+The image of the sight test: a 512 by 512 grey PNG with a checkerboard,
+built in memory, the same bytes on every call.
+
+=cut
+
+my $SIGHT_TEXT = 'This is a connection check. Reply with the single word OK.';
+
+async sub vision_check_f {
+  my ( $self ) = @_;
+  my $engine = $self->engine;
+  my $name   = ref $engine;
+  # 1. the wire: an engine without the role has no image part Langertha vouches for
+  return { no_vision => 'the engine '.$name.' takes no image (no Langertha::Role::ImageInput)', check => 'wire' }
+    unless $engine->can('does') && $engine->does('Langertha::Role::ImageInput');
+
+  # 2. what the server says about its model, where Langertha can ask (llama.cpp
+  # /props, Ollama, LM Studio, OpenRouter ...); elsewhere this asks nothing
+  my $learned = $engine->can('probe_model_capabilities_f')
+    ? await( $engine->probe_model_capabilities_f->else( sub { Future->done( {} ) } ) )
+    : {};
+  my $model = $engine->can('chat_model') ? eval { $engine->chat_model } : undef;
+  my $fact  = defined $model && ref $learned eq 'HASH' && ref $learned->{$model} eq 'HASH'
+    ? $learned->{$model}{image_input} : undef;
+  return { no_vision => 'the server\'s model metadata says the model '.$model.' takes no image', check => 'probe' }
+    if defined $fact && !$fact;
+
+  # 3. the sight test: the same short request without and with an image; a
+  # template that drops the image leaves the input tokens where they were
+  my %controls = ( max_tokens => 16 );
+  my $plain = await $self->chat_turn_f( messages => [ { role => 'user', content => $SIGHT_TEXT } ], %controls );
+  my $image = Langertha::Content::Image->from_data( $self->sight_test_image, media_type => 'image/png' );
+  my $seen  = await $self->chat_turn_f( messages => [ { role => 'user', content => [ { type => 'text', text => $SIGHT_TEXT }, $image ] } ], %controls );
+  if ( defined $seen->{error_class} && $seen->{error_class} eq 'no_vision' ) {
+    return { no_vision => 'the target refused the image: '.$seen->{error}, check => 'sight_test' };
+  }
+  for my $t ( $plain, $seen ) {
+    return { no_vision => undef, check => 'sight_test', note => 'sight test failed: '.$t->{error} }
+      if defined $t->{error_class};
+  }
+  my ( $without, $with ) = map {
+    my $r = $_->{response};
+    $r && $r->has_usage ? $r->usage->input_tokens : undef;
+  } $plain, $seen;
+  return { no_vision => undef, check => 'sight_test', note => 'sight test unmeasured: the target reports no input tokens' }
+    unless defined $without && defined $with;
+  my $added = $with - $without;
+  my $min   = $self->sight_test_min_tokens;
+  return { no_vision => 'sight test: the image added '.$added.' input tokens, at least '.$min
+      .' expected -- the target drops the image', check => 'sight_test', added_tokens => $added }
+    if $added < $min;
+  return { no_vision => undef, check => 'sight_test', added_tokens => $added };
+}
+
+=method vision_check_f
+
+  my $check = await $target->vision_check_f;
+  # { no_vision => undef | $reason, check => 'wire' | 'probe' | 'sight_test',
+  #   added_tokens => n, note => $text }
+
+The pre-check of a target for a suite whose cases carry images (k27, ADR
+0006): can the target see an image? A pre-check, never a graded case. In
+this order, the first that decides wins:
+
+=over
+
+=item 1. B<The wire.> An engine that does not compose
+L<Langertha::Role::ImageInput> has no image part Langertha vouches for:
+C<no_vision>. (L<Langertha::Engine::Virtual> is one; the runner's
+L<Langertha::Holmgang::Runner/mock_engine> claims it for a case with images.)
+
+=item 2. B<The server's model metadata.>
+L<Langertha::Role::Capabilities/probe_model_capabilities_f> asks the
+providers Langertha can ask (llama.cpp C</props>, Ollama, LM Studio,
+OpenRouter, Mistral, TSystems; on every other engine it asks nothing). When it
+learned C<< image_input => 0 >> for the engine's C<chat_model>: C<no_vision>. A failing probe decides nothing. A static "no claim" (vLLM,
+llama.cpp before the probe, gateways) decides nothing either -- the model
+behind them is unknown to the client.
+
+=item 3. B<The sight test.> Two short requests through L</chat_turn_f> (the
+variant applies): a text, then the same text with
+L</sight_test_image>. If the second fails with a C<no_vision> signature
+(L</classify_error>): C<no_vision>. If the image added fewer input tokens than
+L</sight_test_min_tokens>, the chat template dropped it without a word:
+C<no_vision>. A failed request or a target without token usage decides
+nothing (C<note> says why); the cases then run and show what they get.
+
+=back
+
+The Future is always done. C<no_vision> is C<undef> when the target may see
+the image, else the reason, which the runner gives every case with images of
+the suite as its error (L<Langertha::Holmgang::Runner/run_case_f>, option
+C<no_vision>).
 
 =cut
 

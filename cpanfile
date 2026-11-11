@@ -1,6 +1,7 @@
 requires 'perl', '5.020';
 
 requires 'Carp';
+requires 'Compress::Zlib';
 requires 'Digest::MD5';
 requires 'Digest::SHA';
 requires 'Encode';

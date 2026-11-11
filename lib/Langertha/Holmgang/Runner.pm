@@ -13,6 +13,7 @@ use Langertha::Holmgang::Error;
 use Langertha::Holmgang::Grader;
 use Langertha::Holmgang::Target;
 use Langertha::Virtual::Rules qw( answer tool );
+use Moose::Util ();
 use Scalar::Util qw( blessed );
 use Time::HiRes ();
 
@@ -68,7 +69,9 @@ target classifies the failure). Only the end state and the calls are graded
 
 B<What goes out> is the system prompt (the case's effective C<system>), the
 case's L<Langertha::Holmgang::Case/prompt_messages> (C<role> and C<content>
-only, no C<untrusted> mark), the assistant turns and tool outputs, and the
+only, no C<untrusted> mark; each image placeholder replaced by the image
+itself, L<Langertha::Holmgang::Case/image_content>, only in the request -- the
+transcript keeps the placeholder), the assistant turns and tool outputs, and the
 tool schemas as L<Langertha::Holmgang::World/offer> gives them (C<name>,
 C<description>, C<parameters>). Never the state, the observations, the rules,
 the solutions or the marks. An engine with a C<system_prompt> of its own is
@@ -147,13 +150,17 @@ async sub run_case_f {
 
   my $max_turns = $case->effective('max_turns');
   my ( @turns, @calls, $error, $error_class, $turn_limit, $answer );
-  while (1) {
+  # the vision pre-check found the target blind (k27): no request for a case with images
+  if ( $case->has_images && defined $o{no_vision} ) {
+    ( $error, $error_class ) = ( $o{no_vision}, 'no_vision' );
+  }
+  while ( !defined $error_class ) {
     if ( @turns >= $max_turns ) {
       $turn_limit = 1;
       last;
     }
     my $t0   = Time::HiRes::time();
-    my $turn = await $target->chat_turn_f( messages => [@conversation], %controls );
+    my $turn = await $target->chat_turn_f( messages => $self->_wire_messages( $case, \@conversation ), %controls );
     my $ms   = _ms( Time::HiRes::time() - $t0 );
     my $response = $turn->{response};
     my $usage    = $response && $response->has_usage ? $response->usage : undef;
@@ -210,7 +217,11 @@ async sub run_case_f {
 
 Plays one L<Langertha::Holmgang::Case> (see L</DESCRIPTION>). C<seed>
 (integer, optional) goes unchanged into every request of the case;
-C<repetition> (default 1) is only carried into the result. Returns a
+C<repetition> (default 1) is only carried into the result. C<no_vision>
+(optional) is the reason the vision pre-check of the suite gave
+(L<Langertha::Holmgang::Target/vision_check_f>): a case with images then ends
+C<no_vision> with that text as its error, without a request and without a
+turn; a case without images ignores it. Returns a
 L<Future> of the B<result>, the per-repetition shape
 L<Langertha::Holmgang::Report/add_run> takes (ADR 0006), plain data:
 
@@ -250,6 +261,20 @@ L</run_case_f>, waited for.
 
 =cut
 
+# the conversation as it goes out: each image placeholder { image, sha256, bytes }
+# of a message becomes the case's Langertha::Content::Image, which the engine
+# turns into its own image part; the conversation itself keeps the placeholder
+sub _wire_messages {
+  my ( $self, $case, $conversation ) = @_;
+  return [ map {
+    my $m = $_;
+    my $images = ref $m->{content} eq 'ARRAY' && grep { ref $_ eq 'HASH' && exists $_->{image} } @{ $m->{content} };
+    $images
+      ? +{ %$m, content => [ map { ref $_ eq 'HASH' && exists $_->{image} ? $case->image_content( $_->{image} ) : $_ } @{ $m->{content} } ] }
+      : $m;
+  } @$conversation ];
+}
+
 sub run_case {
   my ( $self, @args ) = @_;
   return $self->run_case_f(@args)->get;
@@ -273,7 +298,14 @@ sub mock_engine {
   my @script = $mode eq 'solution'
     ? ( ( map { tool( $_->{tool} => _plain( $_->{args} // {} ) ) } @{ $case->solution || [] } ), answer('Done.') )
     : ( answer('I would do it like this ... (text only)') );
-  return Langertha::Engine::Virtual->new( script => \@script );
+  # the mock sees what it is sent: a case with images gets a mock that claims
+  # image_input, so the vision pre-check does not stop it at the wire, and
+  # answers the sight test's requests once its script is done (k27) -- a case
+  # ends with the script's last answer, so a case never reaches the fallback
+  my $images = $case->has_images;
+  my $engine = Langertha::Engine::Virtual->new( script => \@script, ( $images ? ( fallback => answer('OK') ) : () ) );
+  Moose::Util::apply_all_roles( $engine, 'Langertha::Role::ImageInput' ) if $images;
+  return $engine;
 }
 
 =method mock_engine
@@ -282,7 +314,11 @@ sub mock_engine {
 
 A L<Langertha::Engine::Virtual> as the mock model of the lint (and of dry
 runs): C<solution> calls the reference solution, one call per turn, then
-answers C<Done.>; C<text> answers with text only, at once. It replaces
+answers C<Done.>; C<text> answers with text only, at once. For a case with
+images it claims C<image_input> (L<Langertha::Role::ImageInput>), answers
+C<OK> once its script is done (which a case never reaches) and reports no
+token usage, so L<Langertha::Holmgang::Target/vision_check_f> lets it through
+unmeasured. It replaces
 cai-platform's C<Eval::FakeTarget> (ADR 0005); unlike that one it estimates
 no tokens and emulates no context window (the target's error path is tested
 with L<Langertha::Virtual::Rules/error> reactions instead).

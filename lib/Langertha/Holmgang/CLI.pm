@@ -309,14 +309,31 @@ sub cmd_run {
   my $first_error;   # the first error text of the run, for the no-answer note (k44)
   for my $suite ( @$suites ) {
     my $repeat = $o->{repeat} // $suite->repeat // 1;
-    my ( @results, $error );
-    REP: for my $n ( 1 .. $repeat ) {
+    my ( @results, $error, $no_vision );
+    # a suite with images: can the target see one? once per suite, before its cases (k27)
+    if ( my ( $seeing ) = grep { $_->has_images } @{ $suite->cases } ) {
+      my $check = eval {
+        $self->target_class->new( engine => $engine_for->($seeing), variant => $settings )->vision_check_f->get;
+      };
+      if ( $check ) {
+        $no_vision = $check->{no_vision};
+        $self->_say( $suite->id.' vision check: '.(
+            defined $no_vision               ? 'no_vision -- '.$self->_one_line($no_vision)
+          : defined $check->{added_tokens} ? 'seen (the image added '.$check->{added_tokens}.' input tokens)'
+          :                                  'not ruled out -- '.$self->_one_line( $check->{note} // 'no check decided' ) ) );
+      }
+      else {
+        $error = $self->target_class->scrub( $self->_text($@) );
+        $self->_say( $suite->id.' vision check aborted: '.$error );
+      }
+    }
+    REP: for my $n ( 1 .. ( defined $error ? 0 : $repeat ) ) {
       for my $case ( @{ $suite->cases } ) {
         my $result = eval {
           my $runner = $self->runner_class->new(
             target => $self->target_class->new( engine => $engine_for->($case), variant => $settings ),
           );
-          $runner->run_case( $case, repetition => $n );
+          $runner->run_case( $case, repetition => $n, no_vision => $no_vision );
         };
         unless ( $result ) {
           $error = $self->target_class->scrub( $self->_text($@) );
@@ -391,7 +408,10 @@ C<holmgang run>: loads the suites, builds the target (an engine name with
 C<--model>, C<--url>, C<--option>; or C<mock-solution> / C<mock-text>), plays
 every case C<--repeat> times (default the suite's C<repeat>, else 1), one at a
 time, prints a line per result and the evaluation, and writes the report with
-C<--report>. Returns 1 when a verdict is not ok, 2 for a usage or setup error
+C<--report>. Before the cases of a suite with images it runs the vision
+pre-check once (L<Langertha::Holmgang::Target/vision_check_f>) and prints its
+outcome; when it finds the target blind, every case with images of that suite
+ends C<no_vision> without a request. Returns 1 when a verdict is not ok, 2 for a usage or setup error
 or an aborted run.
 
 When the target answered no case of the whole run -- every result, over all

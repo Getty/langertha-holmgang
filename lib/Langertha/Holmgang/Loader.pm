@@ -44,7 +44,9 @@ C<suite.yaml: tools[0].name>, C<cases/c1.yaml: rules[0].regex>.
 
 The suite's digest is SHA-256 over C<suite.yaml>, each case file (name and
 bytes) and each generated text — computed exactly as cai-platform computes its
-C<digest>, so a suite has the same value in both.
+C<digest>, so a suite has the same value in both — and, for a case with
+images, each image's file, SHA-256, width and height (k27). A suite without
+images has the digest it had before images existed.
 
 The fields of F<suite.yaml> and of a case, with an example, are under
 L</SUITE FORMAT 2>.
@@ -157,7 +159,20 @@ sub load {
       my ( $field, $text ) = @$g;
       $sha->add( $field."\0", Digest::SHA::sha256_hex( Encode::encode( 'UTF-8', $text ) ), "\0" );
     }
-    my $case = $st->case( $data, file => $file, tools => $suite{tools}, defaults => $suite{defaults} );
+    my $case = $st->case( $data, file => $file, tools => $suite{tools}, defaults => $suite{defaults}, dir => $dir );
+    # images (k27): file, SHA-256 and size per image, in message order; a case
+    # without images adds nothing, so its digest is what it was before
+    my $i = 0;
+    for my $m ( @{ $case->messages } ) {
+      my $j = 0;
+      for my $img ( ref $m->{images} eq 'ARRAY' ? @{ $m->{images} } : () ) {
+        my $info = $case->image_files->{ $img->{file} };
+        $sha->add( $f.': messages['.$i.'].images['.$j.']'."\0",
+          join( ' ', @{$info}{qw( file sha256 width height )} ), "\0" );
+        $j++;
+      }
+      $i++;
+    }
     $self->lint->lint( $case, $f );
     push @cases, $case;
   }
@@ -405,13 +420,15 @@ A tool described in data for a small world without a simulator
   source: { ... }            optional; as in suite.yaml
   weight: 3                  optional positive number, default 1
 
-B<Messages> are C<< { role, content, untrusted } >>. C<role> is C<user> or
+B<Messages> are C<< { role, content, untrusted, images } >>. C<role> is C<user> or
 C<assistant> (the system prompt goes under C<system>), the last message is
 from the user. C<content> is text, a generate spec
 C<< { generate: { ... } } >> or a list of texts and generate specs, joined
 (L<Langertha::Holmgang::Haystack/THE SPEC>). C<untrusted: true> marks content
 that does not come from the user; the mark is for the report only and never
-goes out (L<Langertha::Holmgang::Case/prompt_messages>).
+goes out (L<Langertha::Holmgang::Case/prompt_messages>). A user message may
+carry C<< images: [ { file, untrusted } ] >>, one to four PNG or JPEG files of at
+most 2 MiB inside the suite directory (L<Langertha::Holmgang::Structure/IMAGES>).
 
 B<Calls> in C<solution>, C<alternatives> and C<wrong_solutions> are
 C<< { tool, args } >> with a tool the suite offers. A C<solution> is a list of
@@ -527,12 +544,13 @@ does not hold does not load. Fix the case or the simulator, never lint.
 
 =head2 Example suites
 
-The distribution ships three invented suites to learn from (ADR 0010), each
+The distribution ships four invented suites to learn from (ADR 0010), each
 with its origin and license in the head of F<suite.yaml>:
 
   demo-linux      a linux device; run_command and write_file (two cases)
   demo-lamp       a world without devices: one tool described by handlers
   demo-haystack   a message made by generate (Langertha::Holmgang::Haystack)
+  demo-sehen      an image on a user message; the answer world sehen
 
 In a checkout they are under F<share/suites>; installed, under the
 distribution's share directory:

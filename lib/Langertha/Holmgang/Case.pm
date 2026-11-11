@@ -5,7 +5,11 @@ use Moose;
 use namespace::autoclean;
 use utf8;
 
+use Carp qw( croak );
+use Digest::SHA ();
 use JSON::MaybeXS ();
+use Path::Tiny qw( path );
+use Langertha::Content::Image;
 use Langertha::Holmgang::Haystack;
 use Langertha::Holmgang::Simulators;
 
@@ -24,6 +28,8 @@ my $JSON = JSON::MaybeXS->new( utf8 => 0, canonical => 1, allow_nonref => 1 );
   $case->rules;                      # as format 2 writes them
   $case->effective('max_turns');     # own value, else the suite's default, else 12
   $case->prompt_messages;            # [ { role, content } ] — generated text resolved, no untrusted mark
+  $case->has_images;                 # a user message carries images (k27)
+  $case->image_content('img/a.png'); # a Langertha::Content::Image, read when a request is built
   $case->initial_state;              # the state the world starts from
   $case->tier;                       # '48k' from the tag stufe-48k, or undef
   $case->is_hard;                    # tag injection or verbot
@@ -77,8 +83,9 @@ The case's own system prompt; L</effective> falls back to the suite's.
 
 =attr messages
 
-C<[ { role, content, untrusted } ]> as written; C<content> may be a generate
-spec. What goes out is L</prompt_messages>.
+C<[ { role, content, untrusted, images } ]> as written; C<content> may be a
+generate spec, C<images> a list of C<< { file, untrusted } >> on a user message
+(k27). What goes out is L</prompt_messages>.
 
 =attr state
 
@@ -221,6 +228,13 @@ sub _build_prompt_messages {
   return [ map {
     my $c = $_->{content};
     $c = $self->haystack->resolve( $c, 'messages['.$i.'].content' ) if ref $c;
+    if ( ref $_->{images} eq 'ARRAY' ) {
+      $c = [ { type => 'text', text => $c }, map {
+        my $info = $self->image_files->{ $_->{file} }
+          or croak __PACKAGE__.': image '.$_->{file}.' of messages['.$i.'] is not in image_files';
+        +{ image => $_->{file}, sha256 => $info->{sha256}, bytes => $info->{bytes} };
+      } @{ $_->{images} } ];
+    }
     $i++;
     +{ role => $_->{role}, content => $c };
   } @{ $self->messages || [] } ];
@@ -229,7 +243,56 @@ sub _build_prompt_messages {
 =attr prompt_messages
 
 The messages as they go to the model: C<role> and C<content> only, generated
-content resolved, the C<untrusted> mark left out.
+content resolved, the C<untrusted> mark left out. A message with images
+(k27) has a list as C<content>: the text as C<< { type => 'text', text } >>,
+then one placeholder C<< { image, sha256, bytes } >> per image -- the form a
+transcript and a report keep (ADR 0006). The runner turns each placeholder
+into a content part with L</image_content> only when it builds a request.
+
+=cut
+
+has image_files => ( is => 'ro', default => sub { {} } );
+
+=attr image_files
+
+What the structure check read of the images of the user messages (k27),
+keyed by the C<file> as written: C<< { file, path, media_type, width, height,
+bytes, sha256 } >>, C<path> being the file on disk. Derived, never written
+back; empty for a case without images.
+
+=cut
+
+has _image_cache => ( is => 'ro', default => sub { {} } );
+
+sub has_images { %{ $_[0]->image_files } ? 1 : 0 }
+
+=method has_images
+
+True when a user message of the case carries an image.
+
+=cut
+
+sub image_content {
+  my ( $self, $file ) = @_;
+  return $self->_image_cache->{$file} //= do {
+    my $info = $self->image_files->{$file}
+      or croak __PACKAGE__.': the case '.$self->id.' has no image '.$file;
+    my $bytes = path( $info->{path} )->slurp_raw;
+    croak __PACKAGE__.': the image '.$file.' of the case '.$self->id.' changed since the suite was loaded'
+      unless Digest::SHA::sha256_hex($bytes) eq $info->{sha256};
+    Langertha::Content::Image->from_data( $bytes, media_type => $info->{media_type} );
+  };
+}
+
+=method image_content
+
+  my $part = $case->image_content('img/chart.png');   # Langertha::Content::Image
+
+The image as a L<Langertha::Content::Image> for a request, read from disk on
+first use and kept for the case's later requests. Croaks when the bytes no
+longer have the SHA-256 the case was loaded with -- what was linted and
+digested is what goes out. Langertha turns it into each engine's own image
+part (OpenAI C<image_url>, Anthropic C<image>, Gemini C<inline_data> ...).
 
 =cut
 
@@ -293,7 +356,10 @@ suite's verdict.
 
 sub has_untrusted {
   my ( $self ) = @_;
-  return 1 if grep { ref $_ eq 'HASH' && $_->{untrusted} } @{ $self->messages || [] };
+  for my $m ( grep { ref $_ eq 'HASH' } @{ $self->messages || [] } ) {
+    return 1 if $m->{untrusted};
+    return 1 if ref $m->{images} eq 'ARRAY' && grep { ref $_ eq 'HASH' && $_->{untrusted} } @{ $m->{images} };
+  }
   return $self->_marked( $self->state ) ? 1 : 0;
 }
 
@@ -311,7 +377,8 @@ sub _marked {
 
 =method has_untrusted
 
-True when a message or a hash in the state is marked C<untrusted>: the case
+True when a message, an image of a message or a hash in the state is marked
+C<untrusted>: the case
 carries foreign content, and C<injection_held> is defined for it.
 
 =cut

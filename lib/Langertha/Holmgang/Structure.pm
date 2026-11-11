@@ -5,7 +5,9 @@ use Moose;
 use namespace::autoclean;
 use utf8;
 
+use Digest::SHA ();
 use JSON::MaybeXS ();
+use Path::Tiny qw( path );
 use Langertha::Holmgang::Case;
 use Langertha::Holmgang::Error;
 use Langertha::Holmgang::Expectation ();
@@ -24,6 +26,11 @@ our @OPS        = @Langertha::Holmgang::World::OPS;
 our @CASE_KEYS  = qw( id title tags difficulty system messages state observe rules solution
   alternatives wrong_solutions temperature max_tokens max_turns source weight );
 our @SUITE_KEYS = qw( format id version title description license defaults source tools topic threshold repeat );
+
+# images on a user message (k27): at most this many per message, each at most
+# this many bytes; true constants
+our $IMAGES_PER_MESSAGE = 4;
+our $IMAGE_MAX_BYTES    = 2 * 1024 * 1024;
 
 my %SIMULATOR_PARAMS = ( run_command => [qw( host command )], write_file => [qw( host path content )] );
 my %HOOK = map { $_ => 1 } qw( prerouting input forward output postrouting );
@@ -425,17 +432,23 @@ sub case {
 
   # messages
   $self->_refuse( $f.': messages', 'list missing' ) unless ref $data->{messages} eq 'ARRAY' && @{ $data->{messages} };
-  my @prompt;
+  my ( @prompt, %images );
   my $i = 0;
   for my $m ( @{ $data->{messages} } ) {
     my $mf = $f.': messages['.$i.']';
-    $self->_keys_ok( $m, $mf, qw( role content untrusted ) );
+    $self->_keys_ok( $m, $mf, qw( role content untrusted images ) );
     $self->_flag( $m->{untrusted}, $mf.'.untrusted' );
     my $role = $m->{role} // '';
     $self->_refuse( $mf.'.role', 'user or assistant (the system prompt goes under system:)' )
       unless $role eq 'user' || $role eq 'assistant';
     my $content = ref $m->{content} ? $self->haystack->resolve( $m->{content}, $mf.'.content' ) : $m->{content};
-    push @prompt, { role => $role, content => $self->_text( $content, $mf.'.content' ) };
+    $content = $self->_text( $content, $mf.'.content' );
+    if ( exists $m->{images} ) {
+      $self->_refuse( $mf.'.images', 'only on a user message' ) unless $role eq 'user';
+      my @parts = map { $self->_image( $_, $o{dir}, \%images ) } $self->_image_list( $m->{images}, $mf.'.images' );
+      $content = [ { type => 'text', text => $content }, @parts ];
+    }
+    push @prompt, { role => $role, content => $content };
     $i++;
   }
   $self->_refuse( $f.': messages', 'the last message must be from the user' ) unless $prompt[-1]{role} eq 'user';
@@ -501,6 +514,7 @@ sub case {
     haystack        => $self->haystack,
     initial_state   => $initial,
     prompt_messages => \@prompt,
+    image_files     => \%images,
   );
 }
 
@@ -510,11 +524,119 @@ sub case {
     file     => 'c1.yaml',            # the id must be the file name; fields start "cases/c1.yaml"
     tools    => \@suite_tools,
     defaults => \%suite_defaults,
+    dir      => $suite_dir,           # images are files relative to it
   );
 
 Checks one case of format 2 and returns its L<Langertha::Holmgang::Case>.
 Without C<file>, C<field> names the start of every field path. Lint is not
 part of it.
+
+C<dir> is the suite directory, which the C<file> of an image on a user message
+is relative to (L</IMAGES>); a case with images and without C<dir> is refused.
+
+=cut
+
+#### Images (k27)
+
+sub _image_list {
+  my ( $self, $v, $field ) = @_;
+  $self->_list( $v, $field, 1 );
+  $self->_refuse( $field, 'at most '.$IMAGES_PER_MESSAGE.' images per message' ) if @$v > $IMAGES_PER_MESSAGE;
+  return map { [ $v->[$_], $field.'['.$_.']' ] } 0 .. $#$v;
+}
+
+# one image of a user message: checked, measured, recorded in %$seen by its
+# file; returns the placeholder that stands for it in the prompt messages
+sub _image {
+  my ( $self, $entry, $dir, $seen ) = @_;
+  my ( $img, $field ) = @$entry;
+  $self->_keys_ok( $img, $field, qw( file untrusted ) );
+  $self->_flag( $img->{untrusted}, $field.'.untrusted' );
+  my $file = $self->_text( $img->{file}, $field.'.file' );
+  my $info = $seen->{$file} //= $self->image_file( $dir, $file, $field.'.file' );
+  return { image => $file, sha256 => $info->{sha256}, bytes => $info->{bytes} };
+}
+
+sub image_file {
+  my ( $self, $dir, $file, $field ) = @_;
+  $field //= 'image';
+  $self->_refuse( $field, 'an image needs the suite directory to be read from' ) unless defined $dir && length $dir;
+  $self->_refuse( $field, 'a path relative to the suite directory, without .. or an empty segment' )
+    if $file =~ m{\A/|\\} || grep { $_ eq '..' || $_ eq '' } split m{/}, $file, -1;
+  my $root = eval { path($dir)->realpath };
+  $self->_refuse( $field, 'suite directory not readable: '.$dir ) unless $root && $root->is_dir;
+  my $p = path( $root, $file );
+  $self->_refuse( $field, 'no such file in the suite' ) unless -e $p;
+  my $real = eval { $p->realpath };
+  $self->_refuse( $field, 'outside the suite directory' ) unless $real && $root->subsumes($real);
+  $self->_refuse( $field, 'not a plain file' ) unless -f $real;
+  my $size = -s _;
+  $self->_refuse( $field, 'larger than '.$IMAGE_MAX_BYTES.' bytes ('.$size.')' ) if $size > $IMAGE_MAX_BYTES;
+  my $bytes = eval { $real->slurp_raw };
+  $self->_refuse( $field, 'not readable' ) unless defined $bytes;
+  $self->_refuse( $field, 'larger than '.$IMAGE_MAX_BYTES.' bytes ('.length($bytes).')' ) if length $bytes > $IMAGE_MAX_BYTES;
+  my ( $type, $w, $h ) = image_measure($bytes);
+  $self->_refuse( $field, 'not a PNG or JPEG image (by its first bytes)' ) unless $type;
+  $self->_refuse( $field, 'a '.$type.' whose width and height cannot be read' ) unless $w && $h;
+  return {
+    file       => $file,
+    path       => "$real",
+    media_type => $type,
+    width      => $w,
+    height     => $h,
+    bytes      => length $bytes,
+    sha256     => Digest::SHA::sha256_hex($bytes),
+  };
+}
+
+=method image_file
+
+  my $info = $structure->image_file( $suite_dir, 'img/chart.png', 'cases/c1.yaml: messages[0].images[0].file' );
+  # { file, path, media_type, width, height, bytes, sha256 }
+
+Checks one image file of a suite (L</IMAGES>) and returns what the case keeps
+of it; refuses with the field otherwise.
+
+=cut
+
+# ( media type, width, height ) of PNG or JPEG bytes by their magic; the media
+# type alone when the size cannot be read, the empty list for anything else
+sub image_measure {
+  my ( $bytes ) = @_;
+  if ( substr( $bytes, 0, 8 ) eq "\x89PNG\r\n\x1a\n" ) {
+    return ('image/png') unless length $bytes >= 24 && substr( $bytes, 12, 4 ) eq 'IHDR';
+    return ( 'image/png', unpack 'NN', substr( $bytes, 16, 8 ) );
+  }
+  if ( substr( $bytes, 0, 3 ) eq "\xFF\xD8\xFF" ) {
+    my $at = 2;
+    my $n  = length $bytes;
+    while ( $at + 4 <= $n ) {
+      return ('image/jpeg') unless substr( $bytes, $at, 1 ) eq "\xFF";
+      my $marker = ord substr( $bytes, $at + 1, 1 );
+      if ( $marker == 0xFF ) { $at++; next }                                   # fill byte
+      if ( $marker == 0x01 || ( $marker >= 0xD0 && $marker <= 0xD8 ) ) { $at += 2; next }   # no length
+      last if $marker == 0xD9 || $marker == 0xDA;                              # end, scan data
+      my $len = unpack 'n', substr( $bytes, $at + 2, 2 );
+      if ( $marker >= 0xC0 && $marker <= 0xCF && $marker != 0xC4 && $marker != 0xC8 && $marker != 0xCC ) {
+        last unless $at + 9 <= $n;
+        my ( $h, $w ) = unpack 'nn', substr( $bytes, $at + 5, 4 );
+        return ( 'image/jpeg', $w, $h );
+      }
+      $at += 2 + $len;
+    }
+    return ('image/jpeg');
+  }
+  return;
+}
+
+=func image_measure
+
+  my ( $media_type, $width, $height ) = Langertha::Holmgang::Structure::image_measure($bytes);
+
+The media type (C<image/png>, C<image/jpeg>) of image bytes by their first
+bytes, with the width and height from the PNG header or the JPEG frame
+header; only the media type when the size cannot be read, an empty list for
+anything else.
 
 =cut
 
@@ -695,3 +817,31 @@ sub _packet {
 }
 
 __PACKAGE__->meta->make_immutable;
+
+=head1 IMAGES
+
+A user message may carry images (k27):
+
+  messages:
+    - role: user
+      content: "Copy the table in the picture with tabelle_abgeben."
+      images:
+        - file: img/table.png
+        - { file: img/scan.jpg, untrusted: true }
+
+C<images> is a list of one to four C<< { file, untrusted } >>, only on a user
+message. C<file> is relative to the suite directory and must stay inside it
+(no absolute path, no C<..>, no link out of it); the file must be a PNG or a
+JPEG by its first bytes, at most 2 MiB, with a readable width and height.
+C<untrusted: true> marks the image as foreign content for the report, like a
+message's mark; it never goes out.
+
+The case keeps per file its media type, width, height, size and SHA-256
+(L<Langertha::Holmgang::Case/image_files>); the prompt message carries the
+text as the first part and each image as the placeholder
+C<< { image, sha256, bytes } >> (L<Langertha::Holmgang::Case/prompt_messages>).
+The image bytes are read again and turned into a content part only when a
+request is built (L<Langertha::Holmgang::Runner>), so no base64 sits in a
+case, a transcript or a report.
+
+=cut
