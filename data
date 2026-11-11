@@ -1,0 +1,25 @@
+---
+claimed_at: 2026-11-11T08:27:57Z
+claimed_by: holmgang-main
+class: standard
+completed: 2026-11-11T08:27:50Z
+created: 2026-11-11T07:49:39Z
+id: 57
+priority: medium
+started: 2026-11-11T08:11:06Z
+status: done
+tags:
+- report
+- evaluation
+- adr
+title: Schwierigkeit im Bericht und Auswertung je Schwierigkeitsstufe
+updated: 2026-11-11T08:27:57Z
+---
+
+Aus k23: Case::report_meta hat kein difficulty, die Auswertung keine Aufteilung danach; Denken verlangt drei Stufen. Feld im Bericht und Kurven wie bei Längenstufen, Nachtrag ADR 0006/0008.
+
+Worker: difficulty in Case::report_meta, report case field (optional on read: old reports read as null; merge fills null from other side; from_cai_platform from row, fallback suites meta), Evaluation difficulty_curves (shape of tier_curves) + text/markdown/json table. Amendments ADR 0006/0008. Tests in t/case.t, t/report/*, t/evaluation/*. Running full prove + acceptance.
+
+Worker: done, prove -lr t/ green (94 files, 3231 tests; 3 env-skips), acceptance green (3 files, 99 tests). Ready for review; not moved per instructions.
+
+committed 7a2db0a
