@@ -1,0 +1,22 @@
+---
+claimed_at: 2026-11-11T08:09:32Z
+claimed_by: holmgang-main
+class: standard
+completed: 2026-11-11T08:08:00Z
+created: 2026-11-11T07:49:06Z
+id: 53
+priority: high
+started: 2026-11-11T07:49:59Z
+status: done
+tags:
+- sim
+- answer-world
+title: Antwortwelt denken portieren (Sim::Denken, Prüfer je Aufgabe)
+updated: 2026-11-11T08:09:32Z
+---
+
+Aus k23: Eval::Sim::Denken mit antwort_abgeben und den Perl-Prüfern (score_answer), nur volle Punktzahl zählt; Tests aus t/eval_* mitnehmen. Ohne sie lädt denken nicht.
+
+holmgang-sim-worker: Sim::Denken ported (Role::AnswerWorld, prepare checks art/pruefung, 16 checkers verbatim from origin/main, POD in English, messages unchanged), registered as denken in Simulators.pm; cpanfile += B, Math::BigInt, Math::BigRat (core). Tests: t/sim/denken.t (synthetic puzzles, 104 tests), t/sim/denken_vectors.t (Python parity against cai's denken-pruefer.json copy outside the checkout via HOLMGANG_DENKEN_VECTORS; 3511 answers, all 16 tasks agree; skips without it — the file holds the suite's puzzles, ADR 0003). Acceptance: holmgang lint on origin/main share/evals/denken -> 'ok denken (96 cases)', 1 ok 0 refused. prove -lr t green (3 env-gated skips). Note: Loader.pm POD line ~791 lists answer worlds kueche/sehen/roost by hand — not mine to edit (k19/k50/k51 worker). Not committed.
+
+committed 5642671
