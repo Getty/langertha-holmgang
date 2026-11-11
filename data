@@ -1,0 +1,22 @@
+---
+claimed_at: 2026-11-11T06:26:35Z
+claimed_by: holmgang-main
+class: standard
+completed: 2026-11-11T06:26:35Z
+created: 2026-11-05T13:25:46Z
+id: 37
+priority: low
+started: 2026-11-11T05:56:30Z
+status: done
+tags:
+- runner
+- langertha
+title: 'Engine mit eigenem system_prompt: doppelte Systemnachricht'
+updated: 2026-11-11T06:26:42Z
+---
+
+Aus k9: Eine Engine mit eigenem system_prompt schickt eine zweite Systemnachricht zusätzlich zu der des Falls. Im ADR-0005-Nachtrag dokumentiert, nicht erzwungen. Entscheiden: verbieten/warnen oder zulassen.
+
+2026-11-11 06:02 holmgang-worker: DECISION (my choice): forbid. Runner::run_case_f croaks before the first request when the target engine has a defined system_prompt ('... has a system_prompt of its own; the case's system prompt is the only one'), next to the existing format_tool_results croak. Reason: Langertha (Role::Chat::_system_messages, 0.504 and dev) prepends the engine's prompt as its own system message ahead of the case's — reproduced on Engine::Virtual: [ENG, CASE, user]; the model would see text the case does not carry, which voids comparability like a leak; a warning would let such a run into a report; allowing it is what the card questions. Engine prefixes that wrap _system_messages without a system_prompt (NousResearch reasoning prompt) are not affected. Test t/runner.t: Virtual with system_prompt -> run_case dies naming system_prompt, 0 requests sent (red before, green now); control: an engine without one sends exactly one system message, the case's. Runner POD 'What goes out' updated. Needs an ADR 0005 amendment (text in the worker report; docs/adr not in my file lane). CLI: a --target option system_prompt=... now fails at run time — how the CLI surfaces that is not checked here.
+
+Committed as 3df7ecd
