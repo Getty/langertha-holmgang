@@ -52,12 +52,12 @@ my $C = 'Langertha::Holmgang::Case';
   my @l = $C->new( id => 'x', tags => ['stufe-48k'] )->tier;
   is_deeply( \@l, ['48k'], '... and with one it is one value' );
 
-  my $c = $C->new( id => 'x', title => 'T', tags => [qw( verbot stufe-16k )], weight => 3,
+  my $c = $C->new( id => 'x', title => 'T', tags => [qw( verbot stufe-16k )], weight => 3, difficulty => 'schwer',
     messages => [ { role => 'user', content => 'a', untrusted => 1 } ] );
   is_deeply( $c->report_meta, { case_id => 'x', title => 'T', tags => [qw( verbot stufe-16k )], tier => '16k',
-    weight => 3, hard => 1, untrusted => 1 }, 'report_meta' );
+    difficulty => 'schwer', weight => 3, hard => 1, untrusted => 1 }, 'report_meta (k57: with difficulty)' );
   is_deeply( $C->new( id => 'y' )->report_meta, { case_id => 'y', title => undef, tags => undef, tier => undef,
-    weight => 1, hard => 0, untrusted => 0 }, 'report_meta: defaults, effective weight' );
+    difficulty => undef, weight => 1, hard => 0, untrusted => 0 }, 'report_meta: defaults, effective weight' );
   my $r = Langertha::Holmgang::Report->new;
   $r->add_run( target => { label => 't' }, variant => { name => 'v' }, suite => { id => 's' }, repeat => 1,
     status => 'complete', cases => [ $c->report_meta ], results => [] );

@@ -399,13 +399,14 @@ True in the "no tool" family: C<solution: []>, where doing nothing is right.
 sub report_meta {
   my ( $self ) = @_;
   return {
-    case_id   => $self->id,
-    title     => $self->title,
-    tags      => $self->tags,
-    tier      => $self->tier,
-    weight    => $self->effective_weight,
-    hard      => $self->is_hard,
-    untrusted => $self->has_untrusted,
+    case_id    => $self->id,
+    title      => $self->title,
+    tags       => $self->tags,
+    tier       => $self->tier,
+    difficulty => $self->difficulty,
+    weight     => $self->effective_weight,
+    hard       => $self->is_hard,
+    untrusted  => $self->has_untrusted,
   };
 }
 
@@ -414,8 +415,8 @@ sub report_meta {
   $report->add_run( ..., cases => [ map { $_->report_meta } @{ $suite->cases } ] );
 
 The case meta L<Langertha::Holmgang::Report/add_run> takes, as a new hash:
-C<case_id>, C<title>, C<tags>, C<tier>, C<weight> (the effective one), C<hard>,
-C<untrusted>.
+C<case_id>, C<title>, C<tags>, C<tier>, C<difficulty>, C<weight> (the
+effective one), C<hard>, C<untrusted>.
 
 =cut
 

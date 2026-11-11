@@ -64,6 +64,23 @@ subtest 'conflicts croak' => sub {
   $c->runs->[0]{cases}[0]{title} = 'Other title';
   ok !eval { $CLASS->merge( $a, $c ); 1 }, 'case meta differs';
   like $@, qr/case c-1 of suite demo-suite differs/, 'message';
+  my $d = report( results => [] );
+  $d->runs->[0]{cases}[0]{difficulty} = 'schwer';
+  my $e = report( results => [] );
+  $e->runs->[0]{cases}[0]{difficulty} = 'leicht';
+  ok !eval { $CLASS->merge( $d, $e ); 1 }, 'different difficulties differ';
+};
+
+subtest 'a report without difficulty merges with one that has it (k57)' => sub {
+  my $old = report( results => [ [ 'c-1', 1, 'passed' ] ] );
+  my $new = report( results => [ [ 'c-1', 2, 'failed' ] ] );
+  $new->runs->[0]{cases}[0]{difficulty} = 'mittel';
+  for my $pair ( [ $old, $new ], [ $new, $old ] ) {
+    my $m = $CLASS->merge(@$pair);
+    is $m->runs->[0]{cases}[0]{difficulty}, 'mittel', 'the known difficulty holds';
+    is_deeply reps( $m, 'c-1' ), [ '1:passed', '2:failed' ], 'repetitions joined';
+  }
+  is $old->runs->[0]{cases}[0]{difficulty}, undef, 'the inputs stay as they were';
 };
 
 subtest 'different targets stay apart' => sub {

@@ -10,7 +10,7 @@ use Langertha::Holmgang::Evaluation;
 
 our @EXPORT_OK = qw( report evaluation );
 
-# report( { target, variant, suite, topic, repeat, cases => [ id | { id, weight, tier, tags, hard } ],
+# report( { target, variant, suite, topic, repeat, cases => [ id | { id, weight, tier, difficulty, tags, hard } ],
 #           results => [ [ case, repetition, status, forbidden_calls?, input_tokens? ], … ] }, … )
 sub report {
   my ( @runs ) = @_;
@@ -37,7 +37,7 @@ sub report {
       error   => undef,
       cases   => [ map { {
         case_id => $_->{id}, title => 'T '.$_->{id}, tags => $_->{tags} // [],
-        tier    => $_->{tier}, weight => exists $_->{weight} ? $_->{weight} : 1,
+        tier    => $_->{tier}, difficulty => $_->{difficulty}, weight => exists $_->{weight} ? $_->{weight} : 1,
         hard    => $_->{hard}, untrusted => 0,
       } } @cases ],
       results => [ map { my ( $c, $n, $st, $fc, $in ) = @$_; {

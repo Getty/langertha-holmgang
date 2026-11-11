@@ -33,14 +33,14 @@ my $cai = {
     { id => 'run-a', target => 'model-x', suite_id => 'inv-suite', topic => 'netz', status => 'done', error => undef,
       cases_total => 2, cases_passed => 1, usage => {},
       cases => [
-        row(),
+        row( difficulty => 'schwer' ),
         row( case_id => 'k-2', title => 'Case two', status => 'ungraded', score => 0.5, exceeded => $T,
           sim_gaps => ['wobble'], prompt_tokens => 0, completion_tokens => 0, prompt_tokens_max => 0, turns => 3, tool_calls => 3 ),
       ] },
     { id => 'run-b', target => 'model-x', suite_id => 'inv-suite', topic => 'netz', status => 'cancelled',
       error => 'abgebrochen',
       cases => [
-        row( status => 'ungraded', score => 0.5, sim_gaps => ['wobble'], tool_calls => 1, injection_held => $T ),
+        row( difficulty => 'schwer', status => 'ungraded', score => 0.5, sim_gaps => ['wobble'], tool_calls => 1, injection_held => $T ),
         row( case_id => 'k-2', title => 'Case two', status => 'failed', score => 0.3333, exceeded => $T ),
       ] },
   ],
@@ -61,7 +61,8 @@ my $grading = {
 
 my $r = $CLASS->from_cai_platform( $cai, grading => $grading,
   suites => { 'inv-suite' => { version => '4', digest => 'dd',
-    cases => { 'k-1' => { tags => ['stufe-48k'], tier => '48k', weight => 1, hard => 0, untrusted => 1 } } } } );
+    cases => { 'k-1' => { tags => ['stufe-48k'], tier => '48k', difficulty => 'leicht', weight => 1, hard => 0, untrusted => 1 },
+               'k-2' => { difficulty => 'mittel' } } } } );
 
 my $doc = JSON::MaybeXS->new( utf8 => 1 )->decode( $r->to_json );
 is scalar @{ $doc->{runs} }, 1, 'two rows of one target and suite: one run';
@@ -83,6 +84,8 @@ is_deeply [ map { $_->{seed} } @{ $k1->{repetitions} } ], [ 1, 2 ], 'seed = roun
 is_deeply $k1->{tags}, ['stufe-48k'], 'case meta from suites';
 ok $k1->{untrusted}, 'untrusted from suites';
 is $k2->{tags}, undef, 'case meta unknown: null';
+is $k1->{difficulty}, 'schwer', 'difficulty from the --report row (k57)';
+is $k2->{difficulty}, 'mittel', '... from suites where the row has none';
 
 my $a1 = $k1->{repetitions}[0];
 is_deeply $a1->{tokens}, { input => 300, output => 20, reasoning => undef, input_max => 180 }, 'tokens';

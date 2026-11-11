@@ -5,7 +5,8 @@
 # (target and variant) and topic the results, every status under its own name
 # and the weighted share passed; (2) overall is the mean of the topic rates,
 # never one share over all cases; (3) curves per tier, in tier order, keep
-# hits, context_exceeded and errors apart; untiered cases are on no curve.
+# hits, context_exceeded and errors apart; untiered cases are on no curve;
+# (4) the same curves per difficulty (k57), leicht before mittel before schwer.
 # Invented data only (ADR 0003).
 use strict;
 use warnings;
@@ -92,6 +93,31 @@ subtest 'length tiers' => sub {
   is $c[0]{topic}, 'lang', 'curve per topic';
   my $two = evaluation( [ $r, { %$r, target => 'n' } ] )->tier_curves;
   is_deeply [ map { $_->{target} } @$two ], [ ('m') x 4, ('n') x 4 ], 'curve per target';
+  is_deeply $e->difficulty_curves, [], 'no difficulty: no difficulty curve';
+};
+
+subtest 'difficulties (k57)' => sub {
+  my $r = run_of( 'm', 's', 'denken',
+    'a:1:passed', 'a:2:passed',
+    'b:1:passed', 'b:2:error',
+    'c:1:failed', 'c:2:context_exceeded',
+    'd:1:passed', 'd:2:failed',
+    'u:1:failed', 'u:2:failed' );
+  $r->{cases} = [ { id => 'c', difficulty => 'schwer', weight => 2 }, { id => 'd', difficulty => 'brutal' },
+    { id => 'b', difficulty => 'mittel' }, { id => 'a', difficulty => 'leicht', tier => '16k' }, 'u' ];
+  my @c = @{ evaluation( [$r] )->difficulty_curves };
+  is_deeply [ map { $_->{difficulty} } @c ], [qw( leicht mittel schwer brutal )], 'known difficulties in order, others after';
+  is_deeply [ map { [ @{$_}{qw( difficulty results rate context_exceeded_rate error_rate )} ] } @c ], [
+    [ 'leicht', 2, 1, 0, 0 ],
+    [ 'mittel', 2, 0.5, 0, 0.5 ],
+    [ 'schwer', 2, 0, 0.5, 0 ],
+    [ 'brutal', 2, 0.5, 0, 0 ],
+  ], 'hits, context_exceeded and errors apart';
+  is $c[2]{weight}, 4, 'weight';
+  is $c[2]{counts}{failed}, 1, 'counts';
+  is $c[0]{topic}, 'denken', 'curve per topic';
+  ok !exists $c[0]{tier}, 'a difficulty curve carries no tier';
+  is scalar @{ evaluation( [$r] )->tier_curves }, 1, 'tier and difficulty are independent axes';
 };
 
 done_testing;

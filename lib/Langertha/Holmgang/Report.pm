@@ -24,7 +24,8 @@ sub format_version { 1 }
 # time url any), the name of an entry of this table, or a hash with `type`
 # and optional `null => 0` (never null), `min`, `max`, `of` (array element)
 # or `values` (enum). Every field may be null unless it says `null => 0`;
-# array elements are never null.
+# array elements are never null. `optional => 1` marks a field added after
+# version 1 came out: a reader takes it as null where an older report lacks it.
 my %SPEC = (
   report => { type => 'object', fields => {
     holmgang_report => { type => 'int', null => 0 },
@@ -67,6 +68,7 @@ my %SPEC = (
     title       => 'str',
     tags        => { type => 'array', of => 'str' },
     tier        => 'str',
+    difficulty  => { type => 'str', optional => 1 },
     weight      => { type => 'num', min => 0 },
     hard        => 'bool',
     untrusted   => 'bool',
@@ -233,7 +235,7 @@ sub add_run {
       unless ref $c eq 'HASH' && defined $c->{case_id};
     croak __PACKAGE__.'->add_run '.$where.': case '.$c->{case_id}.' listed twice'
       if $case{ $c->{case_id} };
-    $case{ $c->{case_id} } = { ( map { $_ => $c->{$_} } qw( case_id title tags tier weight hard untrusted ) ), repetitions => [] };
+    $case{ $c->{case_id} } = { ( map { $_ => $c->{$_} } qw( case_id title tags tier difficulty weight hard untrusted ) ), repetitions => [] };
     push @order, $c->{case_id};
   }
   my %seen;
@@ -285,8 +287,8 @@ not in C<cases>, a repetition given twice or beyond C<repeat>, an object or
 image content anywhere (see L</IMAGES>).
 
 B<Case meta> (the case's own fields, ADR 0005): C<case_id> (required),
-C<title>, C<tags>, C<tier>, C<weight>, C<hard>, C<untrusted>. A case without
-results gets C<< repetitions => [] >>.
+C<title>, C<tags>, C<tier>, C<difficulty>, C<weight>, C<hard>, C<untrusted>. A
+case without results gets C<< repetitions => [] >>.
 
 B<Result> — the per-repetition interface the runner produces, plain data:
 
@@ -481,9 +483,10 @@ sub from_json {
 
 Reads a report. Croaks loudly on anything but JSON, on a missing or higher
 C<holmgang_report> version, and on a shape error with the field path: every field
-of format 1 must be present (C<null> where unknown), booleans must be JSON
-booleans, image content is refused. Fields it does not know are ignored and not
-kept.
+of format 1 must be present (C<null> where unknown) — except C<difficulty> of a
+case, added to format 1 later (k57), which reads as C<null> where a report lacks
+it —, booleans must be JSON booleans, image content is refused. Fields it does
+not know are ignored and not kept.
 
 =cut
 
@@ -524,8 +527,13 @@ sub merge {
           $mc = $m->{_case}{ $c->{case_id} } = { %$c, repetitions => [] };
           push @{ $m->{cases} }, $mc;
         }
+        # a field added after version 1 is null in an older report: the other's value holds
+        for my $f ( $class->_optional_case_fields ) {
+          $mc->{$f} = $c->{$f} unless defined $mc->{$f};
+        }
         my %meta_a = %$mc; delete $meta_a{repetitions};
         my %meta_b = %$c;  delete $meta_b{repetitions};
+        defined $meta_b{$_} or $meta_b{$_} = $meta_a{$_} for $class->_optional_case_fields;
         croak __PACKAGE__.'->merge: case '.$c->{case_id}.' of suite '.$run->{suite}{id}.' differs between reports'
           unless $json->encode( \%meta_a ) eq $json->encode( \%meta_b );
         for my $r ( @{ $c->{repetitions} } ) {
@@ -562,12 +570,18 @@ C<target>, C<variant> and C<suite> become one, their cases are joined by
 C<case_id> and the repetitions by number. A repetition found in more than one
 report is kept once when it is identical apart from the volatile fields, and
 croaks when it differs; so does a different C<repeat> or case meta for the same
-run. The merged run's C<status> is the worst of its parts
-(C<aborted> over C<cancelled> over C<complete>), C<error> the first one given;
+run, except that a C<difficulty> of C<null> (a report written before the field
+came, k57) takes the other report's value. The merged run's C<status> is the
+worst of its parts (C<aborted> over C<cancelled> over C<complete>), C<error> the first one given;
 C<started_at> is the earliest, C<finished_at> the latest (compared as text, as
 this module writes them in UTC), C<generator> that of the first report.
 
 =cut
+
+sub _optional_case_fields {
+  my $f = $SPEC{case}{fields};
+  return grep { ref $f->{$_} && $f->{$_}{optional} } sort keys %$f;
+}
 
 sub _worse_status {
   my ( $self, $x, $y ) = @_;
@@ -598,8 +612,10 @@ sub _shape {
     croak __PACKAGE__.' '.$where.' must be an object' unless ref $value eq 'HASH' && !blessed $value;
     my %out;
     for my $f ( sort keys %{ $spec->{fields} } ) {
-      croak __PACKAGE__.' '.$where.'.'.$f.' is missing' if $strict && !exists $value->{$f};
-      $out{$f} = $self->_shape( $spec->{fields}{$f}, $value->{$f}, $where.'.'.$f, $strict );
+      my $fs = $spec->{fields}{$f};
+      croak __PACKAGE__.' '.$where.'.'.$f.' is missing'
+        if $strict && !exists $value->{$f} && !( ref $fs && $fs->{optional} );
+      $out{$f} = $self->_shape( $fs, $value->{$f}, $where.'.'.$f, $strict );
     }
     return \%out;
   }
@@ -733,6 +749,7 @@ sub from_cai_platform {
           $case{$id} = {
             case_id     => $id,
             title       => $c->{title},
+            difficulty  => defined $c->{difficulty} ? $c->{difficulty} : $cm->{difficulty},
             ( map { $_ => $cm->{$_} } qw( tags tier weight hard untrusted ) ),
             repetitions => [],
           };
@@ -766,7 +783,7 @@ sub from_cai_platform {
       $decoded_cai_report,
       grading => { <cai run id> => { <case_id> => <grading JSON from the database> } },
       suites  => { <suite id> => { version => …, digest => …,
-                                   cases => { <case_id> => { tags, tier, weight, hard, untrusted } } } },
+                                   cases => { <case_id> => { tags, tier, difficulty, weight, hard, untrusted } } } },
     );
 
 Maps a cai-platform C<evals run --report> file onto format 1 for the acceptance
@@ -786,8 +803,9 @@ C<reason>, 0/1 to booleans, the rule of kind C<turns> dropped and C<score>
 recomputed as in C<Eval::Grader>), the gaps get their call index and tool, and
 the calls their tool and gap. Without C<grading>, C<rules> and C<diff> are
 C<null>, and C<score> is C<null> for a turn limit (it counted the dropped rule).
-Case meta beyond C<case_id> and C<title>, the suite version and digest come
-from C<suites> or are C<null>; C<target.engine> and the variant are always
+Case meta beyond C<case_id>, C<title> and C<difficulty> (each case row of
+C<--report> carries it; C<suites> fills in where a row lacks it), the suite
+version and digest come from C<suites> or are C<null>; C<target.engine> and the variant are always
 C<null>; C<seed> is the round number when C<repeat> is above 1, as
 C<Eval::Batch> sets it. Timestamps are C<null>.
 
@@ -868,7 +886,7 @@ __PACKAGE__->meta->make_immutable;
       suite  => { id => 'demo', version => '1', topic => 'demo', digest => $digest },
       repeat => 1, status => 'complete', error => undef,
       cases   => [ { case_id => 'demo-01', title => 'Open the port', tags => [], tier => undef,
-                     weight => 1, hard => 0, untrusted => 0 } ],
+                     difficulty => undef, weight => 1, hard => 0, untrusted => 0 } ],
       results => [ $result_from_the_runner ],
     );
     $report->finish->write('/data/reports/run.json');

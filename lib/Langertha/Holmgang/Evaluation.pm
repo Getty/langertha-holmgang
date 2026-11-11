@@ -21,6 +21,9 @@ sub statuses { qw( no_vision context_exceeded error turn_limit passed uncertain 
 # The length tiers of CONTEXT.md, in curve order.
 sub tiers { qw( 16k 48k 96k 160k ) }
 
+# The difficulties of format 2, in curve order.
+sub difficulties { qw( leicht mittel schwer ) }
+
 # The topic of a suite that names none (ADR 0005).
 sub default_topic { 'sonstiges' }
 
@@ -99,6 +102,7 @@ sub _build__runs {
           case_id     => $c->{case_id},
           weight      => defined $c->{weight} ? $c->{weight} : 1,
           tier        => $c->{tier},
+          difficulty  => $c->{difficulty},
           hard        => defined $c->{hard} ? ( $c->{hard} ? 1 : 0 )
                        : ( grep { $hard_tag{$_} } @{ $c->{tags} || [] } ) ? 1 : 0,
           repetitions => $c->{repetitions},
@@ -258,23 +262,24 @@ are plain sums over the topics.
 
 has tier_curves => ( is => 'ro', lazy_build => 1, init_arg => undef );
 
-sub _tier_order {
-  my ( $self, $tier ) = @_;
-  my @known = $self->tiers;
-  my ($i) = grep { $known[$_] eq $tier } 0 .. $#known;
-  return defined $i ? ( 0, $i, 0, '' ) : ( 1, 0, ( $tier =~ /\A([0-9]+)/ ? $1 : 0 ), $tier );
+# Known values first in their order, any other after them by its number,
+# then by text.
+sub _order {
+  my ( $self, $known, $v ) = @_;
+  my ($i) = grep { $known->[$_] eq $v } 0 .. $#$known;
+  return defined $i ? ( 0, $i, 0, '' ) : ( 1, 0, ( $v =~ /\A([0-9]+)/ ? $1 : 0 ), $v );
 }
 
-sub _build_tier_curves {
-  my ( $self ) = @_;
+# One curve per row and topic over the values of a case field.
+sub _curves {
+  my ( $self, $field, @known ) = @_;
   my ( %agg, @rows );
   for my $run ( @{ $self->_runs } ) {
     for my $c ( @{ $run->{cases} } ) {
-      next unless defined $c->{tier} && length $c->{tier};
-      my $a = $agg{ $run->{row} }{ $run->{topic} }{ $c->{tier} } //= do {
+      next unless defined $c->{$field} && length $c->{$field};
+      my $a = $agg{ $run->{row} }{ $run->{topic} }{ $c->{$field} } //= do {
         push @rows, $run->{row};
-        { target => $run->{target}, variant => $run->{variant}, topic => $run->{topic},
-          tier => $c->{tier}, tally => $self->_tally };
+        { target => $run->{target}, variant => $run->{variant}, tally => $self->_tally };
       };
       $self->_add( $a->{tally}, $_, $c->{weight} ) for @{ $c->{repetitions} };
     }
@@ -284,18 +289,18 @@ sub _build_tier_curves {
   for my $row ( grep { !$seen{$_}++ } @rows ) {
     for my $topic ( sort keys %{ $agg{$row} } ) {
       my $by = $agg{$row}{$topic};
-      my @tiers = sort {
-        my @x = $self->_tier_order($a);
-        my @y = $self->_tier_order($b);
+      my @values = sort {
+        my @x = $self->_order( \@known, $a );
+        my @y = $self->_order( \@known, $b );
         $x[0] <=> $y[0] || $x[1] <=> $y[1] || $x[2] <=> $y[2] || $x[3] cmp $y[3]
       } keys %$by;
-      for my $tier ( @tiers ) {
-        my $a = $by->{$tier};
+      for my $v ( @values ) {
+        my $a = $by->{$v};
         push @out, {
           target  => $a->{target},
           variant => $a->{variant},
           topic   => $topic,
-          tier    => $tier,
+          $field  => $v,
           $self->_counted( $a->{tally} ),
           context_exceeded_rate => $self->_share( $a->{tally}, 'context_exceeded' ),
           error_rate            => $self->_share( $a->{tally}, 'error' ),
@@ -305,6 +310,8 @@ sub _build_tier_curves {
   }
   return \@out;
 }
+
+sub _build_tier_curves { my ( $self ) = @_; return $self->_curves( tier => $self->tiers ) }
 
 =attr tier_curves
 
@@ -316,6 +323,23 @@ C<48k>, C<96k>, C<160k>, any other tier after them by its number. Hits
 (C<rate>), C<context_exceeded> and C<error> are three weighted shares of the
 same results, kept apart; C<counts> has all seven statuses. Cases without a
 tier are not on a curve. The tag C<ctx-E<lt>NE<gt>k> is no tier (ADR 0008, k56).
+
+=cut
+
+#### Difficulties
+
+has difficulty_curves => ( is => 'ro', lazy_build => 1, init_arg => undef );
+
+sub _build_difficulty_curves { my ( $self ) = @_; return $self->_curves( difficulty => $self->difficulties ) }
+
+=attr difficulty_curves
+
+    # [ { target, variant, topic, difficulty, results, weight, counts => { … },
+    #     rate, context_exceeded_rate, error_rate }, … ]
+
+The same curve per difficulty (k57): per row and topic, in the order
+C<leicht>, C<mittel>, C<schwer>, any other value after them. Cases without a
+difficulty (and reports written before the field) are not on a curve.
 
 =cut
 
@@ -456,6 +480,7 @@ sub as_data {
     topics      => $self->topics,
     overall     => $self->overall,
     tier_curves => $self->tier_curves,
+    difficulty_curves => $self->difficulty_curves,
     verdicts    => $self->verdicts,
     comparison  => $self->comparison,
   };
@@ -464,7 +489,8 @@ sub as_data {
 =method as_data
 
 The whole evaluation as a plain hash: C<holmgang_evaluation> (the format
-version, ADR 0008), L</topics>, L</overall>, L</tier_curves>, L</verdicts>,
+version, ADR 0008), L</topics>, L</overall>, L</tier_curves>,
+L</difficulty_curves>, L</verdicts>,
 L</comparison>.
 
 =cut
@@ -519,6 +545,14 @@ sub _tables {
         @{ $self->tier_curves } ],
       [] ];
   }
+  if ( @{ $self->difficulty_curves } ) {
+    push @tables, [ 'Difficulty (shares of all results)',
+      [ 'target', 'variant', 'topic', 'difficulty', 'results', 'passed', 'context_exceeded', 'error' ],
+      [ map { [ $_->{target}, $self->_cell( $_->{variant} ), $_->{topic}, $_->{difficulty}, $_->{results},
+        $self->_pct( $_->{rate} ), $self->_pct( $_->{context_exceeded_rate} ), $self->_pct( $_->{error_rate} ) ] }
+        @{ $self->difficulty_curves } ],
+      [] ];
+  }
   return @tables;
 }
 
@@ -546,8 +580,9 @@ sub to_text {
 
     print $evaluation->to_text;
 
-The comparison table, the verdicts (with each hard case that failed one) and,
-when any case has a tier, the tier curves — as aligned plain-text tables.
+The comparison table, the verdicts (with each hard case that failed one),
+when any case has a tier the tier curves, and when any case has a difficulty
+the difficulty curves — as aligned plain-text tables.
 Rates as percentages, C<-> for none.
 
 =cut
@@ -599,8 +634,8 @@ The numbers derived from one or more L<Langertha::Holmgang::Report>s, which
 hold only what was measured (ADR 0006): per topic, never one share over all
 cases; an overall value only as the mean of the topics; case weights
 (cluster size / representatives); curves per length tier with hits,
-C<context_exceeded> and errors apart; the verdict per suite against its
-threshold and its hard cases, with pass^k over the repetitions; the comparison
+C<context_exceeded> and errors apart, and the same per difficulty; the verdict
+per suite against its threshold and its hard cases, with pass^k over the repetitions; the comparison
 of targets as text, Markdown and JSON. Port of cai-platform's
 C<Eval::Batch::by_topic> and C<Eval::Batch::verdicts>; the decisions are ADR
 0008.

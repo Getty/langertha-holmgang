@@ -63,7 +63,7 @@ C<cancelled>); a second signal ends the process at once.
 
 B<report> reads report files, joins them, and prints the evaluation per topic:
 the comparison of targets, the verdicts per suite and, where cases have a
-length tier, the tier curves.
+length tier or a difficulty, the curves per tier and per difficulty.
 
 B<export-yaml> writes each suite in the case DSL (F<suite.pl>) among its
 arguments -- suite directories or directories of suites -- as suite format 2

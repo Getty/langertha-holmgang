@@ -14,7 +14,7 @@ my $CLASS = 'Langertha::Holmgang::Report';
 sub cases {
   return [
     { case_id => 'alpha-01', title => 'Open a port', tags => [ 'netz', 'stufe-16k' ], tier => '16k',
-      weight => 1, hard => 0, untrusted => 0, state => { secret => 'never' } },
+      difficulty => 'mittel', weight => 1, hard => 0, untrusted => 0, state => { secret => 'never' } },
     { case_id => 'alpha-02', title => 'Leave it alone', tags => ['injection'], tier => undef,
       weight => 2.5, hard => 1, untrusted => 1 },
   ];
@@ -88,6 +88,8 @@ subtest 'build: fields, derived numbers, null not 0' => sub {
   is_deeply [ map { $_->{case_id} } @{ $run->{cases} } ], [qw( alpha-01 alpha-02 )], 'load order';
   ok !exists $c1->{state}, 'case state not copied';
   ok JSON::MaybeXS::is_bool( $c2->{hard} ) && $c2->{hard}, 'hard is a boolean';
+  is $c1->{difficulty}, 'mittel', 'difficulty (k57)';
+  ok exists $c2->{difficulty} && !defined $c2->{difficulty}, 'no difficulty: null, present';
   my $r = $c1->{repetitions}[0];
   is_deeply [ sort keys %$r ], [ sort qw( repetition seed status score error finish_reason duration_ms rules diff
     turns tokens calls sim_gaps forbidden_calls injection_held transcript ) ], 'every repetition field';
@@ -251,6 +253,15 @@ subtest 'reading validates' => sub {
   like $try->( sub { $_[0]{holmgang_report} = '1.5' } ), qr/positive integer/, 'odd version';
   like $try->( sub { delete $_[0]{runs}[0]{cases}[0]{repetitions}[0]{tokens}{reasoning} } ),
     qr/x\.json\.runs\[0\]\.cases\[0\]\.repetitions\[0\]\.tokens\.reasoning is missing/, 'missing field';
+  # k57: difficulty came to format 1 later; a report written before it still reads
+  is $try->( sub { delete $_[0]{runs}[0]{cases}[$_]{difficulty} for 0, 1 } ), '', 'report without difficulty reads';
+  my $old = $json->decode( $json->encode($doc) );
+  delete $_->{difficulty} for @{ $old->{runs}[0]{cases} };
+  my $read = $CLASS->from_json( $json->encode($old) );
+  ok exists $read->runs->[0]{cases}[0]{difficulty} && !defined $read->runs->[0]{cases}[0]{difficulty},
+    '... and has it as null';
+  like $try->( sub { delete $_[0]{runs}[0]{cases}[0]{tier} } ), qr/cases\[0\]\.tier is missing/,
+    'other case fields still required';
   like $try->( sub { $_[0]{runs}[0]{cases}[0]{repetitions}[0]{rules}[0]{passed} = 0 } ),
     qr/passed must be a JSON boolean/, 'boolean as number refused';
   like $try->( sub { $_[0]{runs}[0]{cases}[0]{repetitions}[0]{status} = 'ungraded' } ),
