@@ -45,6 +45,13 @@ C<const> compare like the expectations do. Unlike cai-platform, which accepts
 C<const> but never checks it, C<const> holds per call: the schema the model
 sees means what it says.
 
+C<type> may be a list of types, as JSON Schema has it
+(C<< type: [string, "null"] >>): the value fits when it fits one of them,
+and the model reads C<erwartet string oder null>. The other keys apply as
+they stand: an C<enum> beside C<"null"> has to list C<null> for a null to
+pass, as in JSON Schema, and a null in C<enum> matches a null (in
+cai-platform it matches nothing). cai-platform refuses a type list at load.
+
 =cut
 
 sub _refuse { Langertha::Holmgang::Error->throw(@_) }
@@ -53,7 +60,8 @@ sub _refuse { Langertha::Holmgang::Error->throw(@_) }
 
   check_schema( $schema, $field );
 
-Refuses an unknown key, an unknown C<type>, an invalid C<pattern>, a
+Refuses an unknown key, an unknown C<type> (a name, or a list of names
+that is not empty and names none twice), an invalid C<pattern>, a
 C<properties> that is not a hash, a C<required> or C<enum> that is not a
 list and a C<const> that is not a scalar (text, number or boolean) —
 recursively, with the field path. Returns the schema.
@@ -67,7 +75,19 @@ sub check_schema {
     _refuse( $field.'.'.$k, 'unknown key' ) unless grep { $_ eq $k } @SCHEMA_KEYS;
   }
   if ( exists $s->{type} ) {
-    _refuse( $field.'.type', 'unknown type' ) unless !ref $s->{type} && $TYPE{ $s->{type} // '' };
+    my $t = $s->{type};
+    if ( ref $t eq 'ARRAY' ) {
+      _refuse( $field.'.type', 'empty list' ) unless @$t;
+      my %seen;
+      for my $i ( 0 .. $#$t ) {
+        my $x = $t->[$i];
+        _refuse( $field.'.type['.$i.']', 'unknown type' ) unless defined $x && !ref $x && $TYPE{$x};
+        _refuse( $field.'.type['.$i.']', 'named twice' ) if $seen{$x}++;
+      }
+    }
+    else {
+      _refuse( $field.'.type', 'unknown type' ) unless defined $t && !ref $t && $TYPE{$t};
+    }
   }
   if ( exists $s->{pattern} ) {
     my $p = $s->{pattern};
@@ -86,6 +106,18 @@ sub check_schema {
   return $s;
 }
 
+sub _is_type {
+  my ( $d, $t ) = @_;
+  return $t eq 'object'  ? ref $d eq 'HASH'
+    :    $t eq 'array'   ? ref $d eq 'ARRAY'
+    :    $t eq 'null'    ? !defined $d
+    :    $t eq 'boolean' ? JSON::MaybeXS::is_bool($d)
+    :    $t eq 'integer' ? ( defined $d && !ref $d && "$d" =~ /\A-?\d+\z/ )
+    :    $t eq 'number'  ? ( defined $d && !ref $d && "$d" =~ /\A-?\d+(?:\.\d+)?\z/ )
+    :    $t eq 'string'  ? ( defined $d && !ref $d )
+    :                      0;
+}
+
 =func schema_errors
 
   my @errors = schema_errors( $data, $schema );
@@ -101,19 +133,11 @@ sub schema_errors {
   return () unless ref $s eq 'HASH';
   my @e;
   if ( defined( my $t = $s->{type} ) ) {
-    my $ok
-      = $t eq 'object'  ? ref $d eq 'HASH'
-      : $t eq 'array'   ? ref $d eq 'ARRAY'
-      : $t eq 'null'    ? !defined $d
-      : $t eq 'boolean' ? JSON::MaybeXS::is_bool($d)
-      : $t eq 'integer' ? ( defined $d && !ref $d && "$d" =~ /\A-?\d+\z/ )
-      : $t eq 'number'  ? ( defined $d && !ref $d && "$d" =~ /\A-?\d+(?:\.\d+)?\z/ )
-      : $t eq 'string'  ? ( defined $d && !ref $d )
-      :                   0;
-    return ( $at.': erwartet '.$t ) unless $ok;
+    my @t = ref $t eq 'ARRAY' ? @$t : $t;
+    return ( $at.': erwartet '.join( ' oder ', @t ) ) unless grep { _is_type( $d, $_ ) } @t;
   }
-  if ( $s->{enum} && !grep { same_scalar( $d, $_ ) } @{ $s->{enum} } ) {
-    push @e, $at.': erlaubt sind '.join( ', ', @{ $s->{enum} } );
+  if ( $s->{enum} && !grep { defined $d ? same_scalar( $d, $_ ) : !defined $_ } @{ $s->{enum} } ) {
+    push @e, $at.': erlaubt sind '.join( ', ', map { $_ // 'null' } @{ $s->{enum} } );
   }
   if ( exists $s->{const} && !same_scalar( $d, $s->{const} ) ) {
     my $c = $s->{const};

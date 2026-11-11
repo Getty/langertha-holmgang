@@ -3,8 +3,10 @@
 # outside the JSON Schema subset, with the field path, recursively; per call
 # every violation is reported with its path, integers and numbers may come as
 # text, enum and const compare like the expectations do (const per call since
-# k31; a const that is no scalar is refused at load), and the texts are the
-# German ones the model gets.
+# k31; a const that is no scalar is refused at load), a type may be a list
+# of types (k48: fits when one fits; refused at load when empty, unknown or
+# doubled), a null in enum matches a null, and the texts are the German ones
+# the model gets.
 use strict;
 use warnings;
 use utf8;
@@ -32,6 +34,10 @@ my $S = { type => 'object', required => [qw( name count )], properties => {
   fixed => { const => 'x' },
   three => { type => 'integer', const => 3 },
   yes   => { const => JSON::MaybeXS::true() },
+  iban  => { type => [ 'string', 'null' ], pattern => '^[A-Z]{2}' },
+  num   => { type => [qw( integer boolean )] },
+  pick  => { type => [ 'string', 'null' ], enum => [ 'a', undef ] },
+  pick2 => { type => [ 'string', 'null' ], enum => [ 'a' ] },
 } };
 
 is( check_schema( $S, 'p' ), $S, 'a schema in the subset passes and comes back' );
@@ -42,6 +48,12 @@ refused( { properties => [] }, 'p.properties', qr/not a hash/, 'properties not a
 refused( { items => { format => 'x' } }, 'p.items.format', qr/unknown key/, 'items checked too' );
 refused( { required => 'a' }, 'p.required', qr/not a list/, 'required not a list' );
 refused( { enum => 'a' }, 'p.enum', qr/not a list/, 'enum not a list' );
+refused( { type => [] }, 'p.type', qr/empty list/, 'type list empty' );
+refused( { type => [ 'string', 'text' ] }, 'p.type[1]', qr/unknown type/, 'type list with an unknown type' );
+refused( { type => [ 'string', undef ] }, 'p.type[1]', qr/unknown type/, 'type list with a null (not "null")' );
+refused( { type => [ 'string', [ 'null' ] ] }, 'p.type[1]', qr/unknown type/, 'type list nested' );
+refused( { type => [ 'null', 'null' ] }, 'p.type[1]', qr/named twice/, 'type list with a type twice' );
+refused( { properties => { a => { type => { x => 1 } } } }, 'p.properties.a.type', qr/unknown type/, 'type a hash, nested' );
 refused( { const => [ 'a' ] }, 'p.const', qr/not a scalar/, 'const a list' );
 refused( { properties => { a => { const => undef } } }, 'p.properties.a.const', qr/not a scalar/, 'const null, nested' );
 
@@ -65,6 +77,18 @@ is_deeply( [ schema_errors( { name => 'ab', count => 1, fixed => 'x', three => '
   '... and compares like enum: number as text, boolean as text' );
 is_deeply( [ schema_errors( { name => 'ab', count => 1, three => 4 }, $S ) ], ['$.three: erlaubt ist 3'], '... a number' );
 is_deeply( [ schema_errors( { name => 'ab', count => 1, yes => JSON::MaybeXS::false() }, $S ) ], ['$.yes: erlaubt ist true'], '... a boolean' );
+is_deeply( [ schema_errors( { name => 'ab', count => 1, iban => 'DE12', num => 3, pick => 'a' }, $S ) ], [],
+  'type list: a string, an integer (k48)' );
+is_deeply( [ schema_errors( { name => 'ab', count => 1, iban => undef, num => JSON::MaybeXS::true(), pick => undef }, $S ) ], [],
+  '... null, a boolean, null in enum' );
+is_deeply( [ schema_errors( { name => 'ab', count => 1, iban => [], num => 'x' }, $S ) ],
+  [ '$.iban: erwartet string oder null', '$.num: erwartet integer oder boolean' ], '... none fits: all types named, in order' );
+is_deeply( [ schema_errors( { name => 'ab', count => 1, iban => 'de12' }, $S ) ], ['$.iban: passt nicht zu ^[A-Z]{2}'],
+  '... the other keys still hold for a fitting type' );
+is_deeply( [ schema_errors( { name => 'ab', count => 1, pick2 => undef }, $S ) ], ['$.pick2: erlaubt sind a'],
+  '... a null not listed in enum does not pass (JSON Schema)' );
+is_deeply( [ schema_errors( { name => 'ab', count => 1, pick => 'b' }, $S ) ], ['$.pick: erlaubt sind a, null'],
+  '... a null in enum is shown as null' );
 is_deeply( [ schema_errors( { anything => 1 }, undef ) ], [], 'no schema: nothing to check' );
 
 done_testing;
