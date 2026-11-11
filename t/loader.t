@@ -7,7 +7,7 @@
 # that changes something, an unknown device type, a broken regex; (3) lint
 # bites: doing nothing that passes, a reference solution or alternative that
 # fails or has a failed call, a wrong solution that passes all keep the suite
-# from loading; (4) the checksum depends on the content and is computed as
+# from loading; (4) the digest depends on the content and is computed as
 # cai-platform computes its digest; (5) only_tools, untrusted, the "no tool"
 # family, threshold, repeat, hard cases; (6) list, locate, select_suites.
 use strict;
@@ -47,18 +47,18 @@ my $CASE = $FAN_CASE;
   is_deeply( $c->rules->[0], { title => 'fan on high', state => 'fan.level', equals => 'high' }, 'rule kept as written' );
   is_deeply( [ map { $_->{name} } @{ $c->tools } ], [qw( fan_set run_command )], 'every case gets the suite tools, by name' );
   is_deeply( $c->prompt_messages, [ { role => 'user', content => 'It is hot in here.' } ], 'prompt messages' );
-  like( $s->checksum, qr/\A[0-9a-f]{64}\z/, 'checksum sha256' );
+  like( $s->digest, qr/\A[0-9a-f]{64}\z/, 'digest sha256' );
 
   my $again = loader()->load($dir);
-  is( $again->checksum, $s->checksum, 'checksum stable' );
+  is( $again->digest, $s->digest, 'digest stable' );
   Path::Tiny::path( $dir, 'cases', 'c1.yaml' )->spew_utf8( $CASE."difficulty: leicht\n" );
-  isnt( loader()->load($dir)->checksum, $s->checksum, 'checksum depends on the content' );
+  isnt( loader()->load($dir)->digest, $s->digest, 'digest depends on the content' );
 
   # the cai-platform digest: suite.yaml and each case file with name and bytes
   my $sha = Digest::SHA->new(256);
   $sha->add( "suite.yaml\0", Path::Tiny::path( $dir, 'suite.yaml' )->slurp_raw, "\0" );
   $sha->add( "cases/c1.yaml\0", Path::Tiny::path( $dir, 'cases', 'c1.yaml' )->slurp_raw, "\0" );
-  is( loader()->load($dir)->checksum, $sha->hexdigest, 'checksum computed like the cai-platform digest' );
+  is( loader()->load($dir)->digest, $sha->hexdigest, 'digest computed like the cai-platform digest' );
 }
 
 # --- (2) loud refusals --------------------------------------------------------
@@ -209,7 +209,7 @@ refused( $CASE, qr/threshold\.runs/, qr/unknown key/, 'threshold: unknown key',
   refused( $CASE."weight: 0\n", qr/: weight\z/, qr/positive/, 'weight 0 refused' );
 }
 
-# --- generated content: resolved for the model and in the checksum ------------------
+# --- generated content: resolved for the model and in the digest ------------------
 {
   my $spec = '{ generate: { kind: journal, tokens: 1000, seed: 5, host: box1 } }';
   my $gen = $CASE =~ s/content: "It is hot in here\." \}/content: [ "Journal:\\n", $spec ] }/r;
@@ -225,7 +225,7 @@ refused( $CASE, qr/threshold\.runs/, qr/unknown key/, 'threshold: unknown key',
   $sha->add( "suite.yaml\0", Path::Tiny::path( $dir, 'suite.yaml' )->slurp_raw, "\0" );
   $sha->add( "cases/c1.yaml\0", Path::Tiny::path( $dir, 'cases', 'c1.yaml' )->slurp_raw, "\0" );
   $sha->add( "cases/c1.yaml: messages[0].content\0", Digest::SHA::sha256_hex( Encode::encode( 'UTF-8', $text ) ), "\0" );
-  is( loader()->load($dir)->checksum, $sha->hexdigest, '... the generated text goes into the checksum' );
+  is( loader()->load($dir)->digest, $sha->hexdigest, '... the generated text goes into the digest' );
   refused( $CASE =~ s/content: "It is hot in here\." \}/content: { generate: { kind: journal, tokens: 5 } } }/r,
     qr/\Acases\/c1\.yaml: messages\[0\]\.content\.generate\.tokens\z/, qr/./, 'a broken generate spec names its field' );
 }
@@ -249,7 +249,7 @@ refused( $CASE, qr/threshold\.runs/, qr/unknown key/, 'threshold: unknown key',
   is( $by{beta}{cases}, 1, '... case count' );
   is( $by{beta}{tools}, 2, '... tool count' );
   is( $by{beta}{topic}, 'netz', '... topic' );
-  like( $by{beta}{checksum}, qr/\A[0-9a-f]{64}\z/, '... checksum' );
+  like( $by{beta}{digest}, qr/\A[0-9a-f]{64}\z/, '... digest' );
 
   is( $L->locate( "$root_a:$root_b", 'beta' ), "$root_a/beta", 'locate' );
   is( $L->locate( "$root_a:$root_b", 'nope' ), undef, 'locate: unknown' );

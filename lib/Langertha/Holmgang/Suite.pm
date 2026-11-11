@@ -13,7 +13,7 @@ our $VERSION = '0.001';
   $suite->id;          # 'example-lamp'
   $suite->topic;       # 'sonstiges' without one
   $suite->cases;       # [ Langertha::Holmgang::Case, … ] in file-name order
-  $suite->checksum;    # sha256 over the files and the generated texts
+  $suite->digest;      # sha256 over the files and the generated texts
   $suite->case('c1');  # one case by id
 
 =description
@@ -41,7 +41,7 @@ The axis of every evaluation; C<sonstiges> without one.
 
 =cut
 
-has $_ => ( is => 'ro' ) for qw( version title description license source threshold repeat checksum );
+has $_ => ( is => 'ro' ) for qw( version title description license source threshold repeat digest );
 
 =attr version
 
@@ -71,11 +71,11 @@ C<{ pass_rate, pass_k }> (each optional, 0..1) or C<undef>.
 
 How often a run repeats the suite by default (1..100), or C<undef>.
 
-=attr checksum
+=attr digest
 
 SHA-256 (hex) over the file names and bytes of F<suite.yaml> and every case
-file, plus the generated texts — the same value cai-platform computes as its
-C<digest>.
+file, plus the generated texts — the same value, under the same name, that
+cai-platform computes as its C<digest>, and the C<suite.digest> of a report.
 
 =cut
 

@@ -27,7 +27,7 @@ our $VERSION = '0.001';
   my $suite = $loader->load('/srv/suites/example-lamp');   # a Langertha::Holmgang::Suite
 
   my $list = $loader->list( '/srv/suites:/data/suites' );
-  # [ { id, version, title, description, topic, cases, tools, checksum, error }, … ]
+  # [ { id, version, title, description, topic, cases, tools, digest, error }, … ]
 
   my $dir = $loader->locate( '/srv/suites:/data/suites', 'demo-lamp' );
   my @ids = $loader->select_suites( $list, topics => ['demo'], suites => ['demo-lamp'] );
@@ -42,7 +42,7 @@ load, and the whole suite with it. Every refusal is a
 L<Langertha::Holmgang::Error> naming the field — C<format>, C<id>,
 C<suite.yaml: tools[0].name>, C<cases/c1.yaml: rules[0].regex>.
 
-The suite's checksum is SHA-256 over C<suite.yaml>, each case file (name and
+The suite's digest is SHA-256 over C<suite.yaml>, each case file (name and
 bytes) and each generated text — computed exactly as cai-platform computes its
 C<digest>, so a suite has the same value in both.
 
@@ -161,7 +161,7 @@ sub load {
     $self->lint->lint( $case, $f );
     push @cases, $case;
   }
-  return Langertha::Holmgang::Suite->new( %suite, cases => \@cases, checksum => $sha->hexdigest );
+  return Langertha::Holmgang::Suite->new( %suite, cases => \@cases, digest => $sha->hexdigest );
 }
 
 =method load
@@ -210,7 +210,7 @@ sub list {
       topic       => $s->topic,
       cases       => scalar @{ $s->cases },
       tools       => scalar @{ $s->tools },
-      checksum    => $s->checksum,
+      digest      => $s->digest,
       error       => undef,
     };
   }
@@ -224,7 +224,7 @@ sub list {
 All suites under the search directories (separated by C<:>; each
 subdirectory with a F<suite.yaml>), sorted by id, as a short overview:
 C<id>, C<version>, C<title>, C<description>, C<topic>, C<cases> and C<tools>
-(counts), C<checksum>, C<error>. A suite that does not load is listed with
+(counts), C<digest>, C<error>. A suite that does not load is listed with
 C<error> (the refusal as text) instead of stopping the list; an id found in
 more than one search directory is listed once, with an error.
 

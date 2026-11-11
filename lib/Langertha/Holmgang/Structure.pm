@@ -37,7 +37,7 @@ my $TOOL_RE = qr/\A[A-Za-z_][A-Za-z0-9_-]{0,63}\z/;
   my $structure = Langertha::Holmgang::Structure->new;
 
   my %head  = $structure->suite_head( $suite_yaml, dirname => 'example-lamp' );
-  my @texts = $structure->generated( $case_yaml, 'cases/c1.yaml' );   # for the checksum
+  my @texts = $structure->generated( $case_yaml, 'cases/c1.yaml' );   # for the digest
   my $case  = $structure->case( $case_yaml,
     file     => 'c1.yaml',
     tools    => $head{tools},
@@ -355,7 +355,7 @@ sub suite_head {
   my %args = $structure->suite_head( $suite_yaml, dirname => $dir, format => 1 );
 
 Checks the head of a suite and returns the arguments for
-L<Langertha::Holmgang::Suite> (without C<cases> and C<checksum>). With
+L<Langertha::Holmgang::Suite> (without C<cases> and C<digest>). With
 C<dirname> the C<id> must equal it; with C<format> (the loader) the file must
 say C<format: 2>, and format 1 is refused with its own reason.
 
@@ -406,7 +406,7 @@ sub generated {
 
 The generated contents of a case — message contents, then file contents of
 the state by device and path — each with its field and its text, in the order
-the checksum takes them. Refuses a broken generate spec with its field.
+the digest takes them. Refuses a broken generate spec with its field.
 
 =cut
 

@@ -5,7 +5,7 @@
 # size follows the characters -> tokens estimate; inserts stand at their
 # position with their neighbours' timestamp; the filler never contains the
 # needle patterns (exclude); bad specs are refused with the field path.
-# The loader parts of the original (generate in messages and files, checksum)
+# The loader parts of the original (generate in messages and files, digest)
 # belong to the loader's tests; the suite parts to the acceptance run.
 # Every spec here is invented (ADR 0003).
 use strict;
@@ -233,7 +233,7 @@ subtest 'estimate_tokens and chars_per_token' => sub {
   my $three = $CLASS->new( chars_per_token => 3 );
   is( $three->estimate_tokens( 'x' x 30 ), 10, 'own chars_per_token' );
   my $spec = { kind => 'journal', tokens => 2000, seed => 1 };
-  isnt( $three->generate($spec), $H->generate($spec), 'chars_per_token changes the text (and so the checksum)' );
+  isnt( $three->generate($spec), $H->generate($spec), 'chars_per_token changes the text (and so the digest)' );
   cmp_ok( abs( $three->estimate_tokens( $three->generate($spec) ) - 2000 ), '<', 100, '... and the size follows it' );
 };
 

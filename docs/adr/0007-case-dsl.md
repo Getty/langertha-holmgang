@@ -126,13 +126,13 @@ the plugin's, outside this keyword set.
   private measurement seed never has to be written into a public file (ADR 0003); the
   option's name belongs to the loader/CLI slice.
 
-### Order, errors, checksum
+### Order, errors, digest
 
 - Cases are ordered by id, as format 2 orders them by file name, so a DSL suite and its
   export run in the same order. A duplicate id refuses the suite.
 - Refusals from `Structure` and lint name the suite file, the case id and the field path
   (`suite.pl: case 01-nginx-stopped: rules[1].equals`), like the loader's.
-- A DSL suite's checksum is the checksum of its YAML export (k19 makes the bytes
+- A DSL suite's digest is the digest of its YAML export (k19 makes the bytes
   canonical): a suite and its export are the same suite.
 
 ### Where DSL suites live

@@ -379,7 +379,7 @@ sub bodies { [ map { $_->{body} } @{ $_[0]->requests } ] }
   $report->add_run(
     target  => { label => 'virtual', engine => 'Virtual', model => 'virtual', url => undef },
     variant => { name => 'default', settings => {} },
-    suite   => { id => $suite->id, version => $suite->version, topic => $suite->topic, digest => $suite->checksum },
+    suite   => { id => $suite->id, version => $suite->version, topic => $suite->topic, digest => $suite->digest },
     repeat  => 2,
     status  => 'complete',
     cases   => [ map { +{ case_id => $_->id, title => $_->title, tags => $_->tags, tier => scalar $_->tier,

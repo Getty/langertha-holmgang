@@ -14,7 +14,7 @@
 # (Runner->mock_engine) has the status after the ADR 0006 mapping, the score,
 # every rule (reason translated, see below), the diff, the calls with their
 # arguments and gaps, the sim_gaps, forbidden_calls, injection_held, the
-# number of turns and the error that cai-platform recorded; the suite checksum
+# number of turns and the error that cai-platform recorded; the suite digest
 # and the case list are the same. Deliberate differences not compared: tokens
 # (the mock estimates none, ADR 0005 k9), seed (the CLI sends none, ADR 0009),
 # duration_ms, and the error of a turn limit (none here, ADR 0006).
@@ -103,7 +103,7 @@ for my $file ( @files ) {
     my $suite = $loader->load($dir);
     my ($cai) = @{ Langertha::Holmgang::Report->from_cai_platform(
       $b->{report}, grading => $b->{grading}, suites => $b->{suites} )->as_data->{runs} };
-    is( $suite->checksum, $cai->{suite}{digest}, 'checksum' );
+    is( $suite->digest, $cai->{suite}{digest}, 'digest' );
     is( $suite->topic, $cai->{suite}{topic}, 'topic' );
     is_deeply( [ map { $_->id } @{ $suite->cases } ], [ map { $_->{case_id} } @{ $cai->{cases} } ], 'cases' );
     my $repeat = $cai->{repeat};

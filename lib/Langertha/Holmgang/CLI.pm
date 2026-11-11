@@ -338,7 +338,7 @@ sub cmd_run {
     $report->add_run(
       target  => $target,
       variant => $variant,
-      suite   => { id => $suite->id, version => $suite->version, topic => $suite->topic, digest => $suite->checksum },
+      suite   => { id => $suite->id, version => $suite->version, topic => $suite->topic, digest => $suite->digest },
       repeat  => $repeat,
       status  => defined $error ? 'aborted' : 'complete',
       error   => $error,

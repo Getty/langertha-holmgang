@@ -51,3 +51,5 @@ Revision history for Langertha-Holmgang
     re-wraps them (k29)
   - A when path that cannot be evaluated no longer dies out of World->call;
     the entry does not fit (k39)
+  - Suite->checksum is now Suite->digest, and Loader->list carries digest,
+    the same name as the report's suite.digest (k30)

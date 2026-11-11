@@ -52,7 +52,7 @@ xorshift32 random source, never C<rand>). The algorithm and its vocabulary
 are those of cai-platform's C<CAI::Platform::Eval::Haystack>, and the text is
 the same as there, so a case measures the same input on both. When the
 generator changes, the text changes — the loader therefore puts the generated
-text into the suite checksum.
+text into the suite digest.
 
 B<Content:> plausible German operational data — messages of invented
 services in German, comments in configurations in German, plus the usual
