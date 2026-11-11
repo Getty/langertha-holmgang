@@ -1,0 +1,24 @@
+---
+claimed_at: 2026-11-11T08:27:42Z
+claimed_by: holmgang-main
+class: standard
+completed: 2026-11-11T08:27:33Z
+created: 2026-11-11T07:49:31Z
+id: 56
+priority: medium
+started: 2026-11-11T08:10:59Z
+status: done
+tags:
+- evaluation
+- adr
+title: Längenstufe für ctx-<N>k-Tags entscheiden
+updated: 2026-11-11T08:27:42Z
+---
+
+Aus k23: Case::tier liest nur stufe-Nk; vertragscheck und schichtfehler taggen ctx-32k/64k/128k und landen auf keiner Kurve. Entscheiden per Nachtrag ADR 0005/0008 (lassen, abbilden, zweite Achse) — ohne Fälle zu ändern (ADR 0004).
+
+Worker: decided LEAVE (no map, no second axis): ctx-Nk = intended window, stufe-Nk = input length; cai-platform evaluates neither; input_max already measured. Amendment ADR 0008 (k56), Case::tier POD + test that ctx-64k is no tier. ADR 0005 line proposed in report, not edited (other worker's lane).
+
+Worker: done, same verification as k57. Follow-up idea for dispatcher: curve over measured tokens.input_max if a window axis is wanted.
+
+committed 4317ed9
