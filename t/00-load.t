@@ -8,6 +8,7 @@ for (qw(
   Langertha::Holmgang::Report
   Langertha::Holmgang::Evaluation
   Langertha::Holmgang::Haystack
+  Langertha::Holmgang::Random
   Langertha::Holmgang::Error
   Langertha::Holmgang::Expectation
   Langertha::Holmgang::Template

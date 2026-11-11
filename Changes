@@ -71,3 +71,4 @@ Revision history for Langertha-Holmgang
   - Target: variant settings named and checked (enable_thinking, reasoning_effort, max_tokens, temperature, deadline); a per-request deadline on the engine's event loop (k15)
   - holmgang run: several variants per target (--variant NAME:K=V), --concurrency, --resume, checkpoints of the report while running, cancel on SIGINT/SIGTERM (k15)
   - New answer world roost (Langertha::Holmgang::Sim::Roost), an invented dragon roost, and the example suite demo-roost with two cases on it (k43)
+  - New Langertha::Holmgang::Random: a seeded random source in pure Perl for generators, the same on every perl and platform (k18)
