@@ -1,0 +1,24 @@
+---
+claimed_at: 2026-11-11T09:02:17Z
+claimed_by: holmgang-main
+class: standard
+completed: 2026-11-11T09:02:17Z
+created: 2026-11-04T19:34:14Z
+depends_on:
+- 13
+- 19
+id: 20
+priority: medium
+started: 2026-11-11T08:50:25Z
+status: done
+tags:
+- abnahme
+title: 'Abnahme 3: eine Suite in DSL und YAML liefert dieselben Ergebnisse'
+updated: 2026-11-11T09:02:17Z
+---
+
+Eine der Suites zusätzlich in der DSL schreiben; lädt und liefert dieselben Ergebnisse wie ihre YAML-Fassung. Die DSL-Fassung ist ein echter Fall und liegt wie die YAML-Fassung außerhalb des Repos. Keine echten Fälle in Repo, Karte oder Commit (ADR 0003).
+
+Acceptance 3: one mid-sized device suite of the 993637ab acceptance copy (12 cases, linux devices, observe, alternatives, wrong solutions) written by hand as suite.pl outside every repo (~/holmgang-abnahme/dsl/<id>/, prose from texts/ via file). New t/acceptance_dsl.t (skips without HOLMGANG_ACCEPTANCE_DSL + HOLMGANG_ACCEPTANCE_SUITES, prints ids only, own deep-compare so no is_deeply diag leaks content) checks (a) load+lint, (b) structure per case, (c) mock runs incl. requests, (d) export-yaml loads, same digest as DSL, same mock runs. All green; mutation checks fail as expected. No expressiveness gap. Finding for a card: suite.pl compiled without use utf8 turns non-ASCII literals into byte strings silently (loads, lints, mojibake to the model).
+
+Committed as 3071dbf
