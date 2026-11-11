@@ -1,0 +1,23 @@
+---
+claimed_at: 2026-11-11T06:25:35Z
+claimed_by: holmgang-main
+class: standard
+completed: 2026-11-11T06:25:35Z
+created: 2026-11-05T13:01:06Z
+id: 30
+priority: medium
+started: 2026-11-11T05:56:38Z
+status: done
+tags:
+- adr
+- report
+- loader
+title: Benennung checksum vs digest vereinheitlichen
+updated: 2026-11-11T06:25:42Z
+---
+
+Aus k2: ADR 0005 und Loader->list nutzen 'checksum', ADR 0006 und Report 'digest'. Einen Namen festlegen (ADR) und Code/Docs angleichen.
+
+2026-11-11 worker: ENTSCHEIDUNG (meine, nicht Maintainer): ein Name = digest. Grund: digest hat Leser außerhalb des Codes (Report-Wire suite.digest ADR 0006, from_cai_platform liest cai-Ergebnisse mit digest, cai Eval::Suite heißt digest); checksum hatte nur dist-interne Aufrufer in unveröffentlichter Version -> kein Alias. Geändert: Suite.pm (attr digest), Loader.pm (load/list-Schlüssel digest, POD), CLI.pm (1 Zeile, außerhalb der genannten Lane, nötig weil Suite->checksum entfällt), t/loader.t, t/runner.t, t/acceptance_mock_runs.t; ADR 0005 Nachtrag k30, ADR 0006 Nachtrag k30. OFFEN (fremde Lane, nicht angefasst): Prosa 'checksum' in Structure.pm (POD), Haystack.pm (POD), t/haystack.t, ADR 0007 'Order, errors, checksum' -> der Nachtrag erklärt sie als digest; bei Gelegenheit angleichen. Belege: prove t/loader.t PASS; acceptance_mock_runs mit Abnahmekopie af7561a5 + Baseline 63 Tests PASS (digest == cai digest).
+
+Committed as d17ab42
