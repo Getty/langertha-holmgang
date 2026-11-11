@@ -1,0 +1,42 @@
+---
+claimed_at: 2026-11-11T06:51:01Z
+claimed_by: holmgang-main
+class: standard
+completed: 2026-11-11T06:51:01Z
+created: 2026-11-04T20:22:52Z
+depends_on:
+- 2
+- 8
+- 9
+- 16
+id: 27
+priority: high
+started: 2026-11-11T06:27:03Z
+status: done
+tags:
+- vision
+title: Bilder in Nachrichten, Status no_vision, Antwortwelt sehen, Sehtest
+updated: 2026-11-11T06:51:09Z
+---
+
+Von cai-admin (2026-11-04, Wunsch des Menschen): Motor-Teil für eine Bild-/OCR-Suite (Fälle kommen privat nach cai-bench).
+- Fallformat: Feld images: [{file, untrusted?}] an user-Nachrichten. Lader prüft Pfad innerhalb der Suite, Medientyp per Magic Bytes (PNG/JPEG), ≤ 2 MiB je Bild, ≤ 4 Bilder je Nachricht; sha256 und Maße in Fall und Suite-Digest.
+- Auflösen zu OpenAI-Content-Parts [{type:text},{type:image_url,image_url:{url:"data:…;base64,…"}}] erst beim Bau der Anfrage; im Verlauf, Bericht und Speicher nur {image, sha256, bytes}, nie Base64. Prüfen, ob Langertha Content-Parts durchreicht (Langertha::Skeid hat image_url_part).
+- Status no_vision, getrennt gezählt wie context_exceeded: Vorprüfung je Ziel (llama.cpp /props modalities.vision; optional Katalog capabilities.vision), Fehlersignaturen („image input is not supported … mmproj“, vLLM „not a multimodal model“), und Sehtest: verwirft ein Template das Bild still (prompt_tokens unter Mindestkosten des Bildes, ~200), dann „Bild verworfen“ → no_vision für die Suite.
+- Antwortwelt sehen (Vorbild Sim::Kueche): graph_abgeben{gerichtet,knoten[],kanten[{von,nach,text?}]}, ablauf_abgeben{teilnehmer[],nachrichten[{von,an,text}]}, felder_abgeben{belegart,nummer,datum,lieferdatum,betrag_brutto,betrag_netto,waehrung,iban|null,positionen[]}, tabelle_abgeben{kopf[],zeilen[[]]}, werte_abgeben{reihen[{name,punkte[{x,y}]}]}, befund_abgeben{befehl,fehlercode,datei,zeile}, bild_melden{grund: kein_diagramm|unlesbar|teilweise_unlesbar, notiz}. Erneuter Aufruf ersetzt. Normalisierung in der Welt (roh + normalisiert): NFC, casefold, ß/Umlaute-Transkription gleich, Leerraum, Bindestriche/Anführungszeichen, Datum → ISO (mehrdeutig neutral ablehnen), Beträge als Zahl → Cent, IBAN kompakt groß.
+- Fertig: Fälle mit Bildern laden, Lint grün mit Beispiel-Suite (synthetisch, öffentlich unbedenklich), Mock-Lauf zweimal identisch, Bericht ohne Base64, Mock ohne Vision → no_vision, Mock der das Bild verwirft → im Sehtest erkannt; Tests netzfrei.
+Entwurf vollständig: cai-admin, Agent-Bericht 2026-11-04 (Kurzfassung hier).
+
+2026-11-04 20:28 Klarstellung (Getty): Der Sehtest ist eine Vorprüfung, kein gewerteter Fall: er zählt nicht in die Kategorie, er setzt nur no_vision. Langertha bringt dafür schon mit: Langertha::Content::Image (Bild als Content-Part), Fähigkeit image_input je Modell, probe_model_capabilities_f für llama.cpp/Ollama/LM Studio (liest die Metadaten des Servers). Das nutzen statt eigener /props-Abfrage.
+
+holmgang-sim-worker: started answer world Sim::Sehen (lib/Langertha/Holmgang/Sim/Sehen.pm, t/sim/sehen.t, registry line in Simulators.pm)
+
+holmgang-worker (engine part) started: images in Structure/Loader, Case placeholders, Runner resolves via Langertha::Content::Image, Target::vision_check_f, CLI per suite. Sim::Sehen is the sim-worker's.
+
+holmgang-sim-worker: Antwortwelt sehen fertig, uncommitted. Neu: lib/Langertha/Holmgang/Sim/Sehen.pm (7 Werkzeuge, Abgabe je Werkzeug unter sehen.<graph|ablauf|felder|tabelle|werte|befund|meldung> als {roh, norm}, erneuter Aufruf ersetzt, abgelehnter aendert nichts), t/sim/sehen.t (Normalisierung, Ersetzen, Suite laedt mit Lint gegen norm), Registry-Zeile in Simulators.pm, cpanfile + Unicode::Normalize. prove -lr t gruen (77 Dateien, 2492 Tests). Drift fuer holmgang-worker: (1) ToolSchema kennt keine Typlisten ([string, "null"]) — iban|null nur ohne type anbietbar; (2) Expectation hat keine Zahltoleranz — Diagrammwerte nur exakt/in/regex gradebar; (3) Loader-POD "The world" nennt die eingebauten Typen ohne sehen.
+
+holmgang-worker: engine part done, tree commit-ready (not committed). images on user messages (Structure/Loader/Case, digest unchanged without images), Runner resolves to Langertha::Content::Image per request, transcript/report keep {image,sha256,bytes}, Target::vision_check_f (wire ImageInput -> probe_model_capabilities_f fact -> sight test: diff of two requests, 512px PNG, <200 tokens = dropped), CLI runs it once per image suite, demo-sehen example suite (ADR 0010 amended). Decisions in ADR 0005/0006/0010 amendments (k27). prove -lr t green (2528), acceptance load+mock runs green. For the sim-worker lane: Sim::Sehen::_bool rejects a YAML false (core bool '' that JSON::MaybeXS::is_bool accepts and ToolSchema lets through), so a case cannot write gerichtet: false in YAML; demo-sehen avoids it.
+
+Sehen _bool fix: YAML::XS loads false as a non-ref core boolean (PL_sv_no), which _bool sent to text matching and rejected ('gerichtet muss true oder false sein.'), while ToolSchema accepts it via is_bool. _bool now asks JSON::MaybeXS::is_bool before the ref test. Regression subtest in t/sim/sehen.t (YAML false/true, JSON false, JSON::PP false, !!0, 0, false/nein/no/true/ja; empty text stays refused). prove -lr t green (acceptance_load/acceptance_mock_runs skip without HOLMGANG_ACCEPTANCE_*).
+
+Committed: a484325 (Sim::Sehen), 97caac1 (images, vision pre-check, no_vision), 0540a61 (demo-sehen)
