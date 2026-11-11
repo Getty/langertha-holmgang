@@ -37,8 +37,8 @@ Revision history for Langertha-Holmgang
     report evaluates report files with thresholds from --suite. Exit 0 ok,
     1 refused, verdict not ok or no case answered by the target, 2 usage or
     setup error. Errors on stderr carry no Perl location
-  - Three invented example suites under share/suites: demo-linux,
-    demo-lamp and demo-haystack, found with
+  - Four invented example suites under share/suites: demo-linux, demo-lamp,
+    demo-haystack and demo-sehen, found with
     File::ShareDir::dist_dir('Langertha-Holmgang').'/suites'
   - Documentation: an overview in Langertha::Holmgang, the suite format 2
     reference in ::Loader, rules and statuses in ::Grader, the simulator
