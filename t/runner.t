@@ -11,7 +11,9 @@
 # image the target cannot see is no_vision -- each its own status, through
 # Langertha::Holmgang::Target; seed and variant reach every request; the
 # outgoing request carries only system prompt, messages and tool schemas --
-# no state, rule, solution, observation or untrusted mark; the results feed
+# no state, rule, solution, observation or untrusted mark; an engine with a
+# system_prompt of its own (which Langertha would send as a second system
+# message) is refused before any request goes out (k37); the results feed
 # Report and Evaluation unchanged.
 use strict;
 use warnings;
@@ -354,6 +356,21 @@ sub bodies { [ map { $_->{body} } @{ $_[0]->requests } ] }
   like( $JSON->encode( bodies($ok)->[1] ), qr/MAIL-BODY: dates KW 45/, '... it arrives as the tool output after reading it' );
   unlike( $JSON->encode( bodies($shell)->[0] ), qr/OBSERVED-ONLY-PONG/, 'an observation is not in the first request' );
   is( bodies($shell)->[1]{messages}[-1]{content}, 'OBSERVED-ONLY-PONG', '... it answers the command it matches' );
+}
+
+# --- an engine with its own system_prompt: refused, nothing goes out (k37) ---------------
+{
+  my $e = engine( system_prompt => 'ENGINE-PROMPT', script => [ tool( fan_set => { level => 'high' } ), answer('ok') ] );
+  my $r = eval { run_with( $e, $case{mail} ) };
+  my $err = $@;
+  ok( !$r, 'an engine with a system_prompt of its own: run_case refuses' );
+  like( $err, qr/system_prompt/, '... naming the engine\'s system_prompt' );
+  is( scalar @{ $e->requests }, 0, '... before any request goes out' );
+
+  my $plain = engine( script => [ answer('ok') ] );
+  run_with( $plain, $case{mail} );
+  is_deeply( [ map { $_->{content} } grep { $_->{role} eq 'system' } @{ bodies($plain)->[0]{messages} } ],
+    ['SYSTEM-PROMPT: you look after the workshop.'], 'an engine without one: exactly one system message, the case\'s' );
 }
 
 # --- a gap of the simulation ------------------------------------------------------------

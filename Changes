@@ -59,3 +59,5 @@ Revision history for Langertha-Holmgang
     Case->tier returns undef in list context too (k36)
   - Tool parameters: const is checked per call, a non-scalar const is
     refused at load (k31)
+  - Runner refuses an engine with its own system_prompt instead of sending
+    a second system message (k37)

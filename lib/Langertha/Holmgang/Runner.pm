@@ -71,7 +71,10 @@ case's L<Langertha::Holmgang::Case/prompt_messages> (C<role> and C<content>
 only, no C<untrusted> mark), the assistant turns and tool outputs, and the
 tool schemas as L<Langertha::Holmgang::World/offer> gives them (C<name>,
 C<description>, C<parameters>). Never the state, the observations, the rules,
-the solutions or the marks.
+the solutions or the marks. An engine with a C<system_prompt> of its own is
+refused before the first request: Langertha would send it as a second system
+message ahead of the case's, and the model would see what the case does not
+say.
 
 Request controls per turn: C<max_tokens> (effective value of the case), C<seed>
 when given, and C<temperature> (effective value) only when the engine takes
@@ -120,6 +123,9 @@ async sub run_case_f {
   my $engine = $target->engine;
   croak __PACKAGE__.': the engine '.ref($engine).' has no format_tool_results (Langertha::Role::Tools)'
     unless $engine->can('format_tool_results');
+  # Langertha prepends an engine's own system_prompt as a second system message (k37)
+  croak __PACKAGE__.': the engine '.ref($engine).' has a system_prompt of its own; the case\'s system prompt is the only one'
+    if $engine->can('system_prompt') && defined $engine->system_prompt;
 
   my $world = $self->grader->world_class->new(
     state      => $case->initial_state,
