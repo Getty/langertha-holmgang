@@ -1,0 +1,28 @@
+---
+claimed_at: 2026-11-11T08:09:55Z
+claimed_by: holmgang-main
+class: standard
+completed: 2026-11-11T08:08:41Z
+created: 2026-11-04T19:34:13Z
+depends_on:
+- 18
+id: 19
+priority: medium
+started: 2026-11-11T07:43:24Z
+status: done
+tags:
+- dsl
+- format
+title: YAML-Export der DSL-Suites
+updated: 2026-11-11T08:09:55Z
+---
+
+DSL-Suites als Format 2 ausgeben, damit Fälle ohne Perl lesbar und vergleichbar bleiben; Rundreise DSL -> YAML -> Lader ergibt dieselbe Struktur.
+
+Worker started: export lives in ::Loader (ADR 0005 table); own canonical YAML writer (sorted keys with id/title first, literal blocks for multi-line text, self-checked by YAML::XS::Load) replaces _export_bytes; CLI command export-yaml (CONTEXT §7 / ADR 0009 name).
+
+Implemented: Loader->export + canonical YAML writer in Loader, assemble hashes the export bytes (digest == digest of load(export)); case order now by export file name (a-b before a); CLI export-yaml; t/dsl/export.t. ADR 0007/0009/0005 amendments. Drift for the dispatcher: Structure lets a code ref in a case's state through; World's JSON copy then dies without a field path (holmgang board).
+
+Verified: prove -lr t green (94 files, 3225 tests; only the env-gated acceptance/denken_vectors suites skip there); acceptance run green (acceptance_load, acceptance_mock_runs, no_private_suite_ids: 99 tests, PASS). Tree commit-ready, not committed.
+
+committed 8e7b54a (with k51)
