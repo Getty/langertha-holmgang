@@ -1,0 +1,37 @@
+---
+claimed_at: 2026-11-11T07:42:57Z
+claimed_by: holmgang-main
+class: standard
+completed: 2026-11-11T07:42:57Z
+created: 2026-11-04T19:34:12Z
+depends_on:
+- 1
+- 2
+id: 18
+priority: medium
+started: 2026-11-04T21:08:14Z
+status: done
+tags:
+- dsl
+- adr
+title: 'ADR und DSL: Fälle, Suites und Generatoren in Perl'
+updated: 2026-11-11T07:42:57Z
+---
+
+Sugar über die interne Fallstruktur (Skill getty-perl-sugar), Schlüsselwörter per ADR. Konstrukte: Fall, Nachrichten, Systemprompt, Werkzeuge, Welt, Regeln, Musterlösung, Alternativen, Falschlösungen, Tags, Schwierigkeit, Längenstufe. generate mit seed: gleicher Seed, gleiche Fälle. Läuft durch denselben Lint und Runner.
+
+2026-11-04 21:14 ADR 0007 drafted; implementation pending k2. docs/adr/0007-case-dsl.md + CONTEXT.md sketch (worktree k18). Aligned with ADR 0005 draft (k1): tier = tag stufe-<tier>, weight = new optional key, images = k27. Note for k1: ADR 0005 says every world entry has a type; the format 2 loader allows untyped top-level state entries (handler worlds) — DSL has world NAME => VALUE for them.
+
+2026-11-04 21:16 Committed on main (ff): be56ca0 647a3dd 33db4a2 de9e713 - ADR 0007 + CONTEXT DSL sketch, CONTEXT prose fixes, ADR 0005 amendment (last). Card stays in-progress.
+
+Stand 2026-11-05 (Halt cai-admin): FERTIG: ADR 0007 (647a3dd), CONTEXT-Skizze, ADR-0005-Nachtrag untypisierte Welt-Einträge + ::Random (de9e713). OFFEN: DSL-Umsetzung (Langertha::Holmgang Keywords, ::Random, suite.pl-Erkennung, generate mit seed) — braucht ::Structure aus k2. NÄCHSTER SCHRITT: nach k2-Commit holmgang-worker auf DSL ansetzen; Worktree k18 ist entfernt, Branch k18 zeigt auf main.
+
+2026-11-08 cai-holmgang: ruht bis nach dem ersten Release (Changes: Not yet); leerer Branch k18 gelöscht, Claim freigegeben.
+
+2026-11-11 holmgang-worker (overnight): started DSL implementation per ADR 0007 — Langertha::Holmgang keywords (Moose::Exporter as_is), ::Random, Loader suite.pl recognition, shared assembly through Structure+Lint, temporary digest rule pending k19.
+
+2026-11-11 holmgang-worker: DSL implemented, tree commit-ready (uncommitted). New: lib/Langertha/Holmgang/Random.pm, t/random.t, t/dsl/{keywords,loader,equivalence}.t. Changed: Langertha/Holmgang.pm (keywords + POD), Loader.pm (suite.pl, assemble, seeds, shared digest helpers), CLI.pm (lint/run accept suite.pl), bin/holmgang POD, t/00-load.t, ADR 0007 + 0005 amendments (k18). Digest of a DSL suite: temporary rule (YAML::XS dump per export part via Loader::_export_bytes), final bytes are k19's. prove -lr t green (88 files, 2914 tests; acceptance skipped there without env). Follow-ups for the dispatcher to file on this board: (1) ship a DSL example under share/suites (left out: a concurrent demo-roost slice was editing share/suites, t/share_suites.t, ADR 0010, README and the EXAMPLE SUITES POD of Langertha/Holmgang.pm in the same tree); (2) CLI option for the loader's seed override (Loader seeds attr exists, no CLI name yet). NOTE for release-manager: lib/Langertha/Holmgang.pm also carries the other slice's EXAMPLE SUITES hunk (Five ... demo-roost) — split with git add -p.
+
+2026-11-11 holmgang-worker: final acceptance green after all Loader changes — acceptance_load, acceptance_mock_runs, no_private_suite_ids: 3 files, 99 tests, PASS (124 s), format 2 unchanged. Ready for review; not moved (per dispatch).
+
+committed as d88390c (Random) and f952a56 (DSL)
