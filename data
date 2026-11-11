@@ -1,0 +1,22 @@
+---
+claimed_at: 2026-11-11T07:16:50Z
+claimed_by: holmgang-main
+class: standard
+completed: 2026-11-11T07:16:43Z
+created: 2026-11-11T06:37:43Z
+id: 48
+priority: low
+started: 2026-11-11T06:51:50Z
+status: done
+tags:
+- toolschema
+- vision
+title: 'ToolSchema: Typlisten wie [string, null]'
+updated: 2026-11-11T07:16:50Z
+---
+
+Aus k27 (Sim::Sehen): felder_abgeben will iban als string|null anbieten; ToolSchema kennt keine Typlisten, die Demo-Suite lässt type weg. Prüfen, ob JSON-Schema-Typlisten beim Laden und je Aufruf geprüft werden sollen; Format-2-Abnahmekopie gegenprüfen (ADR 0004).
+
+Worker: type lists implemented in ToolSchema. check_schema takes type as a name or a non-empty list of known, distinct names (refusals at p.type / p.type[i]); schema_errors passes when one type fits, model text '<path>: erwartet string oder null'. Also: a null in enum now matches a null (JSON Schema; cai-platform's same_scalar never matched it), enum message shows it as null. Worker's choices, not the maintainer's. cai-platform refuses type lists at load, so the acceptance copy has none; acceptance run af7561a5 green (load, mock runs, no_private_suite_ids). t/tool_schema.t extended. ADR 0005 amendment text in the report.
+
+committed c869517
