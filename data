@@ -1,0 +1,22 @@
+---
+claimed_at: 2026-11-11T06:25:04Z
+claimed_by: holmgang-main
+class: standard
+completed: 2026-11-11T06:25:04Z
+created: 2026-11-05T13:01:05Z
+id: 28
+priority: low
+started: 2026-11-11T05:57:01Z
+status: done
+tags:
+- adr
+- template
+title: 'ADR 0005: Template-Zeile um nft_verdict ergänzen'
+updated: 2026-11-11T06:25:12Z
+---
+
+Aus k2: Template implementiert nft_verdict (über die Simulator-Registry, nicht direkt Sim::Nft), weil private Fälle es nutzen; die Template-Zeile in ADR 0005 nennt es nicht. ADR nachziehen.
+
+2026-11-11 worker: ADR 0005 Template-Zeile um nft_verdict (über Simulators-Registry) ergänzt, plus Nachtrag k28 (fragt Simulators::packet_verdict, nie Sim::Linux::Nft; '' wenn der Simulator nicht antworten kann) - gegen Template.pm geprüft.
+
+Committed as 6123520
