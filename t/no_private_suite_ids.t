@@ -10,12 +10,18 @@
 #
 # A few ids are also ordinary words or file names. Such a line is allowed by file
 # and line pattern below, never by id: a new use of the same id elsewhere fails.
+#
+# An id that is also the device type of a built-in simulator (an answer world named
+# like the suite it serves) is a public name of this distribution: format 2 states
+# name it as their type and load unchanged (ADR 0004), so it is not scanned for (k58).
+# Every other id is still scanned, and the test fails if none is left to scan.
 use strict;
 use warnings;
 use Test::More;
 use File::Find ();
 use File::Spec;
 use FindBin ();
+use Langertha::Holmgang::Simulators ();
 
 my $root = File::Spec->catdir( $FindBin::Bin, File::Spec->updir );
 
@@ -61,7 +67,7 @@ ok( !@issue, 'no cai-platform issue number' ) or diag( join "\n", @issue );
 
 SKIP: {
   my $roots = $ENV{HOLMGANG_ACCEPTANCE_SUITES};
-  skip 'set HOLMGANG_ACCEPTANCE_SUITES to a copy of the cai-platform suites', 2 unless $roots;
+  skip 'set HOLMGANG_ACCEPTANCE_SUITES to a copy of the cai-platform suites', 3 unless $roots;
   my %ids;
   for my $r ( grep { length } split /:/, $roots ) {
     opendir my $dh, $r or die "$r: $!";
@@ -69,6 +75,11 @@ SKIP: {
     closedir $dh;
   }
   ok( scalar keys %ids, 'suite ids read from the acceptance copy' );
+  my @types = Langertha::Holmgang::Simulators->new->types;
+  my @public = grep { $ids{$_} } @types;
+  delete @ids{@public};
+  note( scalar(@public).' id(s) are built-in device types, not scanned' );
+  ok( scalar keys %ids, 'ids left to scan after the device types' );
   my $alt = join '|', map { quotemeta } sort { length $b <=> length $a } keys %ids;
   my @hits = %ids ? scan( qr/(?<![A-Za-z0-9_])(?:$alt)(?![A-Za-z0-9_])/ ) : ();
   ok( !@hits, 'no suite id of the acceptance copy' ) or diag( join "\n", @hits );
