@@ -1,0 +1,22 @@
+---
+claimed_at: 2026-11-11T09:11:01Z
+claimed_by: holmgang-main
+class: standard
+completed: 2026-11-11T09:11:01Z
+created: 2026-11-11T09:01:38Z
+id: 60
+priority: high
+started: 2026-11-11T09:01:46Z
+status: done
+tags:
+- dsl
+- loader
+title: 'DSL: suite.pl als UTF-8 lesen'
+updated: 2026-11-11T09:11:01Z
+---
+
+Aus k20: eine suite.pl ohne use utf8 macht jeden Nicht-ASCII-Text (Umlaute, Gedankenstriche) still zu Mojibake; lädt, lintet und besteht die Mock-Läufe, das Modell bekommt aber verstümmelten Text. Der Loader liest suite.pl als Bytes und kompiliert ohne Pragmas. Entscheiden (ADR-0007-Nachtrag): als UTF-8 lesen/use utf8 voraussetzen oder Nicht-ASCII ohne utf8 ablehnen; Regressionstest.
+
+Fixed (worker, overnight): suite.pl is compiled with 'use utf8' in effect regardless of the file (Holmgang::_load_file prepends it before '#line 1'); Loader::_load_dsl refuses a suite.pl that is not valid UTF-8 (field suite.pl, 'not UTF-8'). Decision recorded as ADR 0007 amendment k60. Regression t/dsl/utf8.t (outgoing request via Engine::Virtual; red 10/15 before fix, green after). file texts already slurp_utf8. Export digest round-trip tested. prove -lr t green (acceptance_*/denken_vectors skipped without env). acceptance_dsl: original passes; scratch copy of storage-dateisysteme without use utf8: HEAD 88/310 failed, fixed tree passes. Uncommitted, ready for review.
+
+Committed as 7ba413c
