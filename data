@@ -1,0 +1,22 @@
+---
+claimed_at: 2026-11-11T06:26:05Z
+claimed_by: holmgang-main
+class: standard
+completed: 2026-11-11T06:26:05Z
+created: 2026-11-05T13:25:46Z
+id: 36
+priority: medium
+started: 2026-11-11T05:56:54Z
+status: done
+tags:
+- report
+- case
+title: Case->tier in Listenkontext und Helfer für Report-Fallmeta
+updated: 2026-11-11T06:26:12Z
+---
+
+Aus k9: Case->tier liefert im Listenkontext eine leere Liste, das bricht { tier => $c->tier }. Fix (scalar return). Dazu für k15 ein Helfer, der die Fallmeta für Report baut (im k9-Test inline gebaut, t/runner.t).
+
+2026-11-11 worker: Case->tier gibt return undef (Regressionstest t/case.t: Hash-Literal behält Paare, Listenkontext ein Wert - schlägt mit altem return; fehl, geprüft). Neu Case->report_meta (case_id,title,tags,tier,weight=effective_weight,hard,untrusted), Test inkl. Report->add_run übernimmt es unverändert. Benutzt in t/runner.t und auch in CLI.pm (dort stand dieselbe Inline-Abbildung; außerhalb der genannten Lane, meine Wahl, um die Duplikation zu entfernen). ADR 0005 Nachtrag k36 (neuer öffentlicher Name report_meta).
+
+Committed as b3a9fbe
