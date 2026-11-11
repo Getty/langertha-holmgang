@@ -8,6 +8,7 @@ use utf8;
 use Digest::SHA ();
 use JSON::MaybeXS ();
 use Path::Tiny qw( path );
+use Scalar::Util qw( blessed );
 use Langertha::Holmgang::Case;
 use Langertha::Holmgang::Error;
 use Langertha::Holmgang::Excerpt;
@@ -563,6 +564,12 @@ C<dir> is the suite directory, which the C<file> of an image on a user message
 (L</IMAGES>) and the C<datei> of an excerpt (L<Langertha::Holmgang::Excerpt>)
 are relative to; a case with images or excerpts and without C<dir> is refused.
 
+The state must be plain data, as format 2 writes it: texts, numbers,
+booleans, hashes and lists. A code reference, a regular expression object,
+a scalar or glob reference or any other object in it is refused with its
+path (C<suite.pl: case c1: state.web.handler>) -- the DSL can put one there,
+YAML cannot (k59).
+
 =cut
 
 #### Images (k27)
@@ -691,6 +698,7 @@ sub _state {
     next unless ref $state->{$k} eq 'HASH' && exists $state->{$k}{type};
     $self->_refuse( $field.'.'.$k.'.type', 'device type '.join( ', ', sort keys %types ) ) unless $types{ $state->{$k}{type} // '' };
   }
+  $self->_plain( $state->{$_}, $field.'.'.$_ ) for sort keys %$state;
   my $s = Langertha::Holmgang::World->clone($state);
   for my $dev ( sort keys %$s ) {
     my $files = ref $s->{$dev} eq 'HASH' ? $s->{$dev}{files} : undef;
@@ -707,6 +715,24 @@ sub _state {
     $self->_refuse( $field, "$err" =~ s/\s+\z//r );
   };
   return $s;
+}
+
+# plain data only (k59): what the world's copy and the YAML export take
+sub _plain {
+  my ( $self, $v, $field ) = @_;
+  my $r = ref $v;
+  return unless $r;
+  return if blessed $v && $v->isa('JSON::PP::Boolean');
+  if ( $r eq 'HASH' ) {
+    $self->_plain( $v->{$_}, $field.'.'.$_ ) for sort keys %$v;
+    return;
+  }
+  if ( $r eq 'ARRAY' ) {
+    $self->_plain( $v->[$_], $field.'['.$_.']' ) for 0 .. $#$v;
+    return;
+  }
+  $self->_refuse( $field, 'not data: '.( $r eq 'CODE' ? 'a code reference' : 'a '.$r.' reference' )
+    .' (the state holds texts, numbers, booleans, hashes and lists)' );
 }
 
 sub _call {
