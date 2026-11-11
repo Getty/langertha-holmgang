@@ -24,6 +24,7 @@ requires 'Socket';
 requires 'Text::Xslate';
 requires 'Time::HiRes';
 requires 'Time::Local';
+requires 'Unicode::Normalize';
 requires 'URI';
 requires 'YAML::XS';
 

@@ -61,3 +61,4 @@ Revision history for Langertha-Holmgang
     refused at load (k31)
   - Runner refuses an engine with its own system_prompt instead of sending
     a second system message (k37)
+  - New answer world Sim::Sehen (type sehen): hand in what an image shows (graph, sequence, receipt fields, table, chart values, error finding, or report the image unreadable); stores raw and normalised answers (text, ISO dates, cents, compact IBAN), a repeated call replaces the earlier one (k27)

@@ -38,6 +38,7 @@ Built in are:
   routeros  Langertha::Holmgang::Sim::RouterOS   RouterOS console
   ios       Langertha::Holmgang::Sim::IOS        Cisco IOS CLI
   kueche    Langertha::Holmgang::Sim::Kueche     answer world: recipes, pantry, shopping list, week plan
+  sehen     Langertha::Holmgang::Sim::Sehen      answer world: hand in what an image shows
 
 A built-in type whose class is not installed is not offered (L</types>) and
 answers like a host without SSH. Further types come by L</register> with a
@@ -58,6 +59,7 @@ my %BUILTIN = (
   routeros => 'Langertha::Holmgang::Sim::RouterOS',
   ios      => 'Langertha::Holmgang::Sim::IOS',
   kueche   => 'Langertha::Holmgang::Sim::Kueche',
+  sehen    => 'Langertha::Holmgang::Sim::Sehen',
 );
 
 has _classes => (
