@@ -1,0 +1,22 @@
+---
+claimed_at: 2026-11-11T08:09:40Z
+claimed_by: holmgang-main
+class: standard
+completed: 2026-11-11T08:08:14Z
+created: 2026-11-11T07:49:14Z
+id: 54
+priority: high
+started: 2026-11-11T07:50:07Z
+status: done
+tags:
+- sim
+- answer-world
+title: Antwortwelt uebersetzung portieren
+updated: 2026-11-11T08:09:40Z
+---
+
+Aus k23: Eval::Sim::Uebersetzung: uebersetzung_abgeben, mehrdeutig_melden, glossar_nachschlagen; Normalisierung (NFC, Anführungszeichen, Leerraum), Zahlen im Zielformat, Codes, Platzhalter, Fehlendes, Längenklasse in den Zustand. Ohne sie lädt uebersetzung nicht.
+
+holmgang-sim-worker: Sim::Uebersetzung ported (Role::AnswerWorld, Kueche pattern), registered in Simulators.pm (BUILTIN + POD list), t/sim/uebersetzung.t with invented data (checked absent from the suite). Own normalize kept instead of Sehen's norm_text (Sehen case-folds and transcribes umlauts; cai's does not). Differential check vs cai origin/main module: 895 checks, 0 differences. Acceptance: holmgang lint on the uebersetzung archive -> ok, 32 cases, exit 0. prove -lr t green (3198 tests). Drift outside lane: Loader.pm POD (~l.791) lists built-in answer worlds without uebersetzung/denken/schichtfehler. Not committed; ready for review.
+
+committed 7d0365b
