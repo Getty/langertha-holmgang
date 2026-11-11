@@ -1,0 +1,23 @@
+---
+claimed_at: 2026-11-11T07:42:41Z
+claimed_by: holmgang-main
+class: standard
+completed: 2026-11-11T07:42:41Z
+created: 2026-11-06T04:24:07Z
+id: 43
+priority: low
+started: 2026-11-11T07:17:58Z
+status: done
+tags:
+- beispiele
+title: Erfundene Antwortwelt als Lern-Suite (Sim-Plugin)
+updated: 2026-11-11T07:42:41Z
+---
+
+Aus k22, Entscheidung Getty 2026-11-06 (Option a, nach dem ersten Release): kleine, frei erfundene Antwortwelt (Role::AnswerWorld) als eigenes Sim-Plugin plus Lern-Suite unter share/suites. Weit weg von jeder privaten Messung (cai-bench). Herkunft und Lizenz im Suite-Kopf, ADR 0010 nachziehen.
+
+holmgang-sim-worker: private suite topics checked (titles only: ops on servers/network/k8s/DBs/DNS-mail/backup/storage/monitoring/hardening/systemd, agent tool choice mailbox/tickets/team, PII filter; CONTEXT categories). Chosen domain (worker's choice): an invented dragon roost — answer world 'roost' (Sim::Roost), suite demo-roost, English tool names survey_roost/feed_dragon/move_dragon, 2 cases.
+
+holmgang-sim-worker: built lib/Langertha/Holmgang/Sim/Roost.pm (answer world roost: survey_roost, feed_dragon, move_dragon; state keys in POD), registered in Simulators.pm, share/suites/demo-roost (2 cases feed-ember, rehome-bramble; wrong solutions per case), t/sim/roost.t (mutation-checked), t/share_suites.t extended to 5 suites / 7 cases. Verified: holmgang lint share/suites 5 ok; run demo-roost mock-solution exit 0 2/2 passed, mock-text exit 1 0/2; lint refuses when a wrong solution is made right; prove -lr t/ 84 files 2635 tests PASS. New files git add-ed, not committed. Open for main: ADR 0010 amendment, README / Holmgang.pm / Loader.pm example lists (texts in report).
+
+committed as e19eb53
