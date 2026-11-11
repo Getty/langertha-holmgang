@@ -1,0 +1,21 @@
+---
+claimed_at: 2026-11-11T06:25:20Z
+claimed_by: holmgang-main
+class: standard
+completed: 2026-11-11T06:25:20Z
+created: 2026-11-05T13:01:08Z
+id: 34
+priority: medium
+started: 2026-11-11T05:57:09Z
+status: done
+tags:
+- adr
+title: 'ADR 0005 nachtragen: neue API-Namen aus k2'
+updated: 2026-11-11T06:25:27Z
+---
+
+Aus k2: Methoden/Attribute an Case (initial_state, prompt_messages, effective, effective_weight, tier, is_hard, has_untrusted, no_tool), Structure, Lint (mock_runs), Grader-Eingabeschlüssel (error_class, turn_limit) und list-Schlüssel gehen über die Tabelle in ADR 0005 hinaus; ebenso Testvariable HOLMGANG_ACCEPTANCE_SUITES und Template-Paketzustand (our $SIMULATORS je render, Abweichung von der Hausregel). Als ADR-Nachtrag aufnehmen.
+
+2026-11-11 worker: ADR 0005 Nachtrag k34 geschrieben; jeder Name gegen den aktuellen Code geprüft: Case (tools, defaults, simulators, haystack, initial_state, prompt_messages, effective, effective_weight, tag_list, tier, is_hard, has_untrusted, no_tool), Structure (simulators, haystack, valid_id, suite_head, tool, generated, case), Lint (grader, mock_runs, has_mock_runs, lint), Grader-Eingabe (state, calls, error, error_class, turn_limit), list-Schlüssel (mit digest nach k30), HOLMGANG_ACCEPTANCE_SUITES, Template our $SIMULATORS als begründete Abweichung von 'no package-level state'. Structure.pm wird parallel von anderem Agenten geändert - Namen Stand heute vormittag.
+
+Committed as 6123520
