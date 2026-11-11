@@ -1,0 +1,24 @@
+---
+claimed_at: 2026-11-11T08:10:11Z
+claimed_by: holmgang-main
+class: standard
+completed: 2026-11-11T08:09:08Z
+created: 2026-11-11T07:38:51Z
+id: 50
+priority: low
+started: 2026-11-11T07:43:40Z
+status: done
+tags:
+- dsl
+- beispiele
+title: DSL-Beispiel-Suite unter share/suites
+updated: 2026-11-11T08:10:11Z
+---
+
+Aus k18: eine kleine, frei erfundene suite.pl unter share/suites (ADR 0010), inkl. generate mit seed; t/share_suites.t und Doku-Listen nachziehen.
+
+Implemented: share/suites/demo-beacons/suite.pl (invented hill beacon chain, handler tool, generate seed => 1066, 3 cases). t/share_suites.t (6 suites/10 cases, seed + export round trip), README (status + list + export/seed example), Holmgang.pm and Loader.pm example lists, ADR 0010 amendment.
+
+Verified: prove -lr t green (94 files, 3225 tests; only the env-gated acceptance/denken_vectors suites skip there); acceptance run green (acceptance_load, acceptance_mock_runs, no_private_suite_ids: 99 tests, PASS). Tree commit-ready, not committed.
+
+committed 354626e
