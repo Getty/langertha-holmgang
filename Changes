@@ -84,3 +84,4 @@ Revision history for Langertha-Holmgang
   - Reports carry each case's difficulty; reports without it still read and merge (k57)
   - The evaluation shows curves per difficulty next to the tier curves, in text, Markdown and JSON (k57)
   - Simulators: restic answers for snapshots without paths and no longer adds them on --path; von_liste_nehmen no longer creates an empty liste (k58)
+  - Verdicts carry unfinished (a cancelled or aborted run is never ok) and repetitions_error (repetitions where the target answered nothing; reported, not deciding ok, ADR 0009 k42), ported from cai-platform's verdicts (k58)

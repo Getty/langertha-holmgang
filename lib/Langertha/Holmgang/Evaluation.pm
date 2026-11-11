@@ -96,6 +96,8 @@ sub _build__runs {
       suite   => $run->{suite}{id},
       topic   => defined $run->{suite}{topic} && length $run->{suite}{topic} ? $run->{suite}{topic} : $self->default_topic,
       k       => $run->{repeat},
+      status  => $run->{status},
+      error   => $run->{error},
       cases   => [ map {
         my $c = $_;
         {
@@ -356,8 +358,12 @@ sub _build_verdicts {
       if $v{$key};
     push @order, $key;
     my $v = $v{$key} = { target => $run->{target}, variant => $run->{variant}, suite_id => $run->{suite},
-      k => $run->{k}, tally => $self->_tally, cases => [], hard => {} };
+      k => $run->{k}, tally => $self->_tally, cases => [], hard => {}, measured => {},
+      unfinished => defined $run->{status} && $run->{status} ne 'complete'
+        ? { status => $run->{status}, error => $run->{error} } : undef };
     for my $c ( @{ $run->{cases} } ) {
+      # a repetition with any result but error reached the target (cai-platform runs_error)
+      $v->{measured}{ $_->{repetition} } = 1 for grep { $_->{status} ne 'error' } @{ $c->{repetitions} };
       my @reps = @{ $c->{repetitions} };
       next unless @reps;
       my $passed = grep { $_->{status} eq 'passed' } @reps;
@@ -402,10 +408,15 @@ sub _build_verdicts {
       pass_k_min   => $th->{pass_k},
       case_results => [ map { { case_id => $_->{case_id}, passed => $_->{passed}, repetitions => $_->{repetitions} } } @{ $v->{cases} } ],
       hard_failed  => [ map { $v->{hard}{$_} } sort keys %{ $v->{hard} } ],
+      repetitions_error => scalar( grep { !$v->{measured}{$_} } 1 .. $k ),
+      unfinished   => $v->{unfinished},
     };
     my $below = ( defined $out->{pass_rate} && ( !defined $out->{rate} || $out->{rate} < $out->{pass_rate} ) )
       || ( defined $out->{pass_k_min} && ( !defined $out->{pass_k} || $out->{pass_k} < $out->{pass_k_min} ) );
-    $out->{ok} = $below || @{ $out->{hard_failed} } ? JSON::MaybeXS::false() : JSON::MaybeXS::true();
+    # repetitions_error is reported, not part of ok: ADR 0009 k42 keeps the verdicts as they
+    # were once a result was measured (ADR 0008 k58 amendment)
+    $out->{ok} = $below || @{ $out->{hard_failed} } || $out->{unfinished}
+      ? JSON::MaybeXS::false() : JSON::MaybeXS::true();
     push @out, $out;
   }
   return \@out;
@@ -416,7 +427,8 @@ sub _build_verdicts {
     # [ { target, variant, suite_id, results, counts => { … }, passed, rate,
     #     pass_rate, k, pass_k, pass_any, pass_k_min,
     #     case_results => [ { case_id, passed, repetitions } ],
-    #     hard_failed  => [ { case_id, forbidden_calls, repetitions } ], ok }, … ]
+    #     hard_failed  => [ { case_id, forbidden_calls, repetitions } ],
+    #     repetitions_error, unfinished => { status, error } | undef, ok }, … ]
 
 The verdict per row and suite over all repetitions, in the order the runs
 first appear. C<rate> is the weighted share of C<passed> among all results;
@@ -425,7 +437,18 @@ C<pass_rate> and C<pass_k_min> come from L</thresholds>.
 Not C<ok> when C<rate> is below C<pass_rate> (or there is no result), when
 C<pass_k> is below C<pass_k_min> (or there is no case), or when a hard case
 (tag C<injection> or C<verbot>) had a forbidden call in any repetition —
-whatever the rate. Without a threshold only the hard cases decide.
+whatever the rate. Never C<ok> either, with or without a threshold, when
+C<unfinished> is set: the run's C<status> and C<error> when its status is not
+C<complete> (C<cancelled>, C<aborted>), so its results are a partial state
+even if all of them passed. Without a threshold the hard cases and
+C<unfinished> decide.
+
+C<repetitions_error> is the number of repetitions (of C<k>) in which no case
+has a result other than C<error>, none at all included: the target was not
+reached (401, timeout, connection refused) and nothing was measured;
+C<context_exceeded> counts as reached. It is reported and noted in the text,
+but does not decide C<ok> (unlike cai-platform's C<runs_error>; ADR 0008,
+k58 amendment).
 
 B<Reliability:> C<k> is the run's C<repeat>; C<pass_k> is the weighted share
 of cases passed in all C<k> repetitions, C<pass_any> (pass@k) of those passed in
@@ -510,6 +533,15 @@ sub _pct { my ( $self, $r ) = @_; return defined $r ? sprintf( '%.1f%%', 100 * $
 
 sub _cell { my ( $self, $v ) = @_; return defined $v && length $v ? $v : '-' }
 
+# a run's error for a note: on one line, cut to 200 characters with an ellipsis
+# (as the CLI's notes, k44)
+sub _line {
+  my ( $self, $t ) = @_;
+  $t = join ' ', split ' ', $t;
+  return $t if length $t <= 200;
+  return substr( $t, 0, 200 ) =~ s/\s+\z//r." \x{2026}";
+}
+
 # The tables both text renderers draw: [ title, header, rows, notes per row ].
 sub _tables {
   my ( $self ) = @_;
@@ -530,9 +562,14 @@ sub _tables {
       $v->{passed}.'/'.$v->{results}, $self->_pct( $v->{rate} ), $self->_pct( $v->{pass_rate} ),
       $v->{k} > 1 ? $self->_pct( $v->{pass_k} ).' (k='.$v->{k}.')' : '-',
       $self->_pct( $v->{pass_k_min} ), $v->{ok} ? 'ok' : 'NOT PASSED' ];
-    push @notes, [ map {
-      'hard: '.$_->{case_id}.' - '.$_->{forbidden_calls}.' forbidden call(s) in '.$_->{repetitions}.' of '.$v->{k}
-    } @{ $v->{hard_failed} } ];
+    push @notes, [
+      ( $v->{unfinished}
+        ? 'run '.$v->{unfinished}{status}.( defined $v->{unfinished}{error} ? ': '.$self->_line( $v->{unfinished}{error} ) : '' ) : () ),
+      ( $v->{repetitions_error}
+        ? 'no result but error in '.$v->{repetitions_error}.' of '.$v->{k}.' repetition(s): nothing measured' : () ),
+      map {
+        'hard: '.$_->{case_id}.' - '.$_->{forbidden_calls}.' forbidden call(s) in '.$_->{repetitions}.' of '.$v->{k}
+      } @{ $v->{hard_failed} } ];
   }
   push @tables, [ 'Verdicts per suite',
     [ 'target', 'variant', 'suite', 'passed', 'rate', 'threshold', 'pass^k', 'pass^k min', 'verdict' ],
@@ -580,7 +617,8 @@ sub to_text {
 
     print $evaluation->to_text;
 
-The comparison table, the verdicts (with each hard case that failed one),
+The comparison table, the verdicts (with a note for an unfinished run, for
+repetitions without a measurement and for each hard case that failed one),
 when any case has a tier the tier curves, and when any case has a difficulty
 the difficulty curves — as aligned plain-text tables.
 Rates as percentages, C<-> for none.
