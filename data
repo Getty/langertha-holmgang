@@ -1,0 +1,22 @@
+---
+claimed_at: 2026-11-11T07:17:06Z
+claimed_by: holmgang-main
+class: standard
+completed: 2026-11-11T07:16:58Z
+created: 2026-11-11T06:37:51Z
+id: 49
+priority: low
+started: 2026-11-11T06:51:57Z
+status: done
+tags:
+- grader
+- vision
+title: 'Regeln: Zahlen mit Toleranz vergleichen'
+updated: 2026-11-11T07:17:06Z
+---
+
+Aus k27 (Sim::Sehen): von Diagrammen abgelesene Werte lassen sich nur exakt, mit in oder per Regex bewerten. Eine Regel mit Toleranz (z.B. approx/within) erwägen; ADR 0002/0008 beachten, Format 2 bleibt unverändert ladbar.
+
+Worker: tolerance beside equals (equals: 42, tolerance: 0.5) — |value - equals| <= tolerance, bounds included, binary rounding allowed for (relative 1e-9), value must be a finite number or numeric text. Works wherever expectations go (state rules, check.expect, when, element patterns). Shape check in Structure::_matchers (outside the named file lane, not k15's): tolerance needs equals, equals must be a number, tolerance a number >= 0. Lint's existing paths then bite (wrong solution inside tolerance refused, reference outside refused). Expectation::near exported; @MODIFIERS added. New t/tolerance.t. Worker's choice over between/approx. Acceptance run af7561a5 green. ADR 0005 amendment text in the report.
+
+committed 6c3ac8d
