@@ -315,7 +315,7 @@ The curve per length tier, per row and topic: tiers in the order C<16k>,
 C<48k>, C<96k>, C<160k>, any other tier after them by its number. Hits
 (C<rate>), C<context_exceeded> and C<error> are three weighted shares of the
 same results, kept apart; C<counts> has all seven statuses. Cases without a
-tier are not on a curve.
+tier are not on a curve. The tag C<ctx-E<lt>NE<gt>k> is no tier (ADR 0008, k56).
 
 =cut
 

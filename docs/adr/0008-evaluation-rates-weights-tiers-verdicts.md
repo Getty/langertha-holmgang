@@ -106,3 +106,9 @@ failing hard case) and, when any case has a tier, the tier curves; rates as perc
   `suite.threshold` (a new field, no version raise) — a decision for that slice.
 - A new derived number is a new field in this document; a changed meaning raises
   `holmgang_evaluation`.
+
+**Amendment 2026-11-11 (k56, `ctx-<N>k` tags).** Chosen by the worker in the overnight run, not by the maintainer. Decision: **leave** — `ctx-<N>k` stays a plain tag, maps to no tier and opens no second axis; `Case::tier` reads only `stufe-<tier>`. Why:
+- The two tags mean different things. `stufe-<tier>` is the input length the case occupies (CONTEXT.md, Length tier); `ctx-<N>k` is the context *window* a case is meant for (cai-platform `docs/entwurf-evals.md`: "gemeintes Kontextfenster"). Behind the same window tag the suites put different input lengths (roughly 16k/48k/100k in one generator, ~24k/50k/105k in another, an app's size in tokens of source in a third), so no single window-to-tier map places them right, and mixing them into a topic that also has `stufe-` cases would put two meanings on one curve.
+- cai-platform reads neither tag in its evaluation (`Eval::Batch` has no tier); `ctx-` is descriptive there, set by generators, never evaluated. A second axis would be a new public name with no consumer and three suites behind it.
+- What a window curve would show is measured anyway: every repetition carries `tokens.input_max` (ADR 0006), the context the case really occupied, and `context_exceeded` is counted per status. A curve over measured input size is the honest axis for these suites, should one be wanted — a card of its own, not decided here.
+No case changes (ADR 0004). ADR 0005's "length tier comes from the format 2 tag `stufe-<tier>`" stands as written.

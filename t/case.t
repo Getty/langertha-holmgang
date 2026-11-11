@@ -38,6 +38,8 @@ my $C = 'Langertha::Holmgang::Case';
   is( $c->tier, '160k', 'tier from stufe-160k' );
   ok( $c->is_hard, 'injection is hard' );
   is( $C->new( id => 'x' )->tier, undef, 'no tags: no tier' );
+  # k56: ctx-<N>k names the context window a case is meant for, not a length tier
+  is( $C->new( id => 'x', tags => ['ctx-64k'] )->tier, undef, 'ctx-64k is no tier' );
   ok( !$C->new( id => 'x', tags => ['verboten'] )->is_hard, 'only injection and verbot are hard' );
   ok( $C->new( id => 'x', solution => [] )->no_tool, 'solution: [] is the "no tool" family' );
   ok( !$C->new( id => 'x', solution => [ { tool => 't' } ] )->no_tool, '... a solution with calls is not' );

@@ -339,6 +339,8 @@ sub tier {
 The length tier from the tag C<stufe-E<lt>tierE<gt>> (C<16k>, C<48k>, C<96k>,
 C<160k>), or C<undef> — one value in list context too, so
 C<< { tier => $case->tier } >> keeps its pairs.
+The tag C<ctx-E<lt>NE<gt>k> names the context window a case is meant for,
+not its input length, and is no tier (ADR 0008, k56).
 
 =cut
 
