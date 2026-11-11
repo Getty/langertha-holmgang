@@ -39,6 +39,7 @@ Built in are:
   ios       Langertha::Holmgang::Sim::IOS        Cisco IOS CLI
   kueche    Langertha::Holmgang::Sim::Kueche     answer world: recipes, pantry, shopping list, week plan
   sehen     Langertha::Holmgang::Sim::Sehen      answer world: hand in what an image shows
+  schichtfehler Langertha::Holmgang::Sim::Schichtfehler  answer world: a web application from recorded pages (sources, fetches, console, findings)
   uebersetzung Langertha::Holmgang::Sim::Uebersetzung  answer world: hand in segments, report ambiguity, glossary
   denken    Langertha::Holmgang::Sim::Denken     answer world: reasoning tasks, the answer handed in by tool, a checker per task
   roost     Langertha::Holmgang::Sim::Roost      answer world: an invented dragon roost (example suite demo-roost)
@@ -63,6 +64,7 @@ my %BUILTIN = (
   ios      => 'Langertha::Holmgang::Sim::IOS',
   kueche   => 'Langertha::Holmgang::Sim::Kueche',
   sehen    => 'Langertha::Holmgang::Sim::Sehen',
+  schichtfehler => 'Langertha::Holmgang::Sim::Schichtfehler',
   uebersetzung => 'Langertha::Holmgang::Sim::Uebersetzung',
   denken   => 'Langertha::Holmgang::Sim::Denken',
   roost    => 'Langertha::Holmgang::Sim::Roost',

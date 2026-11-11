@@ -75,3 +75,4 @@ Revision history for Langertha-Holmgang
   - holmgang lint and holmgang run take a directory with suite.pl (k18)
   - New answer world denken (Langertha::Holmgang::Sim::Denken): one tool antwort_abgeben, a checker per Reasoning Gym task, only the full score counts as right; cai-platform's suite denken loads unchanged (k53)
   - Answer world uebersetzung (Langertha::Holmgang::Sim::Uebersetzung): hand in segments, report ambiguity, look up the glossary; hand-ins normalised and analysed (numbers in the target format, codes, placeholders, what is missing, length class) into the state (k54)
+  - New answer world schichtfehler (Langertha::Holmgang::Sim::Schichtfehler): sources, recorded page fetches and browser console, reported findings matched to causes by file and line overlap; answers only from the state (k55)

@@ -594,7 +594,7 @@ family.
 C<state> is the initial world, nested data. A top-level entry with a C<type>
 is a device (or an answer world): the type picks its simulator from
 L<Langertha::Holmgang::Simulators> — built in are C<linux>, C<routeros>,
-C<ios> and the answer worlds C<kueche>, C<sehen> and C<roost> — and every other key of the entry is
+C<ios> and the answer worlds C<kueche>, C<sehen>, C<roost>, C<denken>, C<uebersetzung> and C<schichtfehler> — and every other key of the entry is
 whatever that simulator documents in its POD. An unknown type is refused. A
 top-level entry without C<type> is plain data for handlers.
 
