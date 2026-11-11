@@ -9,67 +9,67 @@ use JSON::MaybeXS ();
 
 our $VERSION = '0.001';
 
-=head1 SYNOPSIS
+=synopsis
 
-  # aus dem Linux-Simulator
+  # from the Linux simulator
   my ( $out, $ok ) = Langertha::Holmgang::Sim::Linux::Http::curl( $dev, \@argv, $ctx );
 
-  # Anfrage von einem Geraet aus (auch fuer Proxys wie nginx)
+  # request from a device (also for proxies such as nginx)
   my $res = Langertha::Holmgang::Sim::Linux::Http::request( $state, 'client1',
       { method => 'GET', url => 'https://shop.example.com/api/items' } );
 
-  # vor/nach jedem Befehl (Sim::Linux): Zustand der Dienste erfassen, Proben neu rechnen
+  # before/after every command (Sim::Linux): capture the services' state, recompute probes
   Langertha::Holmgang::Sim::Linux::Http::before($state);
   Langertha::Holmgang::Sim::Linux::Http::after($state);
 
-=head1 DESCRIPTION
+=description
 
-Die Naht zwischen Geräten, die HTTP sprechen (cai-platform F<docs/entwurf-evals.md> §3.3).
-Eine Anfrage geht an das Gerät, dem die Zieladresse gehört (Name über
-F</etc/hosts> und die Nameserver des fragenden Geräts, dann der Name des
-Geräts im Zustand), und dort an den, der auf dem Port lauscht:
+The seam between devices that speak HTTP (cai-platform F<docs/entwurf-evals.md> §3.3).
+A request goes to the device that owns the target address (name through
+F</etc/hosts> and the nameservers of the asking device, then the device's
+name in the state), and there to whoever listens on the port:
 
 =over
 
-=item * B<nginx> (L<Langertha::Holmgang::Sim::Linux::Nginx>, Zustand C<nginx>) mit
-der zuletzt geladenen Konfiguration;
+=item * B<nginx> (L<Langertha::Holmgang::Sim::Linux::Nginx>, state C<nginx>) with
+the configuration loaded last;
 
-=item * B<Container> (L<Langertha::Holmgang::Sim::Linux::Docker>, Zustand
-C<docker>) mit veröffentlichten Ports;
+=item * B<containers> (L<Langertha::Holmgang::Sim::Linux::Docker>, state
+C<docker>) with published ports;
 
-=item * B<Anwendungen> unter C<http> des Geräts:
+=item * B<applications> under the device's C<http>:
 
   http:
-    "127.0.0.1:3000":            # Adresse:Port; "0.0.0.0:3000" bzw. "3000" = alle Adressen
-      service: shop              # lebt nur, solange dieser Dienst laeuft
-      delay: 2                   # Sekunden je Antwort (Zeitlimits)
-      require:                   # Bedingungen an die Anfrage; die erste verletzte antwortet
+    "127.0.0.1:3000":            # address:port; "0.0.0.0:3000" or "3000" = all addresses
+      service: shop              # alive only while this service runs
+      delay: 2                   # seconds per response (timeouts)
+      require:                   # conditions on the request; the first one violated answers
         - { header: host, regex: '^shop\.example\.com$', status: 404, body: "unknown host" }
         - { header: x-forwarded-proto, equals: https, status: 301,
             headers: { Location: "https://{host}{path}" } }
-      routes:                    # laengstes passendes Praefix des Pfads
+      routes:                    # longest matching prefix of the path
         - { path: /api/, status: 200, body: '{"ok":true}', headers: { Content-Type: application/json } }
         - { path: /, status: 200, body: "<h1>Shop</h1>", echo: false, delay: 90 }
 
-C<{host}>, C<{path}> und C<{header:name}> werden in Antworten eingesetzt;
-C<echo: true> antwortet mit Methode, Pfad und Kopfzeilen als JSON.
+C<{host}>, C<{path}> and C<{header:name}> are substituted in responses;
+C<echo: true> answers with method, path and headers as JSON.
 
 =back
 
-Wer auf dem Port nicht lauscht, weist ab wie ein echter Rechner (curl: „(7)
-Failed to connect"). Ob ein Zertifikat gilt, prüft der Client
+A port nobody listens on refuses like a real host (curl: "(7)
+Failed to connect"). Whether a certificate is valid is checked by the client
 (L<Langertha::Holmgang::Sim::Linux::Pki/client_verify>).
 
-B<Proben> (C<probes> eines Geräts) sind Anfragen, die nach jedem Befehl neu
-gerechnet werden; ihr Ergebnis steht im Zustand, damit Regeln den Endzustand
-der Dienste prüfen, nicht die Konfigurationsdateien:
+B<Probes> (C<probes> of a device) are requests recomputed after every
+command; their result is in the state, so rules check the end state of the
+services, not the configuration files:
 
   probes:
     shop-api:
       url: https://shop.example.com/api/v1/items
       headers: { Cookie: "a=b" }          # optional; method, insecure, resolve, cacert,
-                                          # cert, key, body_size (Bytes), max_time, follow
-      result:                             # vom Simulator: status, error, location,
+                                          # cert, key, body_size (bytes), max_time, follow
+      result:                             # by the simulator: status, error, location,
                                           # headers, body, backend { app, path, host, headers },
                                           # cert, protocol
 
@@ -94,13 +94,12 @@ sub _docker_on { my ($d) = @_; return ref $d eq 'HASH' && ref $d->{docker} eq 'H
 
 =func before
 
-Vor einem Befehl: Simulatoren mit trägem Anfangszustand (geladene
-nginx-Konfiguration, laufende Container) erfassen ihn, bevor sich etwas
-ändert.
+Before a command: simulators with a lazy initial state (loaded nginx
+configuration, running containers) capture it before anything changes.
 
 =func after
 
-Nach einem Befehl: alle Proben aller Geräte neu rechnen.
+After a command: recompute all probes of all devices.
 
 =cut
 
@@ -147,9 +146,9 @@ sub after {
 
 =func addresses
 
-  my @ips = addresses($geraet);
+  my @ips = addresses($device);
 
-Die IPv4-Adressen eines Geräts (ohne Länge), C<127.0.0.1> vorn.
+The IPv4 addresses of a device (without prefix length), C<127.0.0.1> first.
 
 =cut
 
@@ -163,10 +162,10 @@ sub addresses {
 
 =func resolve
 
-  my ( $ziel, $ip ) = resolve( $state, $von, $name, $override );
+  my ( $target, $ip ) = resolve( $state, $from, $name, $override );
 
-Name zu Gerät und Adresse aus Sicht des fragenden Geräts (F</etc/hosts>,
-Nameserver, dann Gerätename); leer, wenn unbekannt.
+Name to device and address as seen from the asking device (F</etc/hosts>,
+nameservers, then device name); empty when unknown.
 
 =cut
 
@@ -200,14 +199,14 @@ sub resolve {
 
 =func request
 
-  my $res = request( $state, $von, \%anfrage, $tiefe );
+  my $res = request( $state, $from, \%request, $depth );
 
-Anfrage: C<url>, C<method>, C<headers> (Namen klein), C<insecure>, C<resolve>
+Request: C<url>, C<method>, C<headers> (names lower case), C<insecure>, C<resolve>
 (C<name:port:ip>), C<cacert>, C<cert>, C<key>, C<body_size>, C<max_time>,
-C<follow>, C<client_ip> (sonst die Adresse des fragenden Geräts zum Ziel).
-Antwort: C<status>, C<headers> (C<< [ [Name, Wert], … ] >>), C<body>, C<error>
-(Text von curl, z. B. C<(7) Failed to connect …>), C<code> (Exit-Status von
-curl), C<backend>, C<cert>, C<protocol>, C<tls_lines>, C<ms>.
+C<follow>, C<client_ip> (otherwise the asking device's address towards the target).
+Response: C<status>, C<headers> (C<< [ [name, value], … ] >>), C<body>, C<error>
+(curl's text, e.g. C<(7) Failed to connect …>), C<code> (curl's exit
+status), C<backend>, C<cert>, C<protocol>, C<tls_lines>, C<ms>.
 
 =cut
 
@@ -307,10 +306,10 @@ sub _source_ip {
 
 =func listens
 
-  my $ja = listens( '127.0.0.1:3000', $ip, $port, $lokal );
+  my $yes = listens( '127.0.0.1:3000', $ip, $port, $local );
 
-Passt ein Lauscher (C<adresse:port> oder C<port>) auf Adresse und Port?
-C<127.*> nur vom Gerät selbst.
+Does a listener (C<address:port> or C<port>) match address and port?
+C<127.*> only from the device itself.
 
 =cut
 
@@ -328,8 +327,8 @@ sub listens {
 
 =func app_serve
 
-Antwort einer Anwendung unter C<http> des Zielgeräts, oder C<undef>, wenn dort
-niemand lauscht (bzw. ihr Dienst steht).
+Response of an application under C<http> of the target device, or C<undef> when
+nobody listens there (or its service is stopped).
 
 =cut
 
@@ -351,7 +350,7 @@ sub app_serve {
 
   my $res = respond( $spec, $req, $name );
 
-Antwort nach einer Beschreibung wie unter C<http> (auch für Container).
+Response from a description as under C<http> (containers too).
 
 =cut
 
@@ -398,12 +397,12 @@ sub respond {
 
 =func curl
 
-C<curl> auf einem Gerät: C<-s>, C<-S>, C<-f>, C<-k>, C<-I>, C<-i>, C<-v>,
-C<-L>, C<-o datei>, C<-w format> (C<%{http_code}>, C<%{redirect_url}>,
+C<curl> on a device: C<-s>, C<-S>, C<-f>, C<-k>, C<-I>, C<-i>, C<-v>,
+C<-L>, C<-o file>, C<-w format> (C<%{http_code}>, C<%{redirect_url}>,
 C<%{url_effective}>, C<%{ssl_verify_result}>, C<%{time_total}>), C<-H>,
-C<-X>, C<-d>/C<--data*>/C<-F> (Größe des Körpers, auch C<@datei>),
+C<-X>, C<-d>/C<--data*>/C<-F> (size of the body, also C<@file>),
 C<--resolve>, C<--cacert>, C<--cert>, C<--key>, C<-m>/C<--max-time>,
-C<--connect-timeout>, C<-u>, C<-A>, C<--http1.1>/C<--http2> (ohne Wirkung).
+C<--connect-timeout>, C<-u>, C<-A>, C<--http1.1>/C<--http2> (no effect).
 
 =cut
 

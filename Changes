@@ -45,3 +45,5 @@ Revision history for Langertha-Holmgang
     contract in ::Role::Simulator, and a README with a quick start
   - Not yet: cases and suites written in a Perl DSL; Langertha::Holmgang
     exports nothing so far
+  - Simulator documentation (Sim::Linux and its parts, RouterOS, IOS,
+    Kueche, Shell, Shell::Filter) is now in English

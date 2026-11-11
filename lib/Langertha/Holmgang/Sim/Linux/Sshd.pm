@@ -9,18 +9,18 @@ use JSON::MaybeXS ();
 
 our $VERSION = '0.001';
 
-=head1 SYNOPSIS
+=synopsis
 
-  # aus dem Linux-Simulator
+  # from the Linux simulator
   my ( $out, $ok ) = Langertha::Holmgang::Sim::Linux::Sshd::sshd( $dev, [ '-t' ] );
-  Langertha::Holmgang::Sim::Linux::Sshd::load( $dev, 'ssh', 'reload' );   # die bei Fehler
+  Langertha::Holmgang::Sim::Linux::Sshd::load( $dev, 'ssh', 'reload' );   # dies on error
   my $why = Langertha::Holmgang::Sim::Linux::Sshd::login_denied( $dev, $host );
 
-=head1 DESCRIPTION
+=description
 
-Der OpenSSH-Server eines Debian-12-Geräts vom Typ C<linux>
-(cai-platform F<docs/entwurf-evals.md> §3.3.1). Aktiv nur, wenn F</etc/ssh/sshd_config> im
-Zustand steht; sonst bleibt der Dienst C<ssh> ein gewöhnlicher Dienst.
+The OpenSSH server of a Debian 12 device of type C<linux>
+(cai-platform F<docs/entwurf-evals.md> §3.3.1). Active only when F</etc/ssh/sshd_config> is in
+the state; otherwise the service C<ssh> stays an ordinary service.
 
   files:
     /etc/ssh/sshd_config: "Include /etc/ssh/sshd_config.d/*.conf\n…"
@@ -28,34 +28,34 @@ Zustand steht; sonst bleibt der Dienst C<ssh> ein gewöhnlicher Dienst.
     /etc/ssh/ssh_host_ed25519_key: { mode: "0600", content: "" }   # optional
   services:
     ssh: { active: true, effective: { passwordauthentication: "yes", allowgroups: [ admins ] } }
-  ssh_login: { user: ops, from: 10.10.99.15 }   # optional: so ist das Modell angemeldet
+  ssh_login: { user: ops, from: 10.10.99.15 }   # optional: this is how the model is logged in
 
-B<Lesen der Konfiguration> wie sshd: F</etc/ssh/sshd_config>, C<Include>
-(Glob, sortiert; relative Pfade unter F</etc/ssh>) an Ort und Stelle; der
-B<erste> Wert eines Schlüsselworts gilt, Listen (C<AllowUsers>,
+B<Reading the configuration> like sshd: F</etc/ssh/sshd_config>, C<Include>
+(glob, sorted; relative paths under F</etc/ssh>) in place; the
+B<first> value of a keyword applies, lists (C<AllowUsers>,
 C<AllowGroups>, C<DenyUsers>, C<DenyGroups>, C<ListenAddress>, C<Port>,
-C<HostKey>, C<AcceptEnv>) sammeln sich an. Zeilen nach C<Match> gelten nur
-bedingt und gehen nicht in die globale Konfiguration ein (bis zum Ende der
-Datei). Unbekannte Schlüsselwörter, fehlende und ungültige Werte sind
-Fehler wie bei sshd.
+C<HostKey>, C<AcceptEnv>) accumulate. Lines after C<Match> apply only
+conditionally and do not enter the global configuration (up to the end of the
+file). Unknown keywords, missing and invalid values are
+errors as with sshd.
 
-B<Effektive Konfiguration> (C<services.ssh.effective>): die ausdrücklich
-gesetzten globalen Werte (Schlüssel klein geschrieben, Listen als Liste). Sie
-ändert sich nur, wenn sshd die Dateien liest: C<start>, C<restart>,
-C<reload>. Ist die Konfiguration fehlerhaft oder kein Host-Schlüssel ladbar
-(privater Schlüssel für Gruppe/andere lesbar), scheitert C<reload> und sshd
-läuft mit der alten weiter; C<start>/C<restart> lassen den Dienst C<failed>
-zurück (Journal nennt die Ursache).
+B<Effective configuration> (C<services.ssh.effective>): the explicitly
+set global values (keys in lower case, lists as lists). It
+changes only when sshd reads the files: C<start>, C<restart>,
+C<reload>. If the configuration is broken or no host key can be loaded
+(private key readable by group/others), C<reload> fails and sshd
+keeps running with the old one; C<start>/C<restart> leave the service C<failed>
+(the journal names the cause).
 
-B<Befehle:> C<sshd -t>, C<sshd -T> (effektive Konfiguration der Dateien,
-mit Vorgaben), C<sshd -f datei>.
+B<Commands:> C<sshd -t>, C<sshd -T> (effective configuration of the files,
+with defaults), C<sshd -f file>.
 
-B<Anmeldung> (C<ssh_login>): Ist der Dienst nicht aktiv, verweigert der Server
-die Verbindung; schließt die laufende Konfiguration den Benutzer aus
+B<Login> (C<ssh_login>): if the service is not active, the server refuses
+the connection; if the running configuration excludes the user
 (C<DenyUsers>, C<AllowUsers>, C<DenyGroups>, C<AllowGroups>, C<PermitRootLogin
-no> für root, C<PubkeyAuthentication no>) oder ist sein Konto abgelaufen bzw.
-ohne Shell, ist der Zugang verloren — wie auf einem echten Server, bei dem man
-sich aussperrt.
+no> for root, C<PubkeyAuthentication no>) or the account is expired or
+has no shell, access is lost — as on a real server where one
+locks oneself out.
 
 =cut
 
@@ -105,8 +105,8 @@ sub _files { my ($dev) = @_; return ref $dev->{files} eq 'HASH' ? $dev->{files} 
 
 =func active
 
-Wahr, wenn das Gerät eine F</etc/ssh/sshd_config> hat (nur dann simuliert
-dieses Modul sshd).
+True when the device has an F</etc/ssh/sshd_config> (only then does
+this module simulate sshd).
 
 =cut
 
@@ -130,10 +130,10 @@ sub _glob {
 
 =func parse
 
-  my ( $settings, $errors ) = parse( $dev [, $datei] );
+  my ( $settings, $errors ) = parse( $dev [, $file] );
 
-Liest die Konfiguration wie sshd. C<$settings>: globale, ausdrücklich gesetzte
-Werte (erster gewinnt, Listen gesammelt); C<$errors>: Fehlermeldungen wie sshd.
+Reads the configuration like sshd. C<$settings>: global, explicitly set
+values (first wins, lists accumulated); C<$errors>: error messages like sshd.
 
 =cut
 
@@ -234,8 +234,8 @@ sub _fatal {
 
   my ( $out, $ok ) = sshd( $dev, \@argv );
 
-C<sshd -t> (prüfen: still bei Erfolg), C<sshd -T> (effektive Konfiguration),
-C<-f datei>. Ohne C<-t>/C<-T> lehnt sshd ab (läuft schon als Dienst).
+C<sshd -t> (check: silent on success), C<sshd -T> (effective configuration),
+C<-f file>. Without C<-t>/C<-T> sshd refuses (already running as a service).
 
 =cut
 
@@ -272,11 +272,11 @@ sub sshd {
 
 =func load
 
-  load( $dev, $dienst, $verb [, $host] );   # start | restart | reload
+  load( $dev, $service, $verb [, $host] );   # start | restart | reload
 
-Wirkung auf den Dienst: liest die Konfiguration in C<effective>; bei Fehlern
-C<die> mit der Meldung von systemctl — C<reload> lässt den laufenden sshd mit der
-alten Konfiguration, C<start>/C<restart> hinterlassen ihn C<failed>.
+Effect on the service: reads the configuration into C<effective>; on errors
+C<die> with the message of systemctl — C<reload> leaves the running sshd with the
+old configuration, C<start>/C<restart> leave it C<failed>.
 
 =cut
 
@@ -310,9 +310,9 @@ sub load {
 
   my ( $out, $ok ) = ssh_keygen( $dev, \@argv, $host );
 
-C<ssh-keygen -A> (fehlende Host-Schlüssel unter F</etc/ssh> neu erzeugen, privat
-0600, öffentlich 0644) und C<ssh-keygen -l -f datei> (Fingerabdruck). Anderes
-ist eine Lücke der Simulation (C<undef>).
+C<ssh-keygen -A> (generate missing host keys under F</etc/ssh>, private
+0600, public 0644) and C<ssh-keygen -l -f file> (fingerprint). Anything else
+is a simulation gap (C<undef>).
 
 =cut
 
@@ -376,10 +376,10 @@ sub _match_user {
 
 =func login_denied
 
-  my $msg = login_denied( $dev, $host );   # undef = Anmeldung geht
+  my $msg = login_denied( $dev, $host );   # undef = login works
 
-Kann sich C<ssh_login> (Benutzer, Herkunft) mit der laufenden Konfiguration
-anmelden? Sonst die Meldung des Clients.
+Can C<ssh_login> (user, origin) log in with the running configuration?
+Otherwise the client's message.
 
 =cut
 

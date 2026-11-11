@@ -7,46 +7,46 @@ use utf8;
 
 our $VERSION = '0.001';
 
-=head1 SYNOPSIS
+=synopsis
 
   use Langertha::Holmgang::Shell ();
   my @items = Langertha::Holmgang::Shell::split_items($text);
-  my $nodes = Langertha::Holmgang::Shell::parse(\@items);   # oder die bash-Meldung als Text
+  my $nodes = Langertha::Holmgang::Shell::parse(\@items);   # or the bash message as text
   my $raw   = Langertha::Holmgang::Shell::expand( $raw, $env, $cmdsub );
   my ( $ok, $err ) = Langertha::Holmgang::Shell::test_expr( \@args, $fileinfo );
 
-=head1 DESCRIPTION
+=description
 
-Die Teile einer bash, die der Linux-Simulator nicht pro Befehl, sondern für
-eine ganze Befehlszeile bzw. ein Skript braucht. Ausgeführt wird im Simulator
-(L<Langertha::Holmgang::Sim::Linux>); dieses Modul zerlegt und rechnet nur.
-Dazu L</shell_words> (Wörter einer Befehlszeile) und L</split_chain> (Glieder an
-C<&&>, C<||>, C<;> für die Beobachtungen der Welt).
+The parts of a bash that the Linux simulator needs not per command but for a
+whole command line or script. Execution happens in the simulator
+(L<Langertha::Holmgang::Sim::Linux>); this module only splits and computes.
+Also L</shell_words> (the words of a command line) and L</split_chain> (items at
+C<&&>, C<||>, C<;> for the observations of the world).
 
 =over
 
-=item * L</split_items>: Glieder an C<;>, C<;;>, C<&&>, C<||>, C<&> und
-Zeilenenden (nicht in Anführungszeichen, C<$( )>, C<${ }>, C<[[ ]]>),
-Kommentare, Zeilenfortsetzung, Heredocs (C<<< <<EOF >>>, C<<< <<-EOF >>>,
-C<<< <<'EOF' >>>) und Here-Strings (C<<<< <<< wort >>>>).
+=item * L</split_items>: items at C<;>, C<;;>, C<&&>, C<||>, C<&> and
+line ends (not inside quotes, C<$( )>, C<${ }>, C<[[ ]]>),
+comments, line continuation, heredocs (C<<< <<EOF >>>, C<<< <<-EOF >>>,
+C<<< <<'EOF' >>>) and here-strings (C<<<< <<< word >>>>).
 
-=item * L</parse>: C<if/elif/else/fi>, C<for … in>, C<while>/C<until> (auch
-C<… | while read>), C<case … esac>, C<break>/C<continue> als Knoten.
-C<{ … }>-Gruppen und Subshells C<( … )> (eigene Variablen und eigenes
-Verzeichnis) auch mit Pipe oder Umleitung dahinter. Funktionen (C<name() { … }>,
-C<function name { … }>) als Knoten C<func>; C<for (( ))> ist nicht nachgebildet:
-der Knoten C<gap>.
+=item * L</parse>: C<if/elif/else/fi>, C<for … in>, C<while>/C<until> (also
+C<… | while read>), C<case … esac>, C<break>/C<continue> as nodes.
+C<{ … }> groups and subshells C<( … )> (own variables and own
+directory), also with a pipe or redirection after them. Functions (C<name() { … }>,
+C<function name { … }>) as node C<func>; C<for (( ))> is not modelled:
+the node C<gap>.
 
-=item * L</expand>: Variablen (C<$v>, C<${v}>, C<${#v}>, C<${v:-w}>,
+=item * L</expand>: variables (C<$v>, C<${v}>, C<${#v}>, C<${v:-w}>,
 C<${v#p}>/C<${v##p}>/C<${v%p}>/C<${v%%p}>, C<${v:o:l}>, C<${v/p/r}>,
-C<${v^^}>/C<${v,,}>), C<$?>, C<$$>, C<$#>, C<$1…>, Rechnen C<$(( ))>,
-Befehlsersetzung C<$( )> und C<` `> (über einen Rückruf), C<$'…'>.
-Das Ergebnis ist wieder eine Befehlszeile: eingesetzte Werte sind so
-gequotet, dass C<shell_words> sie als Wörter liest wie bash (ohne Anführungszeichen
-mit Wortaufteilung, sonst als ein Wort).
+C<${v^^}>/C<${v,,}>), C<$?>, C<$$>, C<$#>, C<$1…>, arithmetic C<$(( ))>,
+command substitution C<$( )> and C<` `> (through a callback), C<$'…'>.
+The result is again a command line: substituted values are quoted so that
+C<shell_words> reads them as words the way bash does (unquoted with word
+splitting, otherwise as one word).
 
-=item * L</test_expr>: C<test>/C<[ ]>/C<[[ ]]> mit Datei-, Text- und
-Zahlvergleichen, C<!>, C<-a>/C<-o>, C<&&>/C<||>, Klammern, Muster bei C<==>
+=item * L</test_expr>: C<test>/C<[ ]>/C<[[ ]]> with file, string and
+number comparisons, C<!>, C<-a>/C<-o>, C<&&>/C<||>, parentheses, patterns with C<==>
 in C<[[ ]]>, C<=~>.
 
 =back
@@ -60,9 +60,9 @@ in C<[[ ]]>, C<=~>.
   my @items = split_items($text);
   # ( { raw => 'cd /x', op => ';' }, { raw => 'cat > f', op => '&&', heredoc => "…\n", expand_doc => 1 }, … )
 
-C<op> ist der Trenner I<vor> dem Glied (C<;> am Anfang), C<sep> der danach
-(C<;;> trennt Zweige von C<case>). Ein offenes Anführungszeichen stirbt mit der
-Meldung von bash.
+C<op> is the separator I<before> the item (C<;> at the start), C<sep> the one
+after it (C<;;> separates the branches of C<case>). An unclosed quote dies with
+the bash message.
 
 =cut
 
@@ -267,7 +267,7 @@ sub _close_paren {
 
 =func top_pipe
 
-  my ( $left, $right ) = top_pipe($raw);   # letzte Pipe auf oberster Ebene, sonst ()
+  my ( $left, $right ) = top_pipe($raw);   # last pipe at the top level, else ()
 
 =cut
 
@@ -294,7 +294,7 @@ sub top_pipe {
 
   my $nodes = parse(\@items);   # [ { type => 'cmd'|'if'|'for'|'while'|'case'|'gap', op => …, … } ]
 
-Liefert bei einem Syntaxfehler die Meldung von bash (Text statt Liste).
+On a syntax error returns the bash message (text instead of a list).
 
 =cut
 
@@ -546,8 +546,8 @@ sub _skip_block {
   my $raw = expand( $raw, $env, $cmdsub );
 
 C<$env>: C<< { vars => {…}, rc => 0, args => [ … ], defaults => {…} } >>;
-C<$cmdsub>: C<< sub { my ($text) = @_; return $ausgabe } >>. Stirbt mit
-C<"gap: …\n"> für nicht Nachgebildetes (z. B. C<${!v}>, C<i++>).
+C<$cmdsub>: C<< sub { my ($text) = @_; return $output } >>. Dies with
+C<"gap: …\n"> for what is not modelled (e.g. C<${!v}>, C<i++>).
 
 =cut
 
@@ -749,7 +749,7 @@ sub _split_colon {
 
 =func glob_re
 
-  my $re = glob_re('www-*.tar.gz');   # Regex ohne Anker; $greedy fuer ${v//p/r}
+  my $re = glob_re('www-*.tar.gz');   # regex without anchors; $greedy for ${v//p/r}
 
 =cut
 
@@ -777,7 +777,7 @@ sub glob_re {
 
 =func arith
 
-  my $n = arith( 'i + 1', $env, $cmdsub );   # Ganzzahlen wie bash
+  my $n = arith( 'i + 1', $env, $cmdsub );   # integers like bash
 
 =cut
 
@@ -828,10 +828,10 @@ sub arith {
 
 =func test_expr
 
-  my ( $status, $err ) = test_expr( \@args, $fileinfo, $dbl );   # 0 wahr, 1 falsch, 2 Fehler
+  my ( $status, $err ) = test_expr( \@args, $fileinfo, $dbl );   # 0 true, 1 false, 2 error
 
-C<$fileinfo>: C<< sub { my ($path) = @_; return undef | { kind => 'f'|'d'|'l', size => n, mode => 0644, mtime => epoche } } >>.
-C<$dbl> (C<[[ ]]>): Muster rechts von C<==>/C<!=>, C<=~>, C<&&>/C<||>, C<< < >>/C<< > >> ohne Backslash.
+C<$fileinfo>: C<< sub { my ($path) = @_; return undef | { kind => 'f'|'d'|'l', size => n, mode => 0644, mtime => epoch } } >>.
+C<$dbl> (C<[[ ]]>): pattern right of C<==>/C<!=>, C<=~>, C<&&>/C<||>, C<< < >>/C<< > >> without a backslash.
 
 =cut
 
@@ -923,10 +923,10 @@ sub test_expr {
 
   my @w = shell_words(q{nft add rule ip nat postrouting oifname "eth0" masquerade});
 
-Zerlegt eine Befehlszeile wie eine POSIX-Shell in Wörter (einfache und
-doppelte Anführungszeichen, Backslash). Operatoren (C<|>, C<< > >>, C<<< >> >>>,
-C<&&>, C<||>, C<;>) werden eigene Wörter, als Hash C<< { op => '|' } >>. Ein
-offenes Anführungszeichen ist ein Fehler (C<die> mit Shell-Meldung).
+Splits a command line into words like a POSIX shell (single and
+double quotes, backslash). Operators (C<|>, C<< > >>, C<<< >> >>>,
+C<&&>, C<||>, C<;>) become words of their own, as a hash C<< { op => '|' } >>. An
+unclosed quote is an error (C<die> with the shell message).
 
 =cut
 
@@ -962,9 +962,9 @@ sub shell_words {
   my @chain = split_chain('systemctl restart a && journalctl -u a | tail -n 3');
   # ( [ ';', 'systemctl restart a' ], [ '&&', 'journalctl -u a | tail -n 3' ] )
 
-Zerlegt eine Befehlszeile grob an C<&&>, C<||>, C<;> und Zeilenenden außerhalb
-von Anführungszeichen: je Glied der Trenner davor und der Text. Für die
-Beobachtungen der Welt, die Glied für Glied prüft; der Simulator selbst nimmt
+Splits a command line roughly at C<&&>, C<||>, C<;> and line ends outside
+quotes: per item the separator before it and the text. For the
+observations of the world, which check item by item; the simulator itself uses
 L</split_items>.
 
 =cut

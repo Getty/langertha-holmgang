@@ -1,5 +1,5 @@
 package Langertha::Holmgang::Sim::Linux::Backup;
-# ABSTRACT: Sichern und Wiederherstellen auf einem simulierten Linux-Server — tar, rsync, restic, sha256sum
+# ABSTRACT: Backup and restore on a simulated Linux server — tar, rsync, restic, sha256sum
 
 use strict;
 use warnings;
@@ -12,51 +12,50 @@ use Time::Local ();
 
 our $VERSION = '0.001';
 
-=head1 SYNOPSIS
+=synopsis
 
-  # aus dem Linux-Simulator: tar, rsync, restic, sha256sum, gzip -t
+  # from the Linux simulator: tar, rsync, restic, sha256sum, gzip -t
   my ( $out, $ok ) = Langertha::Holmgang::Sim::Linux::Backup::tar( $dev, \@argv, $ctx );
 
-=head1 DESCRIPTION
+=description
 
-Werkzeuge zum Sichern und Wiederherstellen auf einem Gerät vom Typ C<linux>
-(cai-platform F<docs/entwurf-evals.md> §3.3.1). Dateien sind Einträge unter C<files> mit
-Inhalt (oder fester Größe), C<owner>, C<group>, C<mode>, C<mtime>
+Backup and restore tools on a device of type C<linux>
+(cai-platform F<docs/entwurf-evals.md> §3.3.1). Files are entries under C<files> with
+content (or a fixed size), C<owner>, C<group>, C<mode>, C<mtime>
 (C<"Oct 19 23:30">).
 
-B<tar>-Archiv: ein Dateieintrag mit C<tar> — die Mitglieder mit relativem
-Pfad (GNU tar entfernt das führende C</>), je Mitglied ein Dateieintrag;
-C<corrupt: true> macht ein beschädigtes Archiv:
+B<tar> archive: a file entry with C<tar> — the members with a relative path
+(GNU tar strips the leading C</>), one file entry per member;
+C<corrupt: true> makes a damaged archive:
 
   /var/backups/etc-2026-10-19.tar.gz: { size: 2M, mtime: "Oct 19 23:30", sha256: "…",
       tar: { etc/nginx/nginx.conf: { content: "…", owner: root, group: root, mode: "0644", mtime: "Oct 01 10:00" } } }
 
-Befehle: C<tar -c|-x|-t [-z|-j|-J] [-v] -f archiv [-C dir] [--strip-components=N]
-[--exclude=muster] [-k] [-O] [-T liste|--files-from=liste] [--remove-files] [mitglied …]> (gebündelt wie C<xzvf>; als root
-mit Eigentümer, Rechten und Zeit; ohne C<-C> ins aktuelle Verzeichnis, Vorgabe
-F</root>), C<rsync [-a|-r|-p|-o|-g|-t|-v|-n|-h|-P] [--delete] [--exclude=muster]
-quelle … ziel> (lokal und C<host:pfad> zu einem anderen Gerät; Schrägstrich am
-Ende der Quelle = Inhalt statt Verzeichnis), C<sha256sum [-c liste] datei …>
-(Prüfsumme aus C<sha256> des Eintrags, sonst aus dem Inhalt), C<gzip -t>.
+Commands: C<tar -c|-x|-t [-z|-j|-J] [-v] -f archive [-C dir] [--strip-components=N]
+[--exclude=pattern] [-k] [-O] [-T list|--files-from=list] [--remove-files] [member …]> (bundled like C<xzvf>; as root
+with owner, mode and time; without C<-C> into the current directory, default
+F</root>), C<rsync [-a|-r|-p|-o|-g|-t|-v|-n|-h|-P] [--delete] [--exclude=pattern]
+source … dest> (local and C<host:path> to another device; a trailing slash on
+the source = contents instead of the directory), C<sha256sum [-c list] file …>
+(checksum from the entry's C<sha256>, else from the content), C<gzip -t>.
 
-B<restic>: Repositories liegen auf dem Gerät, das sie hält:
+B<restic>: repositories live on the device that holds them:
 
   restic_repos:
-    /srv/restic/web1:                       # lokal (-r /srv/…) oder sftp:host:/srv/… von einem anderen Gerät
-      password_file: /root/.restic-pass     # die Datei, die --password-file bzw. RESTIC_PASSWORD_FILE nennen muss
-      size: 41G                             # belegt
-      prunable: 0                           # vom Simulator: Daten vergessener Snapshots bis prune
-      lock: { host: web1, pid: 4711, time: "2026-10-19 23:30:05" }   # optional, veraltet
+    /srv/restic/web1:                       # local (-r /srv/…) or sftp:host:/srv/… from another device
+      password_file: /root/.restic-pass     # the file --password-file or RESTIC_PASSWORD_FILE must name
+      size: 41G                             # used
+      prunable: 0                           # set by the simulator: data of forgotten snapshots until prune
+      lock: { host: web1, pid: 4711, time: "2026-10-19 23:30:05" }   # optional, stale
       snapshots: [ { id: 4f2a9c1e, time: "2026-10-19 23:30:02", host: web1, paths: [/etc, /srv/www],
                      tags: [], unique: 1.2G, files: { /etc/x: { … } } } ]
 
 C<restic -r repo --password-file f snapshots|ls|restore|dump|forget|prune|check|
-unlock|backup|stats> mit C<--host>, C<--path>, C<--tag>, C<--target>,
+unlock|backup|stats> with C<--host>, C<--path>, C<--tag>, C<--target>,
 C<--include>, C<--exclude>, C<--keep-last|hourly|daily|weekly|monthly|yearly N>,
-C<--group-by>, C<--prune>, C<--dry-run>. C<forget> rechnet die Aufbewahrung wie
-restic (je Gruppe aus Host und Pfaden, neueste zuerst, je Regel ein Snapshot je
-Tag/Woche/Monat); vergessene Daten werden erst mit C<prune> (oder C<--prune>)
-frei.
+C<--group-by>, C<--prune>, C<--dry-run>. C<forget> computes retention like
+restic (per group of host and paths, newest first, per rule one snapshot per
+day/week/month); forgotten data is freed only by C<prune> (or C<--prune>).
 
 =cut
 
@@ -79,9 +78,9 @@ sub _now_text { 'Oct 20 12:00' }
 # Kopie eines Eintrags; erhalten (-a/-p, tar/restic als root) oder neu (root, umask 022)
 =func copy_entry
 
-  my $neu = copy_entry( $eintrag, $erhalten );
+  my $new = copy_entry( $entry, $preserve );
 
-Kopie eines Dateieintrags: erhalten (Eigentümer, Rechte, Zeit) oder neu (root, Rechte ohne umask 022, jetzt).
+Copy of a file entry: preserved (owner, mode, time) or new (root, mode minus umask 022, now).
 
 =cut
 
@@ -134,7 +133,7 @@ sub _tar_excluded {
 
 =func tar
 
-C<tar> (s. oben).
+C<tar> (see above).
 
 =cut
 
@@ -298,7 +297,7 @@ sub _sha {
 
 =func sha256sum
 
-C<sha256sum [-c liste] datei ...>.
+C<sha256sum [-c list] file ...>.
 
 =cut
 
@@ -363,7 +362,7 @@ sub _ex_match {
 
 =func rsync
 
-C<rsync> (s. oben).
+C<rsync> (see above).
 
 =cut
 
@@ -529,7 +528,7 @@ sub _policy {
 
 =func restic
 
-C<restic> (s. oben).
+C<restic> (see above).
 
 =cut
 

@@ -13,20 +13,20 @@ use YAML::XS ();
 
 our $VERSION = '0.001';
 
-=head1 SYNOPSIS
+=synopsis
 
-  # aus dem Linux-Simulator: kubectl auf einem Geraet mit kubernetes-Zustand
+  # from the Linux simulator: kubectl on a device with kubernetes state
   my ( $out, $ok ) = Langertha::Holmgang::Sim::Linux::Kubernetes::kubectl( $dev, \@argv, $ctx, $stdin );
 
-=head1 DESCRIPTION
+=description
 
-Ein Kubernetes-Cluster (v1.30) als Zustand eines Linux-Geräts (das Gerät ist
-der Admin-Rechner mit C<kubectl>, cai-platform F<docs/entwurf-evals.md> §3.3.1). Der
-Zustand steht unter C<kubernetes>:
+A Kubernetes cluster (v1.30) as state of a Linux device (the device is the
+admin host with C<kubectl>, cai-platform F<docs/entwurf-evals.md> §3.3.1). The
+state is under C<kubernetes>:
 
   kubernetes:
     context: prod
-    registry: [ registry.example.com/shop/api:1.4.2, … ]   # vorhandene Images
+    registry: [ registry.example.com/shop/api:1.4.2, … ]   # images available
     nodes: { node1: { ready: true } }
     storageclasses: { local-path: { provisioner: rancher.io/local-path, default: true } }
     namespaces:
@@ -34,7 +34,7 @@ Zustand steht unter C<kubernetes>:
         deployments:
           api:
             replicas: 2
-            generation: 3                 # zaehlt jede Aenderung der Vorlage (Rollout)
+            generation: 3                 # counts every change of the template (rollout)
             selector: { app: api }
             template:
               labels: { app: api }
@@ -42,83 +42,83 @@ Zustand steht unter C<kubernetes>:
                 - name: api
                   image: registry.example.com/shop/api:1.4.2
                   ports: [8080]
-                  listens: [8080]          # wo der Prozess wirklich lauscht (nur Simulation)
-                  needs_env: [DB_PASSWORD] # ohne diese Variablen stuerzt er ab (nur Simulation)
+                  listens: [8080]          # where the process really listens (simulation only)
+                  needs_env: [DB_PASSWORD] # without these variables it crashes (simulation only)
                   env: [ { name: DB_PASSWORD, secret: api-db, key: password, optional: true } ]
                   readiness: { port: 8080, path: /healthz }
                   volumes: [ { claim: data } ]
                   privileged: false
-                  logs: [ "…" ]            # was der Prozess schreibt, wenn er startet
-                  crash_log: [ "…" ]       # was er schreibt, wenn ihm Umgebung fehlt
+                  logs: [ "…" ]            # what the process writes when it starts
+                  crash_log: [ "…" ]       # what it writes when its environment is missing
         services: { api: { selector: { app: api }, ports: [ { port: 80, target: 8080 } ] } }
-        secrets: { api-db: { password: "…" } }       # Schluessel -> Wert
+        secrets: { api-db: { password: "…" } }       # key -> value
         configmaps: { … }
         pvcs: { data: { storage_class: fast, size: 10Gi } }
         networkpolicies:
           deny-all: { pod_selector: {}, ingress: [] }
           allow-web: { pod_selector: { app: api }, ingress: [ { from: [ { app: web } ], ports: [8080] } ] }
 
-B<Abgeleitet, nicht gespeichert>: Pods (Name aus Deployment und einem Hash der
-Vorlage), ihr Status (C<ImagePullBackOff>, wenn das Image nicht in
-C<registry> steht; C<CreateContainerConfigError>, wenn ein nicht optionaler
-Secret-Schlüssel fehlt; C<CrashLoopBackOff>, wenn eine C<needs_env>-Variable
-fehlt; C<Pending>, wenn ein PVC nicht gebunden ist; C<Running> 0/1, wenn die
-Readiness-Probe auf einen Port zielt, auf dem nichts lauscht), PVC-Status
-(C<Bound>, wenn die StorageClass existiert bzw. ohne Angabe eine Standard-Klasse
-da ist), Endpoints eines Service (bereite Pods, deren Labels passen) und
-Erreichbarkeit (C<kubectl exec POD -- curl|wget URL> prüft Service,
-Endpoints, Zielport und NetworkPolicies). B<Gespeichert> wird nur, was
-C<kubectl> ändert — die Regeln prüfen die Ursache am Zustand.
+B<Derived, not stored>: pods (name from the deployment and a hash of the
+template), their status (C<ImagePullBackOff> when the image is not in
+C<registry>; C<CreateContainerConfigError> when a non-optional secret key is
+missing; C<CrashLoopBackOff> when a C<needs_env> variable is missing;
+C<Pending> when a PVC is not bound; C<Running> 0/1 when the readiness probe
+targets a port nothing listens on), PVC status (C<Bound> when the
+StorageClass exists, or, without one given, a default class is there),
+endpoints of a service (ready pods whose labels match) and reachability
+(C<kubectl exec POD -- curl|wget URL> checks service, endpoints, target port
+and NetworkPolicies). Only what C<kubectl> changes is B<stored> — the rules
+check the cause in the state.
 
-B<Befehle>: C<get> (Arten und Abkürzungen, C<-n>, C<-A>, C<-l>, C<-o
+B<Commands>: C<get> (kinds and short names, C<-n>, C<-A>, C<-l>, C<-o
 wide|yaml|json|name>, C<--show-labels>), C<describe>, C<logs [--previous]>,
-C<get events>, C<apply -f datei> (YAML, mehrere Dokumente), C<create -f>,
-C<create secret generic … --from-literal>, C<create storageclass> per Datei,
-C<set image>, C<set env> (C<-c|--containers NAME[,…]>, ohne: alle Container;
-C<--from=secret/NAME [--keys=a,b] [--prefix=P]> als C<secretKeyRef>, Name groß
-mit C<_>; C<NAME-> entfernt; C<--list> liest nur), C<patch … -p JSON [--type merge|strategic|json]>,
+C<get events>, C<apply -f file> (YAML, several documents), C<create -f>,
+C<create secret generic … --from-literal>, C<create storageclass> by file,
+C<set image>, C<set env> (C<-c|--containers NAME[,…]>, without: all containers;
+C<--from=secret/NAME [--keys=a,b] [--prefix=P]> as C<secretKeyRef>, name upper case
+with C<_>; C<NAME-> removes; C<--list> only reads), C<patch … -p JSON [--type merge|strategic|json]>,
 C<scale>, C<label>, C<rollout restart|status|undo>, C<delete>, C<exec … --
-curl|wget>, C<config current-context>, C<cluster-info>, C<version>. Interaktives
-(C<edit>, C<exec -it … sh>, C<port-forward>) und anderes ist eine B<Lücke der
-Simulation>. C<generation> eines Deployments zählt jede Änderung der Vorlage;
-C<kubectl rollout restart> zählt ebenso.
+curl|wget>, C<config current-context>, C<cluster-info>, C<version>. Anything
+interactive (C<edit>, C<exec -it … sh>, C<port-forward>) and anything else is
+a B<gap of the simulation>. A deployment's C<generation> counts every change
+of the template; C<kubectl rollout restart> counts as well.
 
-B<Weitere Arten in API-Form> (gespeichert ohne apiVersion, kind, Name,
-Namespace und Status; Regeln prüfen die Felder der API): C<ingresses>,
+B<Further kinds in API form> (stored without apiVersion, kind, name,
+namespace and status; rules check the API's fields): C<ingresses>,
 C<ingressclasses>, C<serviceaccounts>, C<roles>, C<rolebindings>,
 C<clusterroles>, C<clusterrolebindings>, C<certificates>, C<issuers>,
-C<clusterissuers>; abgeleitet und nur lesbar: C<certificaterequests>,
-C<orders>, C<challenges>. Dazu im Zustand: C<ingress: { controller, address }>
-(der Controller des Clusters), C<dns: { host: ip }> (öffentliche Namen),
+C<clusterissuers>; derived and read only: C<certificaterequests>,
+C<orders>, C<challenges>. Also in the state: C<ingress: { controller, address }>
+(the cluster's controller), C<dns: { host: ip }> (public names),
 C<cert_manager: { namespace, acme_servers }>.
 
-B<Ingress>: der Controller bedient nur Ingresse einer IngressClass mit seinem
-C<spec.controller> (Klasse aus C<ingressClassName>, der veralteten Annotation
-oder der Standard-Klasse); Pfade C<Exact>, C<Prefix> (elementweise),
-C<ImplementationSpecific> (Zeichenpräfix); Backend über Service-Port als Zahl
-oder Name; TLS aus dem Secret des Hosts, sonst Ersatzzertifikat; http mit TLS
-leitet um (308). C<kubectl exec … -- curl|wget> auf einen öffentlichen Namen
-geht über den Ingress (C<-k>, C<-L>, C<-I>, C<-f>, C<-w>, C<-H Host:>).
-Container mit C<derive_logs: ingress-nginx|cert-manager> haben das Log des
-Controllers aus dem Zustand.
+B<Ingress>: the controller serves only ingresses of an IngressClass with its
+C<spec.controller> (class from C<ingressClassName>, the deprecated annotation
+or the default class); paths C<Exact>, C<Prefix> (element-wise),
+C<ImplementationSpecific> (character prefix); backend through the service port
+as number or name; TLS from the host's secret, otherwise a fake certificate;
+http with TLS redirects (308). C<kubectl exec … -- curl|wget> to a public name
+goes through the ingress (C<-k>, C<-L>, C<-I>, C<-f>, C<-w>, C<-H Host:>).
+Containers with C<derive_logs: ingress-nginx|cert-manager> have the
+controller's log from the state.
 
-B<cert-manager>: ein Certificate ist bereit, wenn sein Issuer da und bereit
-ist (CA-Secret im Namespace des Issuers bzw. für einen ClusterIssuer in
-C<cert_manager.namespace>, bekannter ACME-Server, HTTP-01 über eine behandelte
-Klasse und einen Namen aus C<dns>, DNS-01 mit vorhandenem Secret); dann gibt
-es sein Secret (Pseudo-PEM mit Namen und Aussteller). Ingress-Annotationen
-C<cert-manager.io/cluster-issuer|issuer> erzeugen Certificates (ingress-shim).
+B<cert-manager>: a Certificate is ready when its issuer is there and ready
+(CA secret in the issuer's namespace, or for a ClusterIssuer in
+C<cert_manager.namespace>, a known ACME server, HTTP-01 through a served
+class and a name from C<dns>, DNS-01 with an existing secret); then its
+secret exists (pseudo-PEM with names and issuer). Ingress annotations
+C<cert-manager.io/cluster-issuer|issuer> create Certificates (ingress-shim).
 
-B<RBAC>: C<kubectl auth can-i> (C<--as>, C<--as-group>, C<--list>) über
-Roles, ClusterRoles (eingebaut: cluster-admin, admin, edit, view) und
-Bindungen (ServiceAccount mit Namespace, ohne: der der Bindung; Gruppen;
-C<resourceNames>; Unterressourcen wie C<pods/log>); C<kubectl create
+B<RBAC>: C<kubectl auth can-i> (C<--as>, C<--as-group>, C<--list>) over
+Roles, ClusterRoles (built in: cluster-admin, admin, edit, view) and
+bindings (ServiceAccount with namespace, without: the binding's; groups;
+C<resourceNames>; subresources such as C<pods/log>); C<kubectl create
 serviceaccount|role|clusterrole|rolebinding|clusterrolebinding|secret tls>;
-C<roleRef> ist unveränderlich. Ein Container mit C<needs_rbac> stürzt ab,
-wenn sein ServiceAccount ein Recht nicht hat; fehlt der ServiceAccount, gibt
-es keine Pods (Ereignis FailedCreate).
+C<roleRef> is immutable. A container with C<needs_rbac> crashes when its
+ServiceAccount lacks a permission; when the ServiceAccount is missing, there
+are no pods (event FailedCreate).
 
-Reine Funktionen auf dem Zustand, neutral.
+Pure functions on the state, neutral.
 
 =cut
 
@@ -1246,8 +1246,8 @@ sub _v_exec {
 
   my ( $out, $ok ) = pod_tool( $k, $ns, $pod, [ 'curl', '-s', 'http://api' ] );
 
-curl, wget oder openssl s_client aus einem Pod: Service, Endpoints, NetworkPolicies,
-Ingress-Controller (für öffentliche Namen).
+curl, wget or openssl s_client from a pod: service, endpoints, NetworkPolicies,
+ingress controller (for public names).
 
 =cut
 
@@ -1314,8 +1314,8 @@ sub _dn_issuer {
 
   my ( $text, $ok ) = tls_probe( $k, $host, $servername );
 
-Was C<openssl s_client -connect host:443 -servername …> vom Ingress-Controller
-des Clusters sieht: Zertifikat (Pseudo-PEM), Subject, Issuer, Prüfergebnis.
+What C<openssl s_client -connect host:443 -servername …> sees from the
+cluster's ingress controller: certificate (pseudo-PEM), subject, issuer, verification result.
 
 =cut
 
@@ -1347,10 +1347,10 @@ sub tls_probe {
 
 =func x509
 
-  my ( $text, $ok ) = x509( $pem, \@optionen );
+  my ( $text, $ok ) = x509( $pem, \@options );
 
 C<openssl x509 -noout -subject|-issuer|-dates|-enddate|-ext subjectAltName|-text>
-auf einem Pseudo-PEM der Simulation.
+on a pseudo-PEM of the simulation.
 
 =cut
 
@@ -1379,12 +1379,12 @@ sub x509 {
 
 =func jsonpath
 
-  my ( $text, $err ) = jsonpath( $daten, '{range .items[*]}{.metadata.name}{"\n"}{end}' );
+  my ( $text, $err ) = jsonpath( $data, '{range .items[*]}{.metadata.name}{"\n"}{end}' );
 
-Teilmenge von kubectl-JSONPath: Text und C<{ausdruck}>; Ausdrücke C<.a.b>,
-C<.data.tls\.crt>, C<['a.b']>, C<[n]>, C<[*]>, C<[?(@.f=="v")]> (auch C<!=>),
-C<..name> (rekursiv), Literale C<{"\n"}>, C<{range …}…{end}>. Mehrere
-Treffer stehen mit Leerzeichen; Listen und Objekte als JSON.
+Subset of kubectl JSONPath: text and C<{expression}>; expressions C<.a.b>,
+C<.data.tls\.crt>, C<['a.b']>, C<[n]>, C<[*]>, C<[?(@.f=="v")]> (also C<!=>),
+C<..name> (recursive), literals C<{"\n"}>, C<{range …}…{end}>. Several
+matches are joined with spaces; lists and objects as JSON.
 
 =cut
 

@@ -1,5 +1,5 @@
 package Langertha::Holmgang::Sim::Linux::Dns;
-# ABSTRACT: BIND 9 auf einem simulierten Linux-Server — named.conf, Zonen, rndc, dig, Sekundaere
+# ABSTRACT: BIND 9 on a simulated Linux server — named.conf, zones, rndc, dig, secondaries
 
 use strict;
 use warnings;
@@ -9,54 +9,53 @@ use JSON::MaybeXS ();
 
 our $VERSION = '0.001';
 
-=head1 SYNOPSIS
+=synopsis
 
-  # aus dem Linux-Simulator: rndc, named-checkconf, named-checkzone, dig, host
-  Langertha::Holmgang::Sim::Linux::Dns::prepare( $dev, $ctx );     # beim Laden des Falls
+  # from the Linux simulator: rndc, named-checkconf, named-checkzone, dig, host
+  Langertha::Holmgang::Sim::Linux::Dns::prepare( $dev, $ctx );     # when the case loads
   my ( $out, $ok ) = Langertha::Holmgang::Sim::Linux::Dns::rndc( $dev, \@argv, $ctx );
 
-=head1 DESCRIPTION
+=description
 
-Ein autoritativer BIND 9.18 (Debian 12, Dienst C<named>) auf einem Gerät vom
-Typ C<linux> (cai-platform F<docs/entwurf-evals.md> §3.3.1). Konfiguration und Zonen sind
-Dateien unter C<files>; was B<geladen> ist, steht unter C<bind.zones>:
+An authoritative BIND 9.18 (Debian 12, service C<named>) on a device of type
+C<linux> (cai-platform F<docs/entwurf-evals.md> §3.3.1). Configuration and zones are
+files under C<files>; what is B<loaded> is under C<bind.zones>:
 
   bind:
-    conf:    /etc/bind/named.conf        # Vorgabe; include-Dateien werden mitgelesen
-    service: named                        # Vorgabe
-    zones:                                # geladen; fehlt es, laedt prepare() die Dateien
+    conf:    /etc/bind/named.conf        # default; include files are read along
+    service: named                        # default
+    zones:                                # loaded; when missing, prepare() loads the files
       example.com: { type: primary, file: /etc/bind/db.example.com, serial: 2026102001,
                      records: [ "example.com. 3600 IN SOA …", "www.example.com. 3600 IN A 192.0.2.10", … ] }
       example.net: { type: secondary, primaries: [ 192.0.2.53 ], serial: …, records: [ … ] }
-    source:  { example.com: "<Zonentext>" }   # nur Anfang: so geladen (statt der Datei)
-    log:     [ … ]                        # vom Simulator: Meldungen von named (journalctl -u named)
+    source:  { example.com: "<zone text>" }   # start only: loaded like this (instead of the file)
+    log:     [ … ]                        # by the simulator: messages of named (journalctl -u named)
 
-C<records> sind kanonische Zeilen C<besitzer. ttl IN TYP daten> (Namen klein
-und absolut, TXT als B<ein> zusammengefügter Text in Anführungszeichen), so
-prüfen Regeln mit C<any>/C<none>/C<contains>, egal wie die Zonendatei
-geschrieben ist.
+C<records> are canonical lines C<owner. ttl IN TYPE data> (names lower case
+and absolute, TXT as B<one> joined text in quotes), so rules check with
+C<any>/C<none>/C<contains> no matter how the zone file is written.
 
-B<prepare> (beim Laden des Falls) füllt C<bind.zones> aus C<bind.source> bzw.
-den Zonendateien, wie ein frisch gestarteter named sie geladen hätte.
+B<prepare> (when the case loads) fills C<bind.zones> from C<bind.source> or
+the zone files, as a freshly started named would have loaded them.
 
-B<Befehle>: C<rndc reload [zone]|reconfig|retransfer zone|refresh zone|notify
-zone|status|zonestatus zone|flush>, C<named-checkconf [-z] [datei]>,
-C<named-checkzone zone datei>, C<dig [@server] name [typ] [+short]
-[-x adresse] [axfr]>, C<host [-t typ] name [server]>; C<systemctl
-reload|restart|start|stop named> (über den Linux-Simulator).
+B<Commands>: C<rndc reload [zone]|reconfig|retransfer zone|refresh zone|notify
+zone|status|zonestatus zone|flush>, C<named-checkconf [-z] [file]>,
+C<named-checkzone zone file>, C<dig [@server] name [type] [+short]
+[-x address] [axfr]>, C<host [-t type] name [server]>; C<systemctl
+reload|restart|start|stop named> (through the Linux simulator).
 
-B<Wie BIND>: C<rndc reload> und C<systemctl reload named> lesen named.conf und
-alle Zonen neu; eine fehlerhafte Zone behält den alten Stand (Meldung im Log),
-ein Neustart lädt sie gar nicht (SERVFAIL). Ein Fehler in named.conf lässt
-reload scheitern; ein Neustart scheitert dann. Relative Dateinamen gelten unter
-C<directory> (Debian: F</var/cache/bind>). Steigt die Seriennummer einer
-Primärzone, gehen NOTIFYs an die Adressen der NS-Einträge und C<also-notify>;
-eine Sekundärzone auf einem anderen Gerät übernimmt die Zone, wenn
-C<allow-transfer> (Zone, sonst C<options>; fehlt es: alle) ihre Adresse erlaubt
-und die Seriennummer neuer ist (RFC 1982). C<rndc retransfer> holt ohne
-Vergleich. Prüfungen wie C<named-checkzone>: SOA und NS an der Spitze, „CNAME
-and other data", NS ohne Adresse in der Zone, TXT-Text über 255 Zeichen,
-Adressen; Daten außerhalb der Zone werden mit Warnung übergangen.
+B<Like BIND>: C<rndc reload> and C<systemctl reload named> reread named.conf and
+all zones; a broken zone keeps its old state (message in the log), a restart
+does not load it at all (SERVFAIL). An error in named.conf makes reload fail;
+a restart then fails. Relative file names are taken under C<directory>
+(Debian: F</var/cache/bind>). When the serial of a primary zone rises, NOTIFYs
+go to the addresses of the NS records and C<also-notify>; a secondary zone on
+another device takes over the zone when C<allow-transfer> (zone, else
+C<options>; when missing: everyone) allows its address and the serial is newer
+(RFC 1982). C<rndc retransfer> fetches without comparing. Checks like
+C<named-checkzone>: SOA and NS at the apex, "CNAME and other data", NS without
+an address in the zone, TXT text over 255 characters, addresses; data outside
+the zone is skipped with a warning.
 
 =cut
 
@@ -163,9 +162,9 @@ sub _addr_list {
 # named.conf -> { directory, allow_transfer, zones => { name => {...} } }
 =func parse_conf
 
-  my $c = parse_conf( $dev [, $pfad] );   # { directory, allow_transfer, zones => { name => {...} } }
+  my $c = parse_conf( $dev [, $path] );   # { directory, allow_transfer, zones => { name => {...} } }
 
-Liest named.conf samt include-Dateien; ein Fehler stirbt mit der Meldung von named.
+Reads named.conf with its include files; an error dies with named's message.
 
 =cut
 
@@ -270,9 +269,9 @@ sub _q { my ($s) = @_; return '"' . $s . '"' }
 =func parse_zone
 
   my $z = parse_zone( $text, 'example.com', $filename );
-  # { ok, serial, records => [...], show => { "<kanonisch>" => "<darstellung>" }, errors => [...], warnings => [...] }
+  # { ok, serial, records => [...], show => { "<canonical>" => "<display>" }, errors => [...], warnings => [...] }
 
-Liest eine Zonendatei wie named (s. oben) und prüft sie wie
+Reads a zone file like named (see above) and checks it like
 C<named-checkzone>.
 
 =cut
@@ -446,12 +445,11 @@ sub _serial_gt {
 
 =func prepare
 
-Füllt beim Laden des Falls C<bind.zones>: jede Zone aus named.conf, geladen
-aus C<bind.source.E<lt>zoneE<gt>> oder der Datei (Primärzonen); Sekundärzonen
-ohne Stand bleiben leer. Ein schon gesetztes C<bind.zones> bleibt.
-C<bind.source.E<lt>pfadE<gt>> (absoluter Pfad) ersetzt beim Ableiten eine
-Datei — so lädt named eine ältere Fassung einer seither kaputt geänderten
-named.conf.
+When the case loads, fills C<bind.zones>: every zone from named.conf, loaded
+from C<bind.source.E<lt>zoneE<gt>> or the file (primary zones); secondary zones
+without a state stay empty. A C<bind.zones> already set is kept.
+C<bind.source.E<lt>pathE<gt>> (absolute path) replaces a file while deriving —
+so named loads an older version of a named.conf that has since been broken.
 
 =cut
 
@@ -498,9 +496,9 @@ sub _secondary_file {
 # reconfig (nur neue Zonen und Optionen), zone (nur diese Zone).
 =func load
 
-  my ( $meldung, $ok ) = load( $dev, $ctx, $modus [, $zone] );
+  my ( $message, $ok ) = load( $dev, $ctx, $mode [, $zone] );
 
-named lädt: C<reload> (alte Zone bleibt bei Fehler), C<start> (frisch), C<reconfig> (nur neue Zonen und Optionen), C<zone> (nur diese Zone).
+named loads: C<reload> (old zone stays on error), C<start> (fresh), C<reconfig> (only new zones and options), C<zone> (only this zone).
 
 =cut
 
@@ -608,9 +606,9 @@ sub _notify {
 
   transfer( $secondary_dev, $ctx, 'example.com', $force );
 
-Sekundärzone holen: von der ersten erreichbaren Primary, wenn deren
-C<allow-transfer> die Adresse erlaubt und (ohne C<$force>) die Seriennummer
-neuer ist. Rückgabe C<( $meldung, $ok )>.
+Fetch a secondary zone: from the first reachable primary, when its
+C<allow-transfer> allows the address and (without C<$force>) the serial is
+newer. Returns C<( $message, $ok )>.
 
 =cut
 
@@ -644,8 +642,8 @@ sub transfer {
 
 =func service_event
 
-Vom Linux-Simulator bei C<systemctl start|restart|reload|stop> des Dienstes
-C<named>. Ein Fehler in named.conf lässt Start und Neustart scheitern (C<die>).
+From the Linux simulator on C<systemctl start|restart|reload|stop> of the
+service C<named>. An error in named.conf makes start and restart fail (C<die>).
 
 =cut
 
@@ -663,7 +661,7 @@ sub service_event {
 
 =func rndc
 
-C<rndc> (s. oben).
+C<rndc> (see above).
 
 =cut
 
@@ -719,7 +717,7 @@ sub rndc {
 
 =func checkconf
 
-C<named-checkconf [-z] [datei]>.
+C<named-checkconf [-z] [file]>.
 
 =cut
 
@@ -745,7 +743,7 @@ sub checkconf {
 
 =func checkzone
 
-C<named-checkzone zone datei>.
+C<named-checkzone zone file>.
 
 =cut
 
@@ -837,7 +835,7 @@ sub _rev { my ($ip) = @_; return join( '.', reverse split /\./, $ip ) . '.in-add
 
 =func dig
 
-C<dig> (s. oben).
+C<dig> (see above).
 
 =cut
 
@@ -892,7 +890,7 @@ sub dig {
 
 =func host
 
-C<host [-t typ] name [server]>.
+C<host [-t type] name [server]>.
 
 =cut
 

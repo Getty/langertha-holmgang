@@ -11,16 +11,16 @@ use JSON::MaybeXS ();
 
 our $VERSION = '0.001';
 
-=head1 SYNOPSIS
+=synopsis
 
-  # aus dem Linux-Simulator: git auf einem Geraet mit git.repos
+  # from the Linux simulator: git on a device with git.repos
   my ( $out, $ok ) = Langertha::Holmgang::Sim::Linux::Git::git( $dev, \@argv, $ctx, $cwd );
 
-=head1 DESCRIPTION
+=description
 
-git 2.39 (Debian 12) auf einem Linux-Gerät (cai-platform F<docs/entwurf-evals.md> §3.3.1).
-Eine Arbeitskopie steht unter C<git.repos> des Geräts, ihre Dateien sind die
-Dateien des Geräts unter dem Pfad des Repos:
+git 2.39 (Debian 12) on a Linux device (cai-platform F<docs/entwurf-evals.md> §3.3.1).
+A working copy is under the device's C<git.repos>; its files are the device's
+files under the repo's path:
 
   git:
     config: { user.name: Dev, user.email: dev@example.org }      # --global
@@ -30,17 +30,17 @@ Dateien des Geräts unter dem Pfad des Repos:
         config: { user.email: … }                                # --local
         remotes: { origin: { url: git@git.example.com:shop/shop.git, host: git1, repo: shop/shop } }
         refs: { heads: { main: <id> }, remotes: { origin/main: <id> }, tags: { v1.3.0: { commit: <id>, annotated: true, message: … } } }
-        commits: { <id>: { parents: [ … ], message, author: "Name <mail>", date, tree: { pfad: inhalt } } }
-        index: { pfad: inhalt }          # fehlt = wie HEAD
+        commits: { <id>: { parents: [ … ], message, author: "Name <mail>", date, tree: { path: content } } }
+        index: { path: content }         # missing = like HEAD
 
-Der Server (z. B. Forgejo) hält die Repos unter C<forgejo.repos> seines
-Geräts: C<refs>, C<commits>, dazu B<Regeln des pre-receive-Hooks>
-(C<policy: [ { kind: message|author|path, regex, text } ]>, aktiv, wenn
-C<hook> fehlt oder die Hook-Datei für den Benutzer C<git> ausführbar ist) und
-B<geschützte Zweige> (C<protected: { main: {} }>: kein Force-Push). Commit-IDs
-sind SHA-1 über Eltern, Nachricht, Autor, Datum und Baum — deterministisch.
+The server (e.g. Forgejo) holds the repos under C<forgejo.repos> of its
+device: C<refs>, C<commits>, plus B<rules of the pre-receive hook>
+(C<policy: [ { kind: message|author|path, regex, text } ]>, active when
+C<hook> is missing or the hook file is executable for the user C<git>) and
+B<protected branches> (C<protected: { main: {} }>: no force push). Commit IDs
+are SHA-1 over parents, message, author, date and tree — deterministic.
 
-B<Befehle>: C<status [-s|--porcelain]>, C<add>, C<rm [--cached] [-r]>,
+B<Commands>: C<status [-s|--porcelain]>, C<add>, C<rm [--cached] [-r]>,
 C<mv>, C<restore [--staged]>, C<commit [-a] [-m …] [--amend] [--no-edit]
 [--reset-author] [--author=…] [--allow-empty]>, C<log [--oneline] [-n N]
 [--format=…] [--stat] [A..B] [--all]>, C<show [--stat|--name-only]>, C<diff
@@ -48,15 +48,15 @@ C<mv>, C<restore [--staged]>, C<commit [-a] [-m …] [--amend] [--no-edit]
 C<switch [-c]>, C<reset [--soft|--mixed|--hard]>, C<tag [-a] [-m] [-d]
 [-l]>, C<config [--global|--local] [--get|--unset|--list]>, C<remote -v>,
 C<rev-parse>, C<ls-files>, C<fetch>, C<pull [--rebase|--ff-only|--no-rebase]>,
-C<rebase OBEN>, C<merge>, C<stash [push [-m …] [-u]|list|show [-p]|apply|pop|drop|clear]>
-(auch C<--autostash> und C<rebase.autoStash> bei C<pull --rebase>/C<rebase>), C<push [--force|--force-with-lease] [--tags]
-[-u] [REMOTE] [REFSPEC…]>, C<ls-remote>. Revisionen: C<HEAD>, C<HEAD~N>,
-C<HEAD^>, Zweige, C<origin/main>, Tags, (Kurz-)IDs. Interaktives (C<rebase -i>,
-C<add -p>, C<commit> ohne C<-m>) und C<clone> sind
-Lücken der Simulation. Ein Konflikt beim Rebase oder Merge bricht ab, ohne
-etwas zu ändern (wie C<--abort>).
+C<rebase UPSTREAM>, C<merge>, C<stash [push [-m …] [-u]|list|show [-p]|apply|pop|drop|clear]>
+(also C<--autostash> and C<rebase.autoStash> with C<pull --rebase>/C<rebase>), C<push [--force|--force-with-lease] [--tags]
+[-u] [REMOTE] [REFSPEC…]>, C<ls-remote>. Revisions: C<HEAD>, C<HEAD~N>,
+C<HEAD^>, branches, C<origin/main>, tags, (short) IDs. Anything interactive
+(C<rebase -i>, C<add -p>, C<commit> without C<-m>) and C<clone> are
+gaps of the simulation. A conflict during rebase or merge aborts without
+changing anything (like C<--abort>).
 
-Reine Funktionen auf dem Zustand, neutral.
+Pure functions on the state, neutral.
 
 =cut
 
@@ -406,11 +406,11 @@ sub _g_remote {
 
 =func virtual
 
-  my $v = virtual( $dev, $pfad );   # { text => … } (Datei) | { dir => [ namen ] } | undef
+  my $v = virtual( $dev, $path );   # { text => … } (file) | { dir => [ names ] } | undef
 
-Das Verzeichnis F<.git> einer Arbeitskopie bzw. ein Bare-Repo des Servers als
-Dateien (HEAD, config, refs/…, description, objects/, hooks/), aus dem Zustand
-abgeleitet — für C<ls>, C<cat>, C<stat> der Shell.
+The F<.git> directory of a working copy, or a bare repo of the server, as
+files (HEAD, config, refs/…, description, objects/, hooks/), derived from the
+state — for the shell's C<ls>, C<cat>, C<stat>.
 
 =cut
 
@@ -467,11 +467,11 @@ sub _git_config_text {
 
 =func api
 
-  my ( $status, $body, $type ) = api( $dev, $method, $pfad );
+  my ( $status, $body, $type ) = api( $dev, $method, $path );
 
-Die HTTP-API eines Forgejo-Servers (nur lesen, ohne Token): C</api/v1/version>,
-C</api/v1/repos/O/R>, C<…/branches>, C<…/tags>, C<…/commits>; was einen
-Token braucht (Schutzregeln, Admin, Actions), antwortet 401.
+The HTTP API of a Forgejo server (read only, without a token): C</api/v1/version>,
+C</api/v1/repos/O/R>, C<…/branches>, C<…/tags>, C<…/commits>; what needs a
+token (protection rules, admin, Actions) answers 401.
 
 =cut
 
@@ -1802,10 +1802,10 @@ sub _g_push {
 
   view( $server_repo );
 
-Schreibt die Sicht auf jeden Zweig des Server-Repos nach C<view.E<lt>zweigE<gt>>:
-C<message>, C<author>, C<tree> der Spitze und C<log> (alle erreichbaren Commits,
-neueste zuerst, je C<id>, C<message>, C<author>, C<parents>). Für die Regeln
-der Fälle (IDs hängen vom Weg ab); nach jedem Push neu.
+Writes the view of every branch of the server repo to C<view.E<lt>branchE<gt>>:
+C<message>, C<author>, C<tree> of the tip and C<log> (all reachable commits,
+newest first, each with C<id>, C<message>, C<author>, C<parents>). For the
+cases' rules (IDs depend on the path taken); rebuilt after every push.
 
 =cut
 
@@ -1829,11 +1829,11 @@ sub view {
   my ( $out, $ok ) = runner( $dev, \@argv, $ctx, $cwd, $user );
 
 C<forgejo-runner> (v3.5): C<register --no-interactive --instance URL --token T
---name N [--labels a,b]> schreibt die Datei F<.runner> ins Arbeitsverzeichnis
-(Eigentümer der aufrufende Benutzer, Modus 0600) und meldet den Runner beim
-Server an, dessen C<forgejo.root_url> zur Instanz passt und dessen
-C<forgejo.runner_tokens> das Token kennen; C<--version>, C<generate-config>.
-C<daemon> und Interaktives sind Lücken der Simulation.
+--name N [--labels a,b]> writes the file F<.runner> into the working directory
+(owned by the calling user, mode 0600) and registers the runner with the
+server whose C<forgejo.root_url> matches the instance and whose
+C<forgejo.runner_tokens> know the token; C<--version>, C<generate-config>.
+C<daemon> and anything interactive are gaps of the simulation.
 
 =cut
 

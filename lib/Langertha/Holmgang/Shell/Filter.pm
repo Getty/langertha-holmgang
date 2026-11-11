@@ -460,19 +460,19 @@ sub _tr {
 
   my $text = filter_output( $text, [ 'grep', '-i', 'wg0' ] );
 
-Wendet ein Filterkommando einer Pipe an: C<grep> (C<-i>, C<-v>, C<-E>, C<-F>,
+Applies a filter command of a pipe: C<grep> (C<-i>, C<-v>, C<-E>, C<-F>,
 C<-w>, C<-c>), C<head>/C<tail> (C<-n N>, C<-N>, C<-n -N>, C<-n +N>, C<-c N>), C<wc>
-(C<-l>/C<-w>/C<-m>/C<-c>, kombiniert), C<sort> (C<-n>,
-C<-r>, C<-u>), C<uniq> (C<-c>, C<-d>, C<-u>), C<cut> (C<-d>, C<-f>, C<-c>), C<awk> (kleiner Teil: C<-F>, C<-v>,
-C<BEGIN { FS/OFS = "…" }> bzw. C<BEGIN { print … }>, Muster mit C<== != E<lt> E<lt>= E<gt> E<gt>=> (Zahl oder Text wie awk),
-C<~>/C<!~> mit C</re/>, C<&&>, C<||>, C<!>, Klammern, C<NR>, C<NF>, C<$N>, C<$NF>, Rechnen
-C<+ - * / %>, C<length>, C<int>, C<substr>, C<tolower>, C<toupper>; Variablen und Arrays
-(C<a[k]>, C<k in a>), Zuweisungen C<= += -= *= /= %= ++ -->, C<if/else>, C<for (k in a)>,
-C<END>; Aktionen C<print> mit Feldern, Literalen und Verkettung, Komma als OFS, C<printf>;
-andere Funktionen, C<while>, C<?:>, Umleitungen und C<getline> sind eine Lücke),
-C<tr> (Bereiche, Klassen, C<-c>/C<-d>/C<-s>), C<fold> (C<-w N>, C<-s>), C<cat>.
-Rückgabe: C<( $text, $ok )> oder C<( undef )>, wenn das
-Kommando (bzw. dieses Programm) hier nicht nachgebildet ist.
+(C<-l>/C<-w>/C<-m>/C<-c>, combined), C<sort> (C<-n>,
+C<-r>, C<-u>), C<uniq> (C<-c>, C<-d>, C<-u>), C<cut> (C<-d>, C<-f>, C<-c>), C<awk> (a small part: C<-F>, C<-v>,
+C<BEGIN { FS/OFS = "…" }> or C<BEGIN { print … }>, patterns with C<== != E<lt> E<lt>= E<gt> E<gt>=> (number or string like awk),
+C<~>/C<!~> with C</re/>, C<&&>, C<||>, C<!>, parentheses, C<NR>, C<NF>, C<$N>, C<$NF>, arithmetic
+C<+ - * / %>, C<length>, C<int>, C<substr>, C<tolower>, C<toupper>; variables and arrays
+(C<a[k]>, C<k in a>), assignments C<= += -= *= /= %= ++ -->, C<if/else>, C<for (k in a)>,
+C<END>; actions C<print> with fields, literals and concatenation, comma as OFS, C<printf>;
+other functions, C<while>, C<?:>, redirections and C<getline> are a gap),
+C<tr> (ranges, classes, C<-c>/C<-d>/C<-s>), C<fold> (C<-w N>, C<-s>), C<cat>.
+Returns C<( $text, $ok )>, or C<( undef )> when the
+command (or this program of it) is not modelled here.
 
 =cut
 

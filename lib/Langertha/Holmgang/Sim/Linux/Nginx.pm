@@ -10,56 +10,56 @@ use JSON::MaybeXS ();
 
 our $VERSION = '0.001';
 
-=head1 SYNOPSIS
+=synopsis
 
-  # aus dem Linux-Simulator (nginx -t, systemctl reload nginx) und aus Sim::Http (curl)
+  # from the Linux simulator (nginx -t, systemctl reload nginx) and from Sim::Http (curl)
   my ( $out, $ok ) = Langertha::Holmgang::Sim::Linux::Nginx::nginx( $dev, [ '-t' ], $ctx );
-  my $err = Langertha::Holmgang::Sim::Linux::Nginx::service( $dev, 'reload', $ctx );   # undef = geladen
+  my $err = Langertha::Holmgang::Sim::Linux::Nginx::service( $dev, 'reload', $ctx );   # undef = loaded
   my $res = Langertha::Holmgang::Sim::Linux::Nginx::serve( $state, 'web1', \%req, 'client1', 0 );
 
-=head1 DESCRIPTION
+=description
 
-nginx 1.22 (Debian 12) als Zustand eines Linux-Geräts (cai-platform F<docs/entwurf-evals.md>
-§3.3). Die Konfiguration steht in den Dateien des Geräts (F</etc/nginx/nginx.conf>
-mit C<include>, Verweise in F<sites-enabled> als C<files: { link: … }>). Der Dienst
-heißt C<nginx>. Unter C<nginx> steht:
+nginx 1.22 (Debian 12) as state of a Linux device (cai-platform F<docs/entwurf-evals.md>
+§3.3). The configuration lives in the device's files (F</etc/nginx/nginx.conf>
+with C<include>, links in F<sites-enabled> as C<files: { link: … }>). The service
+is called C<nginx>. Under C<nginx>:
 
   nginx:
     conf: /etc/nginx/nginx.conf      # optional
-    initial: { <pfad>: "<text>" }    # optional: was beim Start geladen wurde, wenn die
-                                     # Datei seither (ungetestet) geaendert ist; null =
-                                     # die Datei gab es da noch nicht
-    loaded: { conf, files: { <pfad>: "<text>" } }   # vom Simulator: die geladene Konfiguration
+    initial: { <path>: "<text>" }    # optional: what was loaded at start when the
+                                     # file has changed since (untested); null =
+                                     # the file did not exist then
+    loaded: { conf, files: { <path>: "<text>" } }   # by the simulator: the loaded configuration
 
-B<Geladen ist, was beim letzten Start, Neustart oder reload galt> (samt
-Zertifikaten und Schlüsseln); eine geänderte Datei wirkt erst danach. Ein
-reload mit kaputter Konfiguration scheitert, nginx läuft mit der alten weiter;
-ein Neustart mit kaputter Konfiguration lässt nginx aus.
+B<Loaded is what applied at the last start, restart or reload> (including
+certificates and keys); a changed file only takes effect after that. A
+reload with a broken configuration fails, nginx keeps running with the old one;
+a restart with a broken configuration leaves nginx stopped.
 
-B<Prüfung> wie C<nginx -t>: Syntax (C<;>, Klammern), unbekannte Direktiven,
-Kontext (C<is not allowed here>), Anzahl der Argumente, doppelte Direktiven und
-Locations, C<listen>-Parameter, doppelter C<default_server>, Upstream-Namen
-(C<host not found in upstream>), C<proxy_pass> mit URI in Regex-Locations,
-unbekannte Variablen, Zertifikat und Schlüssel (L<Langertha::Holmgang::Sim::Linux::Pki>:
-ladbar, passend, verschlüsselt nur mit C<ssl_password_file>), Warnung bei
-doppeltem Servernamen.
+B<Check> like C<nginx -t>: syntax (C<;>, braces), unknown directives,
+context (C<is not allowed here>), number of arguments, duplicate directives and
+locations, C<listen> parameters, duplicate C<default_server>, upstream names
+(C<host not found in upstream>), C<proxy_pass> with URI in regex locations,
+unknown variables, certificate and key (L<Langertha::Holmgang::Sim::Linux::Pki>:
+loadable, matching, encrypted only with C<ssl_password_file>), warning on
+duplicate server name.
 
-B<Anfragen> (L</serve>): Socket aus C<listen> (Adresse, Port, C<ssl>,
-C<default_server>), Server nach C<server_name> (exakt, C<*.>-Platzhalter,
-Regex, sonst Vorgabe-Server), Zertifikat nach SNI, C<ssl_protocols>,
-C<ssl_verify_client> mit C<ssl_client_certificate>; Locations wie nginx (C<=>,
-längstes Präfix, C<^~>, Regex in Reihenfolge, verschachtelt, C<@name>);
-C<rewrite> (last, break, redirect, permanent), C<return> (auch 444), C<if> mit
-einfachen Bedingungen, C<set>, C<map>; C<allow>/C<deny>, C<client_max_body_size>;
-C<proxy_pass> (URI-Teil ersetzt das Präfix der Location, C<upstream> mit
-C<backup>/C<down>, nächster Server bei Fehler oder Zeitüberschreitung, 502/504),
-C<proxy_set_header> (Vorgabe C<Host $proxy_host>, C<Connection close>),
-C<proxy_http_version> (WebSocket braucht 1.1), C<proxy_read_timeout>;
-C<add_header> (nur 2xx/3xx ohne C<always>); C<root>/C<alias>/C<index>/C<try_files>
-mit den Dateien des Geräts. Wie in nginx ersetzen C<proxy_set_header>,
-C<add_header> und C<allow>/C<deny> einer Ebene B<alle> der höheren Ebene.
+B<Requests> (L</serve>): socket from C<listen> (address, port, C<ssl>,
+C<default_server>), server by C<server_name> (exact, C<*.> wildcard,
+regex, otherwise default server), certificate by SNI, C<ssl_protocols>,
+C<ssl_verify_client> with C<ssl_client_certificate>; locations as in nginx (C<=>,
+longest prefix, C<^~>, regex in order, nested, C<@name>);
+C<rewrite> (last, break, redirect, permanent), C<return> (also 444), C<if> with
+simple conditions, C<set>, C<map>; C<allow>/C<deny>, C<client_max_body_size>;
+C<proxy_pass> (URI part replaces the location's prefix, C<upstream> with
+C<backup>/C<down>, next server on error or timeout, 502/504),
+C<proxy_set_header> (default C<Host $proxy_host>, C<Connection close>),
+C<proxy_http_version> (WebSocket needs 1.1), C<proxy_read_timeout>;
+C<add_header> (only 2xx/3xx without C<always>); C<root>/C<alias>/C<index>/C<try_files>
+with the device's files. As in nginx, C<proxy_set_header>,
+C<add_header> and C<allow>/C<deny> on one level replace B<all> of those of the higher level.
 
-Eingebaut (falls nicht als Datei da): F</etc/nginx/mime.types>,
+Built in (unless present as a file): F</etc/nginx/mime.types>,
 F</etc/nginx/proxy_params>, F</etc/nginx/fastcgi_params>.
 
 =cut
@@ -366,9 +366,9 @@ sub _loc_args {
 
 =func parse
 
-  my $cfg = parse( reader => sub { $text_or_undef }, glob => sub { @pfade }, conf => '/etc/nginx/nginx.conf',
+  my $cfg = parse( reader => sub { $text_or_undef }, glob => sub { @paths }, conf => '/etc/nginx/nginx.conf',
       state => $state, dev => $dev );
-  # { ok => 1, servers, upstreams, maps, http, files, conf_files, warnings } oder { error => "…" }
+  # { ok => 1, servers, upstreams, maps, http, files, conf_files, warnings } or { error => "…" }
 
 =cut
 
@@ -619,8 +619,8 @@ sub _state { my ($ctx) = @_; return $ctx && $ctx->{state} ? $ctx->{state} : {} }
 
 =func ensure
 
-Erfasst beim ersten Befehl die geladene Konfiguration (laufender Dienst:
-die Dateien, bzw. C<nginx.initial>).
+Captures the loaded configuration on the first command (running service:
+the files, or C<nginx.initial>).
 
 =cut
 
@@ -637,8 +637,8 @@ sub ensure {
 
 =func service
 
-C<systemctl start|restart|reload nginx>: lädt die Konfiguration; Rückgabe
-C<undef> oder die Meldung von nginx.
+C<systemctl start|restart|reload nginx>: loads the configuration; returns
+C<undef> or nginx's message.
 
 =cut
 
@@ -653,8 +653,8 @@ sub service {
 
 =func nginx
 
-Der Befehl C<nginx> (C<-t>, C<-T>, C<-q>, C<-s reload|stop|quit|reopen>,
-C<-v>, C<-V>, C<-c datei>, ohne Argument: starten).
+The command C<nginx> (C<-t>, C<-T>, C<-q>, C<-s reload|stop|quit|reopen>,
+C<-v>, C<-V>, C<-c file>, without arguments: start).
 
 =cut
 
@@ -777,8 +777,8 @@ sub _name_match {
 
 =func serve
 
-Antwort von nginx auf eine Anfrage (s. L<Langertha::Holmgang::Sim::Linux::Http/request>),
-oder C<undef>, wenn auf Adresse und Port kein laufendes nginx lauscht.
+nginx's answer to a request (see L<Langertha::Holmgang::Sim::Linux::Http/request>),
+or C<undef> when no running nginx listens on the address and port.
 
 =cut
 

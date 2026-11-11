@@ -11,60 +11,60 @@ use Langertha::Holmgang::Sim::Linux ();
 
 our $VERSION = '0.001';
 
-=head1 SYNOPSIS
+=synopsis
 
-  # aus dem Linux-Simulator: mysql/mariadb, Wirkung von Start/Neustart des Dienstes
+  # from the Linux simulator: mysql/mariadb, effect of starting/restarting the service
   my ( $out, $ok ) = Langertha::Holmgang::Sim::Linux::MariaDB::client( $dev, \@argv, $ctx, $stdin, $os_user );
   Langertha::Holmgang::Sim::Linux::MariaDB::service_event( $dev, 'restart' );
 
-=head1 DESCRIPTION
+=description
 
-Ein MariaDB-Server (Debian 12, MariaDB 10.11) auf einem Gerät vom Typ C<linux>
-(cai-platform F<docs/entwurf-evals.md> §3.3.1). Der Zustand steht unter C<mariadb> des
-Geräts, die Optionsdateien unter C<files>, der Dienst unter C<services> (Name in
+A MariaDB server (Debian 12, MariaDB 10.11) on a device of type C<linux>
+(cai-platform F<docs/entwurf-evals.md> §3.3.1). The state lives under C<mariadb> of
+the device, the option files under C<files>, the service under C<services> (name in
 C<mariadb.service>):
 
   mariadb:
     service:   mariadb
     conf:      [ /etc/mysql/mariadb.conf.d/50-server.cnf, /etc/mysql/mariadb.conf.d/90-tuning.cnf ]
-    variables: { max_connections: "151", … }      # laufende Werte; ohne: aus den Dateien
+    variables: { max_connections: "151", … }      # running values; without: from the files
     status:    { Threads_connected: 152, Max_used_connections: 152, … }
-    users:     { "root@localhost": { auth: unix_socket }, "app@10.20.0.%": { password: geheim, grants: [ "ALL PRIVILEGES ON `shop`.*" ] } }
+    users:     { "root@localhost": { auth: unix_socket }, "app@10.20.0.%": { password: secret, grants: [ "ALL PRIVILEGES ON `shop`.*" ] } }
     databases: [ shop ]
     processlist: [ { id: 1001, user: app, host: "10.20.0.21:41234", db: shop, command: Sleep, time: 12, count: 150 } ]
-    binlogs:   [ { name: mariadb-bin.000410, size: 1073741824 }, … ]   # Dateien unter datadir mit size
-    replicas:  { db2: mariadb-bin.000412 }        # Primaer: Binlog, das ein Replikat gerade liest
+    binlogs:   [ { name: mariadb-bin.000410, size: 1073741824 }, … ]   # files under datadir with size
+    replicas:  { db2: mariadb-bin.000412 }        # primary: binlog a replica is reading right now
     replica:   { master_host: 10.20.0.31, io: "Yes", sql: "No", last_errno: 1062, last_error: "…", skip: 1,
-                 behind: 14400, behind_parallel: 30 }   # Rueckstand; mit slave_parallel_threads >= 2 nach START
-    tables:    { shop.bestellungen: { columns: [ id, kunde ], rows: [ [ 77120, K-1 ] ] } }   # nur zum Lesen
+                 behind: 14400, behind_parallel: 30 }   # lag; with slave_parallel_threads >= 2 after START
+    tables:    { shop.orders: { columns: [ id, customer ], rows: [ [ 77120, K-1 ] ] } }   # read only
 
 B<Client> C<mysql>/C<mariadb> (C<-u>, C<-p…>/C<--password=…>, C<-h>, C<-P>,
-C<-D>, C<-e>/C<--execute>, C<-N>, C<-B>, C<-s>, C<-t>, C<-E>, SQL auf stdin;
-C<root> über C<unix_socket>, wenn der Aufrufer root ist), C<mysqladmin
+C<-D>, C<-e>/C<--execute>, C<-N>, C<-B>, C<-s>, C<-t>, C<-E>, SQL on stdin;
+C<root> via C<unix_socket> when the caller is root), C<mysqladmin
 variables|status|processlist|ping|flush-privileges>. B<SQL>: C<SHOW [GLOBAL]
 VARIABLES|STATUS [LIKE …]>, C<SELECT @@[global.]var, …>, C<SET [GLOBAL]
-var = wert> (nur dynamische; sonst Fehler 1238), C<SHOW [FULL] PROCESSLIST>,
+var = value> (dynamic ones only; otherwise error 1238), C<SHOW [FULL] PROCESSLIST>,
 C<KILL id>, C<SHOW DATABASES>, C<SELECT … FROM mysql.user|mysql.db [WHERE …]>,
-C<SELECT 1>, C<SELECT … FROM db.tabelle [WHERE …]> (nur C<tables>), C<SELECT … FROM
-information_schema.processlist [WHERE …] [ORDER BY …] [LIMIT n]> (WHERE mit C<=>, C<LIKE>,
-C<IN (…)>, Zahlvergleichen, C<IS [NOT] NULL>, verbunden mit C<AND>), C<SHOW CREATE USER>, C<SHOW
+C<SELECT 1>, C<SELECT … FROM db.table [WHERE …]> (only C<tables>), C<SELECT … FROM
+information_schema.processlist [WHERE …] [ORDER BY …] [LIMIT n]> (WHERE with C<=>, C<LIKE>,
+C<IN (…)>, numeric comparisons, C<IS [NOT] NULL>, joined with C<AND>), C<SHOW CREATE USER>, C<SHOW
 GRANTS [FOR …]>, C<CREATE USER>, C<DROP USER>, C<ALTER USER … IDENTIFIED BY>,
-C<GRANT>/C<REVOKE> (Rechte auf C<*.*>, C<db.*>, C<db.tabelle>), C<FLUSH
+C<GRANT>/C<REVOKE> (privileges on C<*.*>, C<db.*>, C<db.table>), C<FLUSH
 PRIVILEGES|LOGS|BINARY LOGS>, C<SHOW BINARY|MASTER LOGS>, C<SHOW MASTER STATUS>,
 C<PURGE BINARY|MASTER LOGS TO|BEFORE …>, C<SHOW SLAVE|REPLICA STATUS>,
 C<STOP|START SLAVE|REPLICA [IO_THREAD|SQL_THREAD]>, C<SET GLOBAL sql_slave_skip_counter = N>,
-C<SET GLOBAL slave_parallel_threads|mode> (nur bei angehaltenem SQL-Thread, sonst 1198); Abschluss
-C<;> oder C<\G> (senkrecht). Anderes ist eine B<Lücke der Simulation>.
+C<SET GLOBAL slave_parallel_threads|mode> (only with the SQL thread stopped, otherwise 1198); terminated by
+C<;> or C<\G> (vertical). Anything else is a B<gap in the simulation>.
 
-B<Wirkung>: Ein Start oder Neustart liest die Optionsdateien (Abschnitte
-C<[mysqld]>, C<[mariadb]>, C<[server]>, C<[mariadb-10.11]>); eine unbekannte
-Variable oder ein falscher Wert verhindert den Start (C<conf_error>). Ein
-Neustart beendet alle Verbindungen. Ist C<Threads_connected> so hoch wie
-C<max_connections>, bekommt nur noch ein Konto mit C<SUPER> (root) eine
-Verbindung (Fehler 1040). Ein Binlog, das ein Replikat noch liest, zu löschen
-(C<PURGE> darüber hinaus oder C<rm>), bricht das Replikat (C<replicas>).
+B<Effect>: A start or restart reads the option files (sections
+C<[mysqld]>, C<[mariadb]>, C<[server]>, C<[mariadb-10.11]>); an unknown
+variable or a wrong value prevents the start (C<conf_error>). A
+restart ends all connections. When C<Threads_connected> is as high as
+C<max_connections>, only an account with C<SUPER> (root) still gets a
+connection (error 1040). Deleting a binlog a replica is still reading
+(C<PURGE> beyond it, or C<rm>) breaks the replica (C<replicas>).
 
-Reine Funktionen auf dem Zustand, neutral.
+Pure functions on the state, neutral.
 
 =cut
 
@@ -163,11 +163,11 @@ sub _conf_files { my ($dev) = @_; my $c = $dev->{mariadb}{conf} // ['/etc/mysql/
 
 =func parse_conf
 
-  my ( $werte, $datei, $zeile, $fehler ) = parse_conf( $dev );
+  my ( $values, $file, $line, $error ) = parse_conf( $dev );
 
-Liest die Optionsdateien des Servers (C<mariadb.conf>) über die Vorgaben: die
-Variablen (wie C<SHOW VARIABLES> sie zeigt) oder C<undef> mit Datei, Zeile und
-Fehler.
+Reads the server's option files (C<mariadb.conf>) over the defaults: the
+variables (as C<SHOW VARIABLES> shows them) or C<undef> with file, line and
+error.
 
 =cut
 
@@ -198,7 +198,7 @@ sub parse_conf {
 
 =func conf_error
 
-  my $lines = conf_error( $dev );   # undef oder [ Journalzeilen ]
+  my $lines = conf_error( $dev );   # undef or [ journal lines ]
 
 =cut
 
@@ -842,7 +842,7 @@ sub _check_replicas {
 
 =func file_removed
 
-  file_removed( $dev, $pfad );   # rm im Linux-Simulator: Binlog weg?
+  file_removed( $dev, $path );   # rm in the Linux simulator: binlog gone?
 
 =cut
 

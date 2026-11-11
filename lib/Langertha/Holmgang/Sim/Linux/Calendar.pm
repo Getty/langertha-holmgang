@@ -9,49 +9,49 @@ use Time::Local ();
 
 our $VERSION = '0.001';
 
-=head1 SYNOPSIS
+=synopsis
 
   use Langertha::Holmgang::Sim::Linux::Calendar ();
   my $c = Langertha::Holmgang::Sim::Linux::Calendar::parse('Mon-Fri 06:00');
-  # { normalized => 'Mon..Fri *-*-* 06:00:00', tz => undef, … } oder undef
-  my $t = Langertha::Holmgang::Sim::Linux::Calendar::next_elapse( $c, $jetzt );   # Epoche
+  # { normalized => 'Mon..Fri *-*-* 06:00:00', tz => undef, … } or undef
+  my $t = Langertha::Holmgang::Sim::Linux::Calendar::next_elapse( $c, $now );   # epoch
   my $s = Langertha::Holmgang::Sim::Linux::Calendar::format_local($t);           # "Wed 2026-10-21 06:00:00 CEST"
 
-=head1 DESCRIPTION
+=description
 
-Bildet die Kalenderausdrücke von systemd (C<systemd.time(7)>) für
-C<OnCalendar=> und C<systemd-analyze calendar> nach, abgeglichen mit dem echten
-C<systemd-analyze calendar> (systemd 257; die Tabelle steht in
+Models systemd's calendar expressions (C<systemd.time(7)>) for
+C<OnCalendar=> and C<systemd-analyze calendar>, checked against the real
+C<systemd-analyze calendar> (systemd 257; the table is in
 F<t/sim/linux_timer.t>):
 
 =over
 
-=item * Kurzformen C<minutely>, C<hourly>, C<daily>, C<weekly>, C<monthly>,
-C<quarterly>, C<semiannually>, C<yearly>/C<annually> (Groß/klein egal, auch mit
-Zeitzone dahinter).
+=item * Shorthands C<minutely>, C<hourly>, C<daily>, C<weekly>, C<monthly>,
+C<quarterly>, C<semiannually>, C<yearly>/C<annually> (case-insensitive, also
+followed by a time zone).
 
-=item * Wochentage am Anfang: C<Mon> oder C<Monday> (Groß/klein egal), Listen mit
-C<,>, Bereiche mit C<..> oder C<->; ein umgekehrter Bereich (C<Fri..Mon>) ist
-ungültig. Normalform wie systemd: Läufe ab drei Tagen als C<a..b>, zwei Tage als
-C<a,b>, alle sieben Tage entfallen.
+=item * Weekdays at the start: C<Mon> or C<Monday> (case-insensitive), lists
+with C<,>, ranges with C<..> or C<->; a reversed range (C<Fri..Mon>) is
+invalid. Normal form as systemd: runs of three or more days as C<a..b>, two
+days as C<a,b>, all seven days are dropped.
 
-=item * Datum C<J-M-T> bzw. C<M-T>, letzter Tag mit C<~> (C<*-02~01>); zweistellige
-Jahre sind 20xx. Uhrzeit C<H:M[:S]>, Sekunden auch mit Nachkommastellen. Jedes
-Feld: C<*>, Zahl, Liste, Bereich C<a..b>, Schritt C<a/n> bzw. C<a..b/n>
-(C</1> nach einem Bereich entfällt in der Normalform).
+=item * Date C<Y-M-D> or C<M-D>, last day with C<~> (C<*-02~01>); two-digit
+years are 20xx. Time C<H:M[:S]>, seconds also with a fraction. Every field:
+C<*>, number, list, range C<a..b>, step C<a/n> or C<a..b/n> (C</1> after a
+range is dropped in the normal form).
 
-=item * Zeitzone am Ende: C<UTC> (Groß/klein egal), C<GMT>, C<Etc/UTC>,
-C<Etc/GMT>, die Abkürzungen der Ortszeit (C<CET>, C<CEST>) und die Namen in
-C<%ZONE> (Europa, USA, einige in Asien).
-Unbekannte Namen sind ungültig.
+=item * Time zone at the end: C<UTC> (case-insensitive), C<GMT>, C<Etc/UTC>,
+C<Etc/GMT>, the abbreviations of local time (C<CET>, C<CEST>) and the names
+in C<%ZONE> (Europe, USA, some in Asia).
+Unknown names are invalid.
 
 =back
 
-Ungültig ist alles andere, z. B. C<daily 02:00>, C<02:00 daily>, C<Mo..Fr>,
+Everything else is invalid, e.g. C<daily 02:00>, C<02:00 daily>, C<Mo..Fr>,
 C<Mon..Fri 06:00,Sat 08:00>, C<24:00>, C<30 2 * * *>, C<now>.
 
-Die Ortszeit der simulierten Server ist Europe/Berlin (MEZ/MESZ nach der
-EU-Regel). Zeitzonen mit Sommerzeit rechnen nach der EU- bzw. US-Regel.
+The local time of the simulated servers is Europe/Berlin (CET/CEST by the EU
+rule). Time zones with daylight saving time follow the EU or the US rule.
 
 =cut
 
@@ -147,12 +147,12 @@ sub _weekdays {
 
 =func parse
 
-  my $c = parse($ausdruck);
+  my $c = parse($expression);
 
-Prüft einen Kalenderausdruck. Rückgabe C<undef> (systemd nimmt ihn nicht an)
-oder ein Hash mit C<normalized> (Normalform wie C<systemd-analyze calendar>),
-C<tz> (Name der Zeitzone oder C<undef> für die Ortszeit), C<utc> (1 bei einer
-UTC-Zone) und den Wertemengen der Felder.
+Checks a calendar expression. Returns C<undef> (systemd does not accept it)
+or a hash with C<normalized> (normal form as C<systemd-analyze calendar>),
+C<tz> (name of the time zone or C<undef> for local time), C<utc> (1 for a UTC
+zone) and the value sets of the fields.
 
 =cut
 
@@ -232,9 +232,9 @@ sub _dim {
 
 =func offset
 
-  my $sek = offset( $epoche [, $zone] );   # Europe/Berlin: 7200 (MESZ) oder 3600 (MEZ)
+  my $sec = offset( $epoch [, $zone] );   # Europe/Berlin: 7200 (CEST) or 3600 (CET)
 
-Versatz einer Zeitzone (Vorgabe Europe/Berlin) zur UTC-Epoche.
+Offset of a time zone (default Europe/Berlin) at a UTC epoch.
 
 =cut
 
@@ -253,10 +253,10 @@ sub offset {
 
 =func next_elapse
 
-  my $t = next_elapse( $c, $nach );
+  my $t = next_elapse( $c, $after );
 
-Der erste Zeitpunkt (Epoche) nach C<$nach>, auf den der Ausdruck passt;
-C<undef>, wenn es in den nächsten fünf Jahren keinen gibt.
+The first point in time (epoch) after C<$after> that the expression matches;
+C<undef> when there is none in the next five years.
 
 =cut
 
@@ -292,9 +292,9 @@ sub next_elapse {
 
 =func format_local
 
-  format_local( $t );                # "Wed 2026-10-21 06:00:00 CEST" (Ortszeit)
+  format_local( $t );                # "Wed 2026-10-21 06:00:00 CEST" (local time)
   format_local( $t, 1 );             # "Wed 2026-10-21 04:00:00 UTC"
-  format_local( $t, 'Asia/Tokyo' );  # in einer anderen Zone
+  format_local( $t, 'Asia/Tokyo' );  # in another zone
 
 =cut
 
@@ -310,7 +310,7 @@ sub format_local {
 
 =func left
 
-  left( $sekunden );   # "13h", "1 day 2h", "45min" — wie systemd ("… left")
+  left( $seconds );   # "13h", "1 day 2h", "45min" — as systemd ("… left")
 
 =cut
 

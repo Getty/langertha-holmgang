@@ -7,35 +7,36 @@ use utf8;
 
 our $VERSION = '0.001';
 
-=head1 SYNOPSIS
+=synopsis
 
-  # aus dem Linux-Simulator
+  # from the Linux simulator
   my ( $out, $ok, $gap ) = Langertha::Holmgang::Sim::Linux::RedisService::cli( $dev, \@argv, $host );
   my ( $out, $ok, $gap ) = Langertha::Holmgang::Sim::Linux::RedisService::server( $dev, \@argv );
 
-=head1 DESCRIPTION
+=description
 
-Für Geräte ohne den Redis-Zustand C<redis> (den bildet L<Langertha::Holmgang::Sim::Linux::Redis>
-nach); dann steht alles, was Redis gerade benutzt, im Dienst selbst.
+For devices without the Redis state C<redis> (that one is modelled by
+L<Langertha::Holmgang::Sim::Linux::Redis>); then everything Redis currently
+uses is in the service itself.
 
-Redis eines Debian-12-Geräts vom Typ C<linux> (cai-platform F<docs/entwurf-evals.md> §3.3.1):
-der Dienst C<redis-server> mit C<config> (F</etc/redis/redis.conf>); was er
-gerade benutzt, steht in seinem C<running> (eingelesen bei Start/Neustart).
+Redis of a Debian 12 device of type C<linux> (cai-platform F<docs/entwurf-evals.md> §3.3.1):
+the service C<redis-server> with C<config> (F</etc/redis/redis.conf>); what it
+currently uses is in its C<running> (read at start/restart).
 
   services:
     redis-server: { active: true, config: /etc/redis/redis.conf, running: "bind 127.0.0.1 -::1\nrequirepass …\n" }
 
-B<redis-cli> C<[-h host] [-p port] [-a passwort|--pass passwort] [--user u]
-[--no-auth-warning] [--raw] befehl …>: Die Verbindung gelingt nur, wenn Redis
-läuft und auf der Adresse lauscht (letzte C<bind>-Zeile des laufenden Zustands;
-ohne C<bind> alle Adressen; C<-> vor einer Adresse heißt „falls vorhanden“; die
-eigenen Adressen des Geräts und 127.0.0.1/::1). Mit C<requirepass> braucht jeder
-Befehl das richtige Passwort (sonst C<NOAUTH>, ein falsches gibt C<WRONGPASS>);
-ohne Passwort weist C<protected-mode yes> Verbindungen von außen ab. Ausgabe wie
-ohne Terminal (über SSH): roh, Fehler ohne „(error)“. Nachgebildet sind
-C<PING>, C<CONFIG GET muster> und C<AUTH>; andere Befehle sind eine Lücke der
-Simulation. B<redis-server> C<-v|--version>; Optionen, die keine Direktive sind
-(z. B. C<--test-config>), enden wie bei Redis mit C<FATAL CONFIG FILE ERROR>.
+B<redis-cli> C<[-h host] [-p port] [-a password|--pass password] [--user u]
+[--no-auth-warning] [--raw] command …>: the connection succeeds only when Redis
+is running and listening on the address (last C<bind> line of the running state;
+without C<bind> all addresses; C<-> before an address means "if present"; the
+device's own addresses and 127.0.0.1/::1). With C<requirepass> every command
+needs the right password (else C<NOAUTH>, a wrong one gives C<WRONGPASS>);
+without a password C<protected-mode yes> rejects connections from outside. Output as
+without a terminal (over SSH): raw, errors without "(error)". Modelled are
+C<PING>, C<CONFIG GET pattern> and C<AUTH>; other commands are a gap in the
+simulation. B<redis-server> C<-v|--version>; options that are not a directive
+(e.g. C<--test-config>) end like in Redis with C<FATAL CONFIG FILE ERROR>.
 
 =cut
 
@@ -43,7 +44,7 @@ sub _svc { my ($dev) = @_; return ( $dev->{services} || {} )->{'redis-server'} }
 
 =func installed
 
-Wahr, wenn das Gerät einen Dienst C<redis-server> hat.
+True when the device has a service C<redis-server>.
 
 =cut
 
@@ -85,7 +86,7 @@ sub _listens {
 
 =func cli
 
-C<redis-cli …>; Rückgabe C<( $ausgabe, $ok, $luecke )>.
+C<redis-cli …>; returns C<( $output, $ok, $gap )>.
 
 =cut
 
@@ -150,7 +151,7 @@ sub cli {
 
 =func server
 
-C<redis-server -v|--version>; andere Optionen ohne Direktive: Fehler wie Redis.
+C<redis-server -v|--version>; other options without a directive: error like Redis.
 
 =cut
 

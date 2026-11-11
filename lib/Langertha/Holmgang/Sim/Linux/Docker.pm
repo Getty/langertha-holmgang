@@ -12,87 +12,86 @@ use YAML::XS ();
 
 our $VERSION = '0.001';
 
-=head1 SYNOPSIS
+=synopsis
 
-  # aus dem Linux-Simulator: docker auf einem Geraet mit docker-Zustand
+  # from the Linux simulator: docker on a device with docker state
   my ( $out, $ok ) = Langertha::Holmgang::Sim::Linux::Docker::docker( $dev, \@argv, $ctx, $stdin );
 
-=head1 DESCRIPTION
+=description
 
-Docker Engine 26 mit dem Compose-Plugin v2 als Zustand eines Linux-Geräts
-(cai-platform F<docs/entwurf-evals.md> §3.3). Die Compose-Dateien sind gewöhnliche Dateien
-des Geräts (C<files>); was läuft, steht unter C<docker>:
+Docker Engine 26 with the Compose plugin v2 as state of a Linux device
+(cai-platform F<docs/entwurf-evals.md> §3.3). The Compose files are ordinary files
+of the device (C<files>); what runs is under C<docker>:
 
   docker:
     projects:
-      shop: { dir: /srv/shop }        # compose.yaml|compose.yml|docker-compose.y(a)ml und .env dort
-      # running_files: { /srv/shop/compose.yaml: "…" }  # womit der laufende Stand gestartet wurde
-      # stopped: true                 # Projekt laeuft nicht
-    images:                           # lokal vorhandene Images und ihr Verhalten (nur Simulation)
+      shop: { dir: /srv/shop }        # compose.yaml|compose.yml|docker-compose.y(a)ml and .env there
+      # running_files: { /srv/shop/compose.yaml: "…" }  # what the running state was started with
+      # stopped: true                 # project is not running
+    images:                           # images present locally and their behaviour (simulation only)
       "postgres:16.4":
         listens: [5432]
-        user: "999"                   # uid des Prozesses (Schreibrechte auf Bind-Mounts)
-        data_path: /var/lib/postgresql/data   # wo Daten liegen (data der Einhaengung dort)
-        warmup: true                  # nimmt erst nach dem Hochfahren Verbindungen an
-        tools: [pg_isready, sh]       # fuer Healthchecks und exec
-        needs:                        # Startbedingungen; die erste verletzte beendet mit Exit 1
+        user: "999"                   # uid of the process (write access to bind mounts)
+        data_path: /var/lib/postgresql/data   # where data lives (data of the mount there)
+        warmup: true                  # accepts connections only after starting up
+        tools: [pg_isready, sh]       # for healthchecks and exec
+        needs:                        # start conditions; the first one violated exits with 1
           - env: POSTGRES_PASSWORD
             log: [ "Error: Database is uninitialized and superuser password is not specified." ]
-          - connect: "${DB_HOST}:${DB_PORT:-5432}"     # Dienstname im selben Netz, laeuft, lauscht
+          - connect: "${DB_HOST}:${DB_PORT:-5432}"     # service name on the same network, running, listening
             log: [ "…" ]
-          - equals: [ "${DB_PASSWORD}", "${peer:POSTGRES_PASSWORD}" ]   # peer = Ziel des letzten connect
+          - equals: [ "${DB_PASSWORD}", "${peer:POSTGRES_PASSWORD}" ]   # peer = target of the last connect
             log: [ "…" ]
-          - writable: /data           # Einhaengung dort fuer user beschreibbar
-          - mount: /etc/app/app.yml   # Datei per Bind-Mount vorhanden
-        logs: [ "…" ]                 # wenn er laeuft
-        http: { routes: [ … ] }       # wie Sim::Http (Anwendung auf dem ersten listens-Port)
-    registry: { "registry.example.com/shop/api:2.5.0": { … } }   # ziehbar (Verhalten wie images)
-    host_ports: { "0.0.0.0:80": apache2 }                       # vom Host belegt
-    volumes: { shop_pgdata: { data: kunden-2026 } }              # benannte Volumes, Inhalt
-    # vom Simulator (beim ersten Befehl aus den Dateien abgeleitet, dann fortgeschrieben):
+          - writable: /data           # mount there writable for user
+          - mount: /etc/app/app.yml   # file present through a bind mount
+        logs: [ "…" ]                 # when it runs
+        http: { routes: [ … ] }       # like Sim::Http (application on the first listens port)
+    registry: { "registry.example.com/shop/api:2.5.0": { … } }   # pullable (behaviour like images)
+    host_ports: { "0.0.0.0:80": apache2 }                       # taken by the host
+    volumes: { shop_pgdata: { data: kunden-2026 } }              # named volumes, content
+    # by the simulator (derived from the files on the first command, then carried on):
     containers:
       shop-db-1: { project, service, image, status: running|exited|restarting|created,
                    exit_code, health: healthy|unhealthy|starting, seq, restarts,
-                   config (wirksame Dienst-Konfiguration), data, error }
+                   config (effective service configuration), data, error }
 
-Bind-Mounts mit Inhalt beschreiben Verzeichnisse des Geräts (C<dirs: {
-/srv/shop/pgdata: { data: …, owner, group, mode } }>). Ein fehlendes
-Verzeichnis legt Docker beim Start als root an (wie echt).
+Bind mounts with content describe directories of the device (C<dirs: {
+/srv/shop/pgdata: { data: …, owner, group, mode } }>). Docker creates a missing
+directory as root on start (as for real).
 
-B<Wirksame Konfiguration>: Interpolation wie Compose (C<${VAR}>, C<$VAR>,
-C<${VAR:-d}>, C<${VAR-d}>, C<${VAR:?e}>, C<$$>) aus F<.env> des Projekts
-(Anführungszeichen wie dotenv: einfache wörtlich, doppelte mit Ersetzung),
-C<env_file> (Werte wörtlich in die Umgebung des Containers), C<environment>
-(Liste oder Map), C<ports> (kurz und lang), C<volumes> (kurz und lang,
-Projekt-Volumes mit Präfix), C<networks>, C<depends_on> (Liste oder Map mit
+B<Effective configuration>: interpolation like Compose (C<${VAR}>, C<$VAR>,
+C<${VAR:-d}>, C<${VAR-d}>, C<${VAR:?e}>, C<$$>) from the project's F<.env>
+(quotes like dotenv: single literal, double with substitution),
+C<env_file> (values literal into the container's environment), C<environment>
+(list or map), C<ports> (short and long), C<volumes> (short and long,
+project volumes with prefix), C<networks>, C<depends_on> (list or map with
 C<condition>), C<healthcheck>, C<restart>, C<user>, C<profiles>,
-C<container_name>. Fehler wie Compose: YAML-Fehler mit Zeile, unbekannte
-Schlüssel (C<additional properties … not allowed>), unbekannte Dienste,
-Netze, Volumes.
+C<container_name>. Errors like Compose: YAML errors with line, unknown
+keys (C<additional properties … not allowed>), unknown services,
+networks, volumes.
 
-B<up>: Reihenfolge nach C<depends_on>; je Dienst neu erzeugt, wenn sich seine
-wirksame Konfiguration oder das Image geändert hat (sonst „Running“);
-fehlendes Image aus C<registry> ziehen (sonst C<manifest unknown>);
-Portkonflikte mit dem Host oder anderen Containern; C<service_healthy> wartet
-auf einen gesunden Healthcheck; ein Dienst, der beim Start seine
-Bedingungen nicht erfüllt, endet (C<exited>) bzw. mit Neustart-Regel
-C<restarting>; erreicht er dabei einen Dienst mit C<warmup>, der in derselben
-Runde gestartet wurde, ohne auf dessen Gesundheit zu warten, scheitert sein
-erster Start (mit Neustart-Regel läuft er danach). C<restart> startet
-Container neu, ohne Änderungen der Datei zu übernehmen; C<down -v> löscht die
-Volumes des Projekts samt Inhalt.
+B<up>: order by C<depends_on>; each service recreated when its effective
+configuration or the image has changed (otherwise "Running"); a missing image
+is pulled from C<registry> (otherwise C<manifest unknown>); port conflicts with
+the host or other containers; C<service_healthy> waits for a healthy
+healthcheck; a service that does not meet its conditions on start ends
+(C<exited>), or with a restart policy C<restarting>; when it reaches a service
+with C<warmup> that was started in the same round, without waiting for its
+health, its first start fails (with a restart policy it runs afterwards).
+C<restart> restarts containers without taking over changes to the file;
+C<down -v> deletes the project's volumes with their content.
 
-B<Befehle>: C<docker compose> (C<-f>, C<-p>, C<--project-directory>,
+B<Commands>: C<docker compose> (C<-f>, C<-p>, C<--project-directory>,
 C<--env-file>, C<--profile>) C<up -d [--force-recreate] [--no-deps]
-[--remove-orphans] [dienst…]>, C<down [-v] [--remove-orphans]>, C<ps [-a]
-[--services]>, C<logs [--tail N] [dienst…]>, C<config [-q] [--services]
-[--volumes]>, C<restart|stop|start [dienst…]>, C<pull [dienst…]>, C<exec [-T]
-dienst befehl>, C<images>, C<ls>, C<version>; C<docker ps [-a]>, C<logs>,
+[--remove-orphans] [service…]>, C<down [-v] [--remove-orphans]>, C<ps [-a]
+[--services]>, C<logs [--tail N] [service…]>, C<config [-q] [--services]
+[--volumes]>, C<restart|stop|start [service…]>, C<pull [service…]>, C<exec [-T]
+service command>, C<images>, C<ls>, C<version>; C<docker ps [-a]>, C<logs>,
 C<inspect [--format]>, C<restart|stop|start>, C<exec>, C<volume ls|inspect>,
 C<network ls>, C<images>, C<pull>, C<version>. In C<exec>: C<env>,
-C<printenv>, C<cat> (eingehängte Dateien), C<id>, C<curl>/C<wget> an andere
-Dienste, C<pg_isready>. C<up> ohne C<-d>, C<docker run>, C<build> und
-Interaktives sind B<Lücken der Simulation>.
+C<printenv>, C<cat> (mounted files), C<id>, C<curl>/C<wget> to other
+services, C<pg_isready>. C<up> without C<-d>, C<docker run>, C<build> and
+anything interactive are B<gaps of the simulation>.
 
 =cut
 
@@ -120,8 +119,8 @@ my %TOP_KEYS = map { $_ => 1 } qw( version name services networks volumes secret
 
   ensure( $dev, $host, $state );
 
-Leitet beim ersten Befehl die laufenden Container aus den Dateien ab (bzw. aus
-C<running_files>), als wäre jedes Projekt mit C<up -d> gestartet worden.
+On the first command, derives the running containers from the files (or from
+C<running_files>), as if every project had been started with C<up -d>.
 
 =cut
 
@@ -160,10 +159,10 @@ sub _file {
 
 =func parse_env
 
-  my $vars = parse_env( $text, \%vorher, \@fehlend );
+  my $vars = parse_env( $text, \%before, \@missing );
 
-Eine F<.env> wie Compose (dotenv): C<KEY=VAL>, C<export>, einfache
-Anführungszeichen wörtlich, doppelte und unquotierte mit Ersetzung.
+An F<.env> like Compose (dotenv): C<KEY=VAL>, C<export>, single quotes
+literal, double and unquoted with substitution.
 
 =cut
 
@@ -199,9 +198,9 @@ sub parse_env {
 
   my $r = interpolate( '${DB_HOST:-db}:5432', \%vars );   # { value, missing, error }
 
-Ersetzung wie Compose: C<${VAR}>, C<$VAR>, C<${VAR:-d}>, C<${VAR-d}>,
-C<${VAR:?e}>, C<${VAR:+x}>, C<$$>; C<${peer:X}> für die Umgebung des zuletzt
-erreichten Containers (nur in Bedingungen der Images).
+Substitution like Compose: C<${VAR}>, C<$VAR>, C<${VAR:-d}>, C<${VAR-d}>,
+C<${VAR:?e}>, C<${VAR:+x}>, C<$$>; C<${peer:X}> for the environment of the
+container reached last (only in conditions of the images).
 
 =cut
 
@@ -259,9 +258,9 @@ sub _interp_tree {
 
   my $m = model( $dev, dir => '/srv/shop', files => [ … ], project => 'shop', env_file => …, profiles => [ … ] );
 
-Die wirksame Konfiguration eines Projekts: C<name>, C<dir>, C<file>,
-C<services> (je Dienst normalisiert), C<networks>, C<volumes>, C<warnings>,
-C<error> (Text wie Compose).
+The effective configuration of a project: C<name>, C<dir>, C<file>,
+C<services> (normalised per service), C<networks>, C<volumes>, C<warnings>,
+C<error> (text like Compose).
 
 =cut
 
@@ -587,9 +586,9 @@ sub _order {
 
   my ( $lines, $ok, $err ) = up( $dev, $model, \%opt, $state, $host );
 
-C<docker compose up -d>: C<services> (Liste, sonst alle ohne Profil),
-C<force_recreate> (nur die gewählten Dienste), C<recreate_deps> (auch ihre
-Abhängigkeiten), C<no_deps>, C<remove_orphans>.
+C<docker compose up -d>: C<services> (list, otherwise all without a profile),
+C<force_recreate> (only the chosen services), C<recreate_deps> (their
+dependencies too), C<no_deps>, C<remove_orphans>.
 
 =cut
 
@@ -830,10 +829,10 @@ sub _expand { my ( $t, $v ) = @_; return interpolate( $t, $v )->{value} }
 
 =func lookup
 
-  my ( $name, $c ) = lookup( $docker, $von, 'db' );
+  my ( $name, $c ) = lookup( $docker, $from, 'db' );
 
-Der Container hinter einem Namen aus Sicht eines Containers: Dienstname im
-selben Projekt, Containername oder C<hostname>, nur über ein gemeinsames Netz.
+The container behind a name as seen from a container: service name in the
+same project, container name or C<hostname>, only over a shared network.
 
 =cut
 
@@ -1022,10 +1021,10 @@ sub _health {
 
   my ( $out, $ok ) = exec_line( $dev, $docker, $container, $c, 'wget -qO- http://api:8080/health' );
 
-Eine Befehlszeile im Container (Healthchecks, C<docker exec>): Ketten mit
+A command line in the container (healthchecks, C<docker exec>): chains with
 C<||>, C<&&>, C<;>; C<curl>, C<wget>, C<pg_isready>, C<env>, C<printenv>,
-C<cat>, C<id>, C<true>/C<false>/C<exit N>. Ein Programm, das das Image nicht
-hat (C<tools>), fehlt wie echt.
+C<cat>, C<id>, C<true>/C<false>/C<exit N>. A program the image does not
+have (C<tools>) is missing as for real.
 
 =cut
 
@@ -1255,8 +1254,8 @@ sub _reach {
 
   my $res = container_request( $dev, $docker, $name, $c, $url );
 
-HTTP aus einem Container an einen Dienst (oder sich selbst), Antwort wie
-L<Langertha::Holmgang::Sim::Linux::Http/respond>; C<undef>, wenn dort niemand lauscht.
+HTTP from a container to a service (or itself), response like
+L<Langertha::Holmgang::Sim::Linux::Http/respond>; C<undef> when nobody listens there.
 
 =cut
 
@@ -1280,8 +1279,8 @@ sub container_request {
 
 =func serve
 
-Antwort eines Containers, der den Port auf dem Gerät veröffentlicht, oder
-C<undef> (Vertrag von L<Langertha::Holmgang::Sim::Linux::Http/request>).
+Response of a container that publishes the port on the device, or
+C<undef> (contract of L<Langertha::Holmgang::Sim::Linux::Http/request>).
 
 =cut
 
@@ -1310,7 +1309,7 @@ sub serve {
 
 =func ss_lines
 
-Zeilen für C<ss -tlnp>: die veröffentlichten Ports laufender Container (docker-proxy).
+Lines for C<ss -tlnp>: the published ports of running containers (docker-proxy).
 
 =cut
 
@@ -1334,7 +1333,7 @@ sub ss_lines {
 
 =func docker
 
-C<docker …> auf dem Gerät (s. DESCRIPTION).
+C<docker …> on the device (see DESCRIPTION).
 
 =cut
 
@@ -1460,11 +1459,11 @@ sub _ps_row {
 
 =func gofmt
 
-  my $text = gofmt( 'table {{.Names}}\t{{.Status}}', \@zeilen );
+  my $text = gofmt( 'table {{.Names}}\t{{.Status}}', \@rows );
 
-Go-Vorlagen wie C<--format> von docker: C<{{.Feld}}>, C<{{.A.B}}>, C<{{json .X}}>,
-C<{{json .}}>, Vorsatz C<table> (Kopfzeile aus den Feldnamen), C<\t>. Unbekannte
-Felder: C<< <no value> >>.
+Go templates like docker's C<--format>: C<{{.Field}}>, C<{{.A.B}}>, C<{{json .X}}>,
+C<{{json .}}>, prefix C<table> (header line from the field names), C<\t>. Unknown
+fields: C<< <no value> >>.
 
 =cut
 

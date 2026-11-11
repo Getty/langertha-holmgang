@@ -1,5 +1,5 @@
 package Langertha::Holmgang::Sim::Linux::Postfix;
-# ABSTRACT: Postfix auf einem simulierten Linux-Server — postconf, postmap, newaliases, Warteschlange
+# ABSTRACT: Postfix on a simulated Linux server — postconf, postmap, newaliases, queue
 
 use strict;
 use warnings;
@@ -7,43 +7,43 @@ use utf8;
 
 our $VERSION = '0.001';
 
-=head1 SYNOPSIS
+=synopsis
 
-  # aus dem Linux-Simulator: postconf, postfix, postmap, postalias, newaliases, postqueue, mailq, postsuper, postcat
-  Langertha::Holmgang::Sim::Linux::Postfix::prepare( $dev );       # beim Laden des Falls
+  # from the Linux simulator: postconf, postfix, postmap, postalias, newaliases, postqueue, mailq, postsuper, postcat
+  Langertha::Holmgang::Sim::Linux::Postfix::prepare( $dev );       # when the case loads
 
-=head1 DESCRIPTION
+=description
 
-Postfix 3.7 (Debian 12, Dienst C<postfix>) auf einem Gerät vom Typ C<linux>
-(cai-platform F<docs/entwurf-evals.md> §3.3.1). F</etc/postfix/main.cf> und die Tabellen
-sind Dateien unter C<files>; der Zustand steht unter C<postfix>:
+Postfix 3.7 (Debian 12, service C<postfix>) on a device of type C<linux>
+(cai-platform F<docs/entwurf-evals.md> §3.3.1). F</etc/postfix/main.cf> and the tables
+are files under C<files>; the state lives under C<postfix>:
 
   postfix:
-    running: { relayhost: "[smtp.example.net]:587", … }   # geladene Parameter; fehlt es, liest prepare() main.cf
+    running: { relayhost: "[smtp.example.net]:587", … }   # loaded parameters; if missing, prepare() reads main.cf
     queue:
       - { id: 4F2A11C0D3, from: a@example.com, to: [ b@example.org ], size: 2311,
           time: "Tue Oct 20 08:12:01", queue: deferred,                 # deferred | hold | active
           reason: "connect to …: Connection timed out",
           deliver_when: [ { path: [ postfix, running, relayhost ], equals: "[smtp.example.net]:587" } ] }
-    delivered: [ … ]                                         # vom Simulator: zugestellte IDs
-    deleted:   [ … ]                                         # vom Simulator: gelöschte IDs
+    delivered: [ … ]                                         # by the simulator: delivered IDs
+    deleted:   [ … ]                                         # by the simulator: deleted IDs
 
-B<Befehle>: C<postconf [-n|-d|-h] [name …]>, C<postconf -e 'name = wert' …>,
+B<Commands>: C<postconf [-n|-d|-h] [name …]>, C<postconf -e 'name = value' …>,
 C<postconf -X name …>, C<postfix check|reload|status|flush|start|stop>,
-C<postmap [-q schlüssel] [typ:]datei> (baut F<datei.db> aus der Datei; Rechte
-und Eigentümer wie die Quelle), C<postalias>/C<newaliases> (F</etc/aliases.db>),
+C<postmap [-q key] [type:]file> (builds F<file.db> from the file; mode
+and owner as the source), C<postalias>/C<newaliases> (F</etc/aliases.db>),
 C<postqueue -p|-f|-i id>, C<mailq>, C<postsuper -d|-h|-H|-r id|ALL [queue]>
-(C<-> liest IDs von der Eingabe), C<postcat -q id>; C<systemctl reload|restart
-postfix> wie C<postfix reload>.
+(C<-> reads IDs from the input), C<postcat -q id>; C<systemctl reload|restart
+postfix> like C<postfix reload>.
 
-B<Wie Postfix>: C<postconf> liest und schreibt die Datei; was läuft, ändert
-erst C<postfix reload> (bzw. Neustart). Zahlen-Parameter ohne Einheit
-(C<message_size_limit = 50M> ist ein Fehler, reload scheitert:
-C<bad numerical configuration>). Ein Nachschlagen (C<postmap -q>) und die
-Zustellung lesen die gebaute F<.db>, nicht die Textdatei. C<postqueue -f>
-stellt jede zurückgestellte Nachricht zu, deren C<deliver_when> (Erwartungen
-am Zustand des Geräts wie in Regeln) hält; die übrigen (und jede ohne
-C<deliver_when>) bleiben.
+B<Like Postfix>: C<postconf> reads and writes the file; what is running only
+changes with C<postfix reload> (or a restart). Numeric parameters take no unit
+(C<message_size_limit = 50M> is an error, reload fails:
+C<bad numerical configuration>). A lookup (C<postmap -q>) and
+delivery read the built F<.db>, not the text file. C<postqueue -f>
+delivers every deferred message whose C<deliver_when> (expectations
+on the device's state as in rules) holds; the others (and every one without
+C<deliver_when>) stay.
 
 =cut
 
@@ -68,7 +68,7 @@ my %NUMERIC = map { $_ => 1 } qw( message_size_limit mailbox_size_limit header_s
 
 =func parse_main
 
-  my $p = parse_main($text);   # { name => wert } — nur gesetzte Parameter, Leerraum vereinfacht
+  my $p = parse_main($text);   # { name => value } — set parameters only, whitespace collapsed
 
 =cut
 
@@ -94,7 +94,7 @@ sub _check {
 
 =func prepare
 
-Beim Laden des Falls: C<postfix.running> aus main.cf, wenn es fehlt.
+When the case loads: C<postfix.running> from main.cf if it is missing.
 
 =cut
 
@@ -115,8 +115,8 @@ sub _reload {
 
 =func service_event
 
-Vom Linux-Simulator bei C<systemctl start|restart|reload> des Dienstes
-C<postfix>: main.cf laden; ein Fehler lässt den Befehl scheitern (C<die>).
+From the Linux simulator on C<systemctl start|restart|reload> of the service
+C<postfix>: loads main.cf; an error makes the command fail (C<die>).
 
 =cut
 
@@ -132,7 +132,7 @@ sub _running { my $s = ( $_[0]{services} || {} )->{postfix}; return $s && $s->{a
 
 =func postconf
 
-C<postconf> (s. oben).
+C<postconf> (see above).
 
 =cut
 
@@ -269,7 +269,7 @@ sub _map_arg {
 
 =func postmap
 
-C<postmap>, C<postalias>, C<newaliases> (der vierte Wert nennt das Programm).
+C<postmap>, C<postalias>, C<newaliases> (the fourth value names the program).
 
 =cut
 

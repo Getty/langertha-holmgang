@@ -12,17 +12,17 @@ use Time::Local ();
 
 our $VERSION = '0.001';
 
-=head1 SYNOPSIS
+=synopsis
 
-  # aus dem Linux-Simulator: psql, pg_lsclusters, pg_ctlcluster
+  # from the Linux simulator: psql, pg_lsclusters, pg_ctlcluster
   my ( $out, $ok ) = Langertha::Holmgang::Sim::Linux::Postgres::psql( $dev, \@argv, $ctx, $as_user );
 
-=head1 DESCRIPTION
+=description
 
-Ein PostgreSQL-Cluster (Debian 12, Version 15) auf einem Gerät vom Typ
-C<linux> (cai-platform F<docs/entwurf-evals.md> §3.3.1): der Zustand steht unter
-C<postgres> des Geräts, Konfigurationsdateien unter C<files>, der Dienst unter
-C<services> (Name in C<postgres.service>).
+A PostgreSQL cluster (Debian 12, version 15) on a device of type
+C<linux> (cai-platform F<docs/entwurf-evals.md> §3.3.1): the state lives under
+C<postgres> of the device, configuration files under C<files>, the service under
+C<services> (name in C<postgres.service>).
 
   postgres:
     service:   postgresql@15-main
@@ -31,10 +31,10 @@ C<services> (Name in C<postgres.service>).
     conf:      /etc/postgresql/15/main/postgresql.conf
     auto_conf: /var/lib/postgresql/15/main/postgresql.auto.conf
     hba:       /etc/postgresql/15/main/pg_hba.conf
-    wal:       /var/lib/postgresql/15/main/pg_wal      # Datei mit size (belegt Platz)
-    wal_base:  1G                                      # was ohne Slots bleibt
-    settings:  { max_connections: 100, fsync: "on", … }  # laufende Werte
-    hba_loaded: [ "local all postgres peer", … ]       # geladene Zeilen
+    wal:       /var/lib/postgresql/15/main/pg_wal      # file with size (takes up space)
+    wal_base:  1G                                      # what remains without slots
+    settings:  { max_connections: 100, fsync: "on", … }  # running values
+    hba_loaded: [ "local all postgres peer", … ]       # loaded lines
     roles:     { postgres: { superuser: true, login: true }, app: { login: true, password: true } }
     members:   { app_rw: [ alice ] }
     databases: { appdb: { owner: app_owner } }
@@ -44,46 +44,46 @@ C<services> (Name in C<postgres.service>).
     default_acl: [ { role: app_owner, schema: app, db: appdb, on: tables, grantee: report, privs: [SELECT] } ]
     slots:     { replica_a: { type: physical, active: true, retained: 64M } }
     activity:  [ { pid: 4001, count: 96, usename: api, datname: appdb, client_addr: 10.20.0.11, application_name: api,
-                   state: idle, host: app1, service: api } ]     # count: so viele gleiche Verbindungen ab pid
+                   state: idle, host: app1, service: api } ]     # count: this many identical connections from pid on
 
-B<Befehle>: C<psql> (C<-U>, C<-d>, C<-h>, C<-p>, C<-c> mehrfach, C<-t>,
-C<-A>, C<-x>, C<-X>, C<-q>, C<-l>; Benutzer aus C<sudo -u>/C<su>), darin SQL
-und C<\du>, C<\dp>, C<\ddp>, C<\l>, C<\dn>, C<\dt>, C<\d[+] tabelle> (Spalten aus
-C<columns>, Optionen), C<\c>, C<\conninfo>;
+B<Commands>: C<psql> (C<-U>, C<-d>, C<-h>, C<-p>, C<-c> repeatable, C<-t>,
+C<-A>, C<-x>, C<-X>, C<-q>, C<-l>; user from C<sudo -u>/C<su>), within it SQL
+and C<\du>, C<\dp>, C<\ddp>, C<\l>, C<\dn>, C<\dt>, C<\d[+] table> (columns from
+C<columns>, options), C<\c>, C<\conninfo>;
 C<pg_lsclusters>, C<pg_ctlcluster VER NAME start|stop|restart|reload|status>.
 
-B<SQL-Teilmenge>: C<SELECT> über die Sichten C<pg_stat_activity>,
+B<SQL subset>: C<SELECT> over the views C<pg_stat_activity>,
 C<pg_replication_slots>, C<pg_stat_user_tables>, C<pg_settings>,
 C<pg_roles>, C<pg_hba_file_rules>, C<pg_database> (C<datallowconn>, C<datacl>), C<pg_tables>, C<pg_class>,
-C<pg_file_settings> (jede Zeile der Dateien, C<applied>), C<pg_authid> (nur Superuser) und echte
-Tabellen (Anzahl), mit C<WHERE>, C<GROUP BY>, C<ORDER BY>, C<LIMIT> und den
-Funktionen C<count(*)>, C<pg_size_pretty>, C<pg_wal_lsn_diff>,
+C<pg_file_settings> (every line of the files, C<applied>), C<pg_authid> (superuser only) and real
+tables (row count), with C<WHERE>, C<GROUP BY>, C<ORDER BY>, C<LIMIT> and the
+functions C<count(*)>, C<pg_size_pretty>, C<pg_wal_lsn_diff>,
 C<pg_current_wal_lsn>, C<pg_terminate_backend>, C<pg_cancel_backend>,
 C<pg_drop_replication_slot>, C<pg_reload_conf>, C<current_setting>,
-C<version>, C<pg_sleep(x)> (auch C<FROM pg_sleep(x)>: ab C<log_min_duration_statement> eine
-Zeile C<LOG:  duration: … ms  statement: …> im Log des Clusters, Laufzeitspur); C<pg_settings>
-zeigt C<unit>, C<vartype>, C<boot_val>, Werte in der Grundeinheit und die gängigen
-Einstellungen mit Vorgabe (C<source> default); C<SHOW>, C<ALTER SYSTEM SET|RESET>, C<CHECKPOINT>, C<VACUUM
+C<version>, C<pg_sleep(x)> (also C<FROM pg_sleep(x)>: from C<log_min_duration_statement> on, a
+line C<LOG:  duration: … ms  statement: …> in the cluster's log, a runtime trace); C<pg_settings>
+shows C<unit>, C<vartype>, C<boot_val>, values in the base unit and the common
+settings with their default (C<source> default); C<SHOW>, C<ALTER SYSTEM SET|RESET>, C<CHECKPOINT>, C<VACUUM
 [FULL] [ANALYZE]>, C<ANALYZE>, C<ALTER TABLE … SET|RESET (…)>, C<CREATE|ALTER|DROP
-ROLE/USER>, C<GRANT>/C<REVOKE> (Tabellen, alle Tabellen eines Schemas,
-Schema, Datenbank, Rollen), C<ALTER DEFAULT PRIVILEGES [FOR ROLE r] [IN SCHEMA
+ROLE/USER>, C<GRANT>/C<REVOKE> (tables, all tables of a schema,
+schema, database, roles), C<ALTER DEFAULT PRIVILEGES [FOR ROLE r] [IN SCHEMA
 s] GRANT|REVOKE … ON TABLES>, C<DROP TABLE|DATABASE|SCHEMA>, C<TRUNCATE>,
-C<DELETE FROM> (verändern den Zustand — die Regeln sehen es), C<CREATE [UNIQUE] INDEX
-[CONCURRENTLY] [name] ON tabelle [USING methode] (spalten)> und C<DROP INDEX> (Liste
-C<indexes> der Tabelle: C<name>, C<columns>, C<method>, C<unique>). Was darüber
-hinausgeht, ist eine B<Lücke der Simulation> (neutrale Antwort).
+C<DELETE FROM> (change the state — the rules see it), C<CREATE [UNIQUE] INDEX
+[CONCURRENTLY] [name] ON table [USING method] (columns)> and C<DROP INDEX> (list
+C<indexes> of the table: C<name>, C<columns>, C<method>, C<unique>). Anything
+beyond that is a B<simulation gap> (neutral answer).
 
-B<Wirkung>: C<reload> (C<systemctl reload>, C<pg_ctlcluster … reload>,
-C<SELECT pg_reload_conf()>) liest C<postgresql.conf>, C<postgresql.auto.conf>
-und C<pg_hba.conf> neu; Einstellungen mit Kontext C<postmaster>
-(C<max_connections>, C<shared_buffers>, C<listen_addresses> …) wirken erst
-nach einem Neustart (C<pending_restart>). Ein Neustart beendet alle
-Verbindungen. Verbindungen prüfen Dienst, Rolle, C<pg_hba> (geladene Zeilen,
-erste passende gewinnt) und die Zahl der Verbindungen gegen
-C<max_connections>. Ein entfernter Slot gibt sein WAL beim nächsten
-C<CHECKPOINT> frei.
+B<Effect>: C<reload> (C<systemctl reload>, C<pg_ctlcluster … reload>,
+C<SELECT pg_reload_conf()>) rereads C<postgresql.conf>, C<postgresql.auto.conf>
+and C<pg_hba.conf>; settings with context C<postmaster>
+(C<max_connections>, C<shared_buffers>, C<listen_addresses> …) take effect only
+after a restart (C<pending_restart>). A restart ends all
+connections. Connections check the service, the role, C<pg_hba> (loaded lines,
+first match wins) and the number of connections against
+C<max_connections>. A dropped slot frees its WAL at the next
+C<CHECKPOINT>.
 
-Reine Funktionen auf dem Zustand, neutral.
+Pure functions on the state, neutral.
 
 =cut
 
@@ -261,11 +261,11 @@ sub _apply_config {
 
 =func service_event
 
-  service_event( $dev, $service, $verb );   # aus dem Linux-Simulator
+  service_event( $dev, $service, $verb );   # from the Linux simulator
 
-Wirkung von C<start>/C<restart>/C<reload>/C<stop> eines Dienstes auf
-PostgreSQL: der eigene Dienst liest die Konfiguration, ein Neustart beendet die
-Verbindungen; ein anderer Dienst mit C<pg_connect> verbindet sich neu.
+Effect of C<start>/C<restart>/C<reload>/C<stop> of a service on
+PostgreSQL: its own service reads the configuration, a restart ends the
+connections; another service with C<pg_connect> reconnects.
 
 =cut
 
@@ -1566,9 +1566,9 @@ sub _acl_letters {
 
   my ( $out, $ok ) = pg_lsclusters( $dev, \@argv, $ctx );
 
-Ausgabe von C<pg_lsclusters>: Kopfzeile und eine Zeile für den Cluster des
-Geräts mit Version, Name, Port und C<online>/C<down> nach dem Dienst; leer
-ohne PostgreSQL auf dem Gerät.
+Output of C<pg_lsclusters>: header line and one line for the device's cluster
+with version, name, port and C<online>/C<down> per the service; empty
+without PostgreSQL on the device.
 
 =cut
 

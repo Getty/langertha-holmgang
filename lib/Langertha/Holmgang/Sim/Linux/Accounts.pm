@@ -10,33 +10,32 @@ use Time::Local ();
 
 our $VERSION = '0.001';
 
-=head1 SYNOPSIS
+=synopsis
 
-  # aus dem Linux-Simulator
+  # from the Linux simulator
   my ( $out, $ok ) = Langertha::Holmgang::Sim::Linux::Accounts::passwd( $dev, [ '-l', 'mmeier' ] );
   Langertha::Holmgang::Sim::Linux::Accounts::set_expire( $dev, $user_entry, '1' );
 
-=head1 DESCRIPTION
+=description
 
-Konten eines Debian-12-Geräts vom Typ C<linux> (cai-platform F<docs/entwurf-evals.md>
-§3.3.1) und die sudo-Regeln aus F</etc/sudoers> samt F</etc/sudoers.d/>.
+Accounts of a Debian 12 device of type C<linux> (cai-platform F<docs/entwurf-evals.md>
+§3.3.1) and the sudo rules from F</etc/sudoers> with F</etc/sudoers.d/>.
 
   users:
     mmeier: { uid: 1004, groups: [ mmeier, sudo, docker ], shell: /bin/bash,
-              locked: false,       # Passwort gesperrt (usermod -L, passwd -l)
-              expire: 20381,       # Ablauf in Tagen seit 1970 (usermod -e, chage -E)
-              expired: true }      # vom Simulator: Ablauf am Simulationstag (20.10.2026) erreicht
+              locked: false,       # password locked (usermod -L, passwd -l)
+              expire: 20381,       # expiry in days since 1970 (usermod -e, chage -E)
+              expired: true }      # set by the simulator: expiry reached on the simulation day (2026-10-20)
 
-B<Befehle:> C<passwd -l|-u|-S|-d benutzer>, C<chage -E datum|-1|0 benutzer>,
-C<chage -l benutzer>, C<deluser benutzer gruppe> (aus der Gruppe),
-C<deluser [--remove-home] benutzer>, C<userdel [-r] benutzer> (Konto weg,
-mit C<-r> auch F</home/benutzer>), C<getent shadow>, C<visudo -c [-f datei]>
-(Syntax, Rechte 0440 und Eigentümer root jeder Quelle; Dateien in
-F</etc/sudoers.d> mit Punkt oder C<~> im Namen liest sudo nicht),
-C<sudo -l [-U benutzer]> (die Regeln, die für den Benutzer gelten). Ein
-gesperrtes Passwort hindert eine Anmeldung mit Schlüssel nicht; ein
-abgelaufenes Konto oder eine Shell C<nologin>/C<false> schon
-(L<Langertha::Holmgang::Sim::Linux::Sshd/login_denied>).
+B<Commands:> C<passwd -l|-u|-S|-d user>, C<chage -E date|-1|0 user>,
+C<chage -l user>, C<deluser user group> (out of the group),
+C<deluser [--remove-home] user>, C<userdel [-r] user> (account gone,
+with C<-r> also F</home/user>), C<getent shadow>, C<visudo -c [-f file]>
+(syntax, mode 0440 and owner root of every source; sudo does not read files in
+F</etc/sudoers.d> with a dot or C<~> in the name),
+C<sudo -l [-U user]> (the rules that apply to the user). A locked password
+does not stop a login with a key; an expired account or a C<nologin>/C<false>
+shell does (L<Langertha::Holmgang::Sim::Linux::Sshd/login_denied>).
 
 =cut
 
@@ -58,7 +57,7 @@ sub _date {
 
 =func set_expire
 
-  my $err = set_expire( $dev, $user_entry, $wert );   # Datum JJJJ-MM-TT, Tage, '' oder -1 = kein Ablauf
+  my $err = set_expire( $dev, $user_entry, $value );   # date YYYY-MM-DD, days, '' or -1 = no expiry
 
 =cut
 
@@ -84,7 +83,7 @@ sub _user { my ( $dev, $u ) = @_; return ( $dev->{users} || {} )->{ $u // '' } }
 
   my ( $out, $ok ) = passwd( $dev, \@argv );
 
-C<passwd -l|-u|-S|-d|-e benutzer>; ein interaktives Setzen gibt es nicht.
+C<passwd -l|-u|-S|-d|-e user>; there is no interactive setting.
 
 =cut
 
@@ -108,7 +107,7 @@ sub passwd {
 
   my ( $out, $ok ) = chage( $dev, \@argv );
 
-C<chage -E datum|tage|-1 benutzer> setzt den Ablauf, C<chage -l benutzer> zeigt ihn.
+C<chage -E date|days|-1 user> sets the expiry, C<chage -l user> shows it.
 
 =cut
 
@@ -157,7 +156,7 @@ sub _remove_group {
 
 =func remove_group
 
-  my ( $out, $ok ) = remove_group( $dev, $benutzer, $gruppe, $stil );   # gpasswd | deluser
+  my ( $out, $ok ) = remove_group( $dev, $user, $group, $style );   # gpasswd | deluser
 
 =cut
 
@@ -174,7 +173,7 @@ sub remove_group {
 
   my ( $out, $ok ) = deluser( $dev, \@argv );
 
-C<deluser benutzer gruppe> nimmt aus der Gruppe; C<deluser [--remove-home] benutzer> löscht das Konto.
+C<deluser user group> takes the user out of the group; C<deluser [--remove-home] user> deletes the account.
 
 =cut
 
@@ -194,7 +193,7 @@ sub deluser {
 
   my ( $out, $ok ) = userdel( $dev, \@argv );
 
-C<userdel [-r] benutzer>: Konto weg, mit C<-r> auch F</home/benutzer> und F</var/mail/benutzer>.
+C<userdel [-r] user>: account gone, with C<-r> also F</home/user> and F</var/mail/user>.
 
 =cut
 
@@ -209,7 +208,7 @@ sub userdel {
 
 =func shadow_line
 
-Eine Zeile wie F</etc/shadow> (Hash erfunden, C<!> davor bei gesperrtem Passwort).
+A line as in F</etc/shadow> (hash made up, C<!> in front for a locked password).
 
 =cut
 
@@ -268,7 +267,7 @@ sub _parse_sudoers {
 
   my ( $out, $ok ) = visudo( $dev, \@argv );
 
-C<visudo -c [-q] [-f datei]>: Syntax, Eigentümer root und Rechte 0440/0400 jeder Quelle.
+C<visudo -c [-q] [-f file]>: syntax, owner root and mode 0440/0400 of every source.
 
 =cut
 
@@ -305,9 +304,9 @@ sub visudo {
 
 =func sudo_list
 
-  my ( $out, $ok ) = sudo_list( $dev, $benutzer, $host );
+  my ( $out, $ok ) = sudo_list( $dev, $user, $host );
 
-C<sudo -l [-U benutzer]>: die Regeln aller Quellen, die für den Benutzer (oder eine seiner Gruppen) gelten.
+C<sudo -l [-U user]>: the rules of all sources that apply to the user (or one of their groups).
 
 =cut
 
@@ -334,11 +333,11 @@ sub sudo_list {
 
 =func sudo_check
 
-  my $why = sudo_check( $dev, $benutzer, $ziel, $pfad, $gefunden, \@args, $nicht_interaktiv, $host );
+  my $why = sudo_check( $dev, $user, $target, $path, $found, \@args, $non_interactive, $host );
 
-Darf ein Benutzer ohne Root-Rechte C<sudo [-u ziel] befehl> ohne Passwort? C<undef>
-heißt ja (die letzte passende Regel trägt C<NOPASSWD>); sonst die Meldung von sudo
-— ohne Terminal kann sudo kein Passwort lesen.
+May a user without root rights run C<sudo [-u target] command> without a password? C<undef>
+means yes (the last matching rule carries C<NOPASSWD>); otherwise sudo's message
+— without a terminal sudo cannot read a password.
 
 =cut
 

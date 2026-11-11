@@ -11,47 +11,47 @@ use YAML::XS ();
 
 our $VERSION = '0.001';
 
-=head1 SYNOPSIS
+=synopsis
 
-  # aus dem Linux-Simulator
-  my ( $fehler, $nachgeladen ) = Langertha::Holmgang::Sim::Linux::Monitoring::service_check( $dev, $svc, 'prometheus' );
+  # from the Linux simulator
+  my ( $error, $reloaded ) = Langertha::Holmgang::Sim::Linux::Monitoring::service_check( $dev, $svc, 'prometheus' );
   my ( $out, $ok ) = Langertha::Holmgang::Sim::Linux::Monitoring::promtool( $dev, \@argv );
   my ( $out, $ok ) = Langertha::Holmgang::Sim::Linux::Monitoring::amtool( $dev, \@argv );
   my ( $body, $status ) = Langertha::Holmgang::Sim::Linux::Monitoring::http( $dev, 'GET', 9090, '/api/v1/rules', $run );
 
-=head1 DESCRIPTION
+=description
 
-Prometheus und Alertmanager auf einem Gerät vom Typ C<linux>
-(cai-platform F<docs/entwurf-evals.md> §3.3.1). Die Dienste stehen unter C<services> mit
-mehreren Dateien in C<config> (C<running> ist dann C<{ pfad => text }>) und
-C<config_check: prometheus|alertmanager>; C<config_main> nennt die Hauptdatei.
+Prometheus and Alertmanager on a device of type C<linux>
+(cai-platform F<docs/entwurf-evals.md> §3.3.1). The services live under C<services> with
+several files in C<config> (C<running> is then C<{ path => text }>) and
+C<config_check: prometheus|alertmanager>; C<config_main> names the main file.
 
-B<Prometheus>: Die Hauptdatei muss gültiges YAML sein; C<scrape_configs> mit
-C<job_name> (eindeutig) und C<static_configs.targets> (C<host:port>);
-C<rule_files> (Muster) laden Regeldateien: C<groups> mit C<name> und C<rules>,
-jede Regel C<alert> oder C<record>, C<expr>, sonst nur C<for>, C<labels>,
-C<annotations>, C<keep_firing_for>. Ein Fehler verhindert den Start; beim
-C<reload> bleibt die alte Konfiguration und das Journal zeigt
-C<Error reloading config>. Geladene Regeldateien stehen mit in C<running>.
+B<Prometheus>: The main file must be valid YAML; C<scrape_configs> with
+C<job_name> (unique) and C<static_configs.targets> (C<host:port>);
+C<rule_files> (patterns) load rule files: C<groups> with C<name> and C<rules>,
+each rule C<alert> or C<record>, C<expr>, otherwise only C<for>, C<labels>,
+C<annotations>, C<keep_firing_for>. An error prevents the start; on
+C<reload> the old configuration stays and the journal shows
+C<Error reloading config>. Loaded rule files are part of C<running>.
 
-B<Alertmanager>: C<route> mit C<receiver>, jeder in C<route> (auch in
-C<routes>) genannte Empfänger muss unter C<receivers> stehen.
+B<Alertmanager>: C<route> with C<receiver>; every receiver named in C<route> (also in
+C<routes>) must be listed under C<receivers>.
 
-B<promtool> C<check config|rules DATEI…>, B<amtool> C<check-config DATEI> —
-Ausgabe wie die echten Werkzeuge. Was Alertmanager geladen hat, steht je
-Empfänger unter C<_routes> des Dienstes (wirksame C<repeat_interval>,
-C<group_wait>, C<group_interval>, C<group_by>; Unterrouten erben).
-B<amtool silence add|query|expire> und C<amtool alert query> (mit
-C<--alertmanager.url> oder F</etc/amtool/config.yml>; Kommentar Pflicht; Zeiten
-RFC 3339, C<--duration> als Go-Dauer, Uhr des Geräts in C<tz>, Vorgabe
-C<+02:00>): Stummschaltungen stehen unter C<silences> des Dienstes, je Eintrag mit
-C<starts>/C<ends> (UTC), C<state> (pending|active|expired) und C<covers> — welche
-der benannten Label-Sätze aus C<alert_targets> sie treffen; C<alerts> nennt die
-feuernden Alarme (C<alertname>, C<target>).
+B<promtool> C<check config|rules FILE…>, B<amtool> C<check-config FILE> —
+output like the real tools. What Alertmanager has loaded is kept per
+receiver under the service's C<_routes> (effective C<repeat_interval>,
+C<group_wait>, C<group_interval>, C<group_by>; subroutes inherit).
+B<amtool silence add|query|expire> and C<amtool alert query> (with
+C<--alertmanager.url> or F</etc/amtool/config.yml>; comment required; times
+RFC 3339, C<--duration> as a Go duration, device clock in C<tz>, default
+C<+02:00>): silences live under the service's C<silences>, each entry with
+C<starts>/C<ends> (UTC), C<state> (pending|active|expired) and C<covers> — which
+of the named label sets from C<alert_targets> they match; C<alerts> names the
+firing alerts (C<alertname>, C<target>).
 
-logrotate bildet L<Langertha::Holmgang::Sim::Linux::Logrotate> nach.
+logrotate is modelled by L<Langertha::Holmgang::Sim::Linux::Logrotate>.
 
-Reine Funktionen auf dem Zustand, neutral.
+Pure functions on the state, neutral.
 
 =cut
 
@@ -130,7 +130,7 @@ sub _check_rules {
 
 =func check_prometheus
 
-  my ( $fehler, $regeldateien, $zahl_regeln ) = check_prometheus( $dev, $pfad );
+  my ( $error, $rule_files, $rule_count ) = check_prometheus( $dev, $path );
 
 =cut
 
@@ -181,7 +181,7 @@ sub check_prometheus {
 
 =func check_alertmanager
 
-  my $fehler = check_alertmanager( $dev, $pfad );
+  my $error = check_alertmanager( $dev, $path );
 
 =cut
 
@@ -207,7 +207,7 @@ sub check_alertmanager {
 
 =func service_check
 
-  my ( $journalzeilen, $nachgeladen ) = service_check( $dev, $svc, 'prometheus'|'alertmanager' );
+  my ( $journal_lines, $reloaded ) = service_check( $dev, $svc, 'prometheus'|'alertmanager' );
 
 =cut
 
@@ -231,14 +231,14 @@ sub service_check {
 
 =func http
 
-  my ( $body, $status ) = http( $dev, 'GET'|'POST', $port, $pfad, $run );
+  my ( $body, $status ) = http( $dev, 'GET'|'POST', $port, $path, $run );
 
-Die HTTP-Schnittstelle von Prometheus (9090) und Alertmanager (9093) auf dem
-Gerät, aus der laufenden Konfiguration: C</-/healthy>, C</-/ready>,
-C</api/v1/status/config>, C</api/v1/rules>, C<POST /-/reload> (nur mit
-C<--web.enable-lifecycle>, sonst 403), Alertmanager C</api/v2/status> und
-C<POST /-/reload>. Ohne
-laufenden Dienst C<$status> 0 (Verbindung abgelehnt); anderes ist eine Lücke
+The HTTP interface of Prometheus (9090) and Alertmanager (9093) on the
+device, from the running configuration: C</-/healthy>, C</-/ready>,
+C</api/v1/status/config>, C</api/v1/rules>, C<POST /-/reload> (only with
+C<--web.enable-lifecycle>, otherwise 403), Alertmanager C</api/v2/status> and
+C<POST /-/reload>. Without a
+running service C<$status> is 0 (connection refused); anything else is a gap
 (C<undef>).
 
 =cut
@@ -365,7 +365,7 @@ our %MON = ( Jan => 0, Feb => 1, Mar => 2, Apr => 3, May => 4, Jun => 5, Jul => 
 
   my $t = now_epoch($dev);
 
-Die Uhr des Geräts (C<clock>, Jahr 2026, Zone C<tz>) als Unix-Zeit.
+The device's clock (C<clock>, year 2026, zone C<tz>) as Unix time.
 
 =cut
 

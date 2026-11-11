@@ -17,7 +17,7 @@ with 'Langertha::Holmgang::Role::Simulator';
 
 our $VERSION = '0.001';
 
-=head1 SYNOPSIS
+=synopsis
 
   my $sims = Langertha::Holmgang::Simulators->new;
   my ( $out, $ok, $gap, $exit ) = $sims->run_command( $state, 'gw-a', 'ip route add 10.2.0.0/24 via 10.1.0.2' );
@@ -26,36 +26,36 @@ our $VERSION = '0.001';
   # inside the simulator and its parts (Sim::Linux::<Part>), as in cai-platform:
   my ( $out, $ok, $gap ) = Langertha::Holmgang::Sim::Linux->run( $dev, $command_line, $ctx );
 
-=head1 DESCRIPTION
+=description
 
-Simuliert die Shell eines Debian-Systems (Vertrag:
-L<Langertha::Holmgang::Role::Simulator>; Gerätetyp C<linux>). Befehle laufen auf dem Zustand des Geräts:
+Simulates the shell of a Debian system (contract:
+L<Langertha::Holmgang::Role::Simulator>; device type C<linux>). Commands run on the state of the device:
 
   gw-a:
     type: linux
-    interfaces: { eth0: { addr: [198.51.100.10/29], mtu: 1500, state: UP } }   # lo ist immer da
+    interfaces: { eth0: { addr: [198.51.100.10/29], mtu: 1500, state: UP } }   # lo is always there
     routes:     [ { dst: default, via: 198.51.100.9, dev: eth0 },
                   { dst: 10.1.0.0/24, dev: eth1, proto: kernel, scope: link, src: 10.1.0.1 } ]
-                # weitere Felder: metric, table (fehlt = main), proto, scope, src
-    rules:      [ { priority: 100, from: 10.2.0.0/24, table: "200" } ]       # ip rule; 0/32766/32767 immer da
-    sysctl:     { net.ipv4.ip_forward: "1" }    # nur vorhandene Schluessel lassen sich setzen
+                # further fields: metric, table (missing = main), proto, scope, src
+    rules:      [ { priority: 100, from: 10.2.0.0/24, table: "200" } ]       # ip rule; 0/32766/32767 always there
+    sysctl:     { net.ipv4.ip_forward: "1" }    # only existing keys can be set
     nft:        { "inet filter": { chains: { forward: { type: filter, hook: forward, priority: "0",
                   policy: drop, rules: [ "ct state established,related accept" ] } } } }
     wg:         { wg0: { public_key: …, listen_port: 51820, address: 10.255.0.1/30,
-                  peers: { "<schluessel>": { name: …, endpoint: …, allowed_ips: […], handshake: … } } } }
+                  peers: { "<key>": { name: …, endpoint: …, allowed_ips: […], handshake: … } } } }
     files:      { /etc/dnsmasq.conf: "…" }
     services:   { dnsmasq: { active: true, config: /etc/dnsmasq.conf, running: "…" },
                   "wg-quick@wg0": { active: true } }
     nm:         { connections: { lte: { device: wwan0, default_metric: 700, props: { ipv4.route-metric: "-1" } } } }
-    nft_login:  { iif: eth1, saddr: 10.1.0.50, daddr: 10.1.0.1 }   # so kommt das Modell per SSH herein
-    locked_out: true            # vom Simulator: die eigene Firewall hat diesen Zugang verworfen
+    nft_login:  { iif: eth1, saddr: 10.1.0.50, daddr: 10.1.0.1 }   # how the model comes in over SSH
+    locked_out: true            # set by the simulator: the device's own firewall dropped this access
     neigh:      [ "10.1.0.20 dev eth1 lladdr 52:54:00:12:34:56 REACHABLE" ]
     reboots:    0
-    # Server-Faelle:
+    # server cases:
     files:      { /var/log/app/debug.log: { size: 14G, owner: app, group: app, mode: "0640",
-                  open_by: app, content: "…" },            # Text ODER Eintrag mit Metadaten
+                  open_by: app, content: "…" },            # text OR an entry with metadata
                   /etc/resolv.conf: { link: ../run/systemd/resolve/stub-resolv.conf } }
-    mounts:     { /var: { dev: /dev/vdb1, size: 16G, used: 1G } }   # used = Grundlast ohne die Dateien
+    mounts:     { /var: { dev: /dev/vdb1, size: 16G, used: 1G } }   # used = base load without the files
     users:      { app: { uid: 1001, groups: [app] } }
     groups:     { ssl-cert: { gid: 110 } }
     services:   { app: { active, failed, enabled, masked, description, user, exec,
@@ -64,306 +64,306 @@ L<Langertha::Holmgang::Role::Simulator>; Gerätetyp C<linux>). Befehle laufen au
                   { can: { user: app, read: /etc/ssl/private/app.key }, log: [ … ] },
                   { state: [ services, app, unit_loaded ], regex: …, log: [ … ] } ] } }
     resolved:   { global: { dns: [] }, links: { eth0: { dns: [ … ], domains: [ … ] } } }
-    dns_servers: { 10.0.0.53: { db.example.internal: 10.0.0.20 } }   # was jeder Nameserver beantwortet
-    deleted_open: [ { path, size, by } ]   # vom Simulator: geloescht, aber noch offen
-    services:   { api: { …, restarts: 1 } }  # vom Simulator: Neustarts und Stopps eines laufenden Dienstes
-    services:   { api: { …, since: "Thu 2026-10-29 06:10:12 CET" } }  # Startzeit ohne Start im Simulator
-    # PostgreSQL: siehe Langertha::Holmgang::Sim::Linux::Postgres
+    dns_servers: { 10.0.0.53: { db.example.internal: 10.0.0.20 } }   # what each name server answers
+    deleted_open: [ { path, size, by } ]   # set by the simulator: deleted, but still open
+    services:   { api: { …, restarts: 1 } }  # set by the simulator: restarts and stops of a running service
+    services:   { api: { …, since: "Thu 2026-10-29 06:10:12 CET" } }  # start time without a start in the simulator
+    # PostgreSQL: see Langertha::Holmgang::Sim::Linux::Postgres
     postgres:   { service: postgresql@15-main, settings: {…}, roles: {…}, tables: {…}, slots: {…}, … }
-    # Kubernetes: siehe Langertha::Holmgang::Sim::Linux::Kubernetes
+    # Kubernetes: see Langertha::Holmgang::Sim::Linux::Kubernetes
     kubernetes: { registry: […], storageclasses: {…}, namespaces: { shop: { deployments: {…}, … } } }
 
-B<Lesen:> C<ip [-4|-6|-br|-d|-s] route|rule|addr|link|neigh [show …]>,
+B<Reading:> C<ip [-4|-6|-br|-d|-s] route|rule|addr|link|neigh [show …]>,
 C<ip route get>, C<wg [show [if] [allowed-ips|peers|endpoints]]>,
-C<wg showconf>, C<nft [-a] list ruleset|table|chain>, C<sysctl [-a] [schlüssel]>,
-C<cat> (Dateien, F</proc/sys/…>, F</etc/wireguard/wgN.conf> aus dem Zustand),
-C<ls>, C<grep … datei>, C<systemctl status|is-active>, C<nmcli connection show [name]>,
-C<hostname>, C<uname -a>, C<which>, C<ping> (ohne Beobachtung des Falls: Antwort, wenn eine
-Route zum Ziel führt, sonst „Network is unreachable"), C<conntrack -C|-S>,
-C<dmesg> (leer); Server: C<df [-h] [pfad]>, C<du [-sh] pfad…> (auch mit C<*>),
-C<ls [-lah]>, C<stat>, C<find pfad [-name] [-size ±N[kMG]] [-type f]>, C<lsof [+L1]>,
-C<which>, C<whereis>, C<type>, C<command -v> (Pfade wie Debian 12), C<id>, C<groups>, C<getent passwd|group|hosts>, C<journalctl [-u dienst] [-n N]
+C<wg showconf>, C<nft [-a] list ruleset|table|chain>, C<sysctl [-a] [key]>,
+C<cat> (files, F</proc/sys/…>, F</etc/wireguard/wgN.conf> from the state),
+C<ls>, C<grep … file>, C<systemctl status|is-active>, C<nmcli connection show [name]>,
+C<hostname>, C<uname -a>, C<which>, C<ping> (without an observation of the case: a reply when a
+route leads to the target, else "Network is unreachable"), C<conntrack -C|-S>,
+C<dmesg> (empty); servers: C<df [-h] [path]>, C<du [-sh] path…> (also with C<*>),
+C<ls [-lah]>, C<stat>, C<find path [-name] [-size ±N[kMG]] [-type f]>, C<lsof [+L1]>,
+C<which>, C<whereis>, C<type>, C<command -v> (paths as in Debian 12), C<id>, C<groups>, C<getent passwd|group|hosts>, C<journalctl [-u service] [-n N]
 [--disk-usage]>, C<systemctl status|is-active|is-enabled|is-failed|cat|list-units
-[--failed]>, C<resolvectl status|dns|domain|query>. C<getent passwd> zeigt das
-GECOS-Feld aus C<gecos> des Benutzers; C<systemctl list-units|list-unit-files [MUSTER…]>
-filtern nach Mustern (C<billing*>), C<list-unit-files> im eigenen Format (UNIT FILE,
-STATE, VENDOR PRESET); C<systemctl status 'MUSTER'> zeigt die passenden geladenen Units
-(ohne Treffer nichts).
+[--failed]>, C<resolvectl status|dns|domain|query>. C<getent passwd> shows the
+GECOS field from the user's C<gecos>; C<systemctl list-units|list-unit-files [PATTERN…]>
+filter by patterns (C<billing*>), C<list-unit-files> in its own format (UNIT FILE,
+STATE, VENDOR PRESET); C<systemctl status 'PATTERN'> shows the matching loaded units
+(nothing without a match).
 
-B<Ändern:> C<ip route add|del|replace|change|flush>, C<ip rule add|del>,
+B<Changing:> C<ip route add|del|replace|change|flush>, C<ip rule add|del>,
 C<ip addr add|del>, C<ip link set [dev] X mtu N|up|down>,
 C<wg set IF [listen-port N] [peer K [remove] [allowed-ips L] [endpoint E]
 [persistent-keepalive N]]>, C<wg syncconf IF E<lt>(wg-quick strip IF)>, C<wg-quick
 up|down|save|strip>, C<nft add|insert rule … [position H|index N]>,
 C<nft delete rule … handle H>, C<nft add|delete table|chain>, C<nft flush
-chain|table|ruleset>, C<sysctl -w k=v>, C<sysctl -p [datei]>, C<echo/printf … E<gt>
-datei>, C<E<gt>E<gt>>, C<tee [-a]>, C<sed -i 's/…/…/[g]' datei>, C<systemctl
+chain|table|ruleset>, C<sysctl -w k=v>, C<sysctl -p [file]>, C<echo/printf … E<gt>
+file>, C<E<gt>E<gt>>, C<tee [-a]>, C<sed -i 's/…/…/[g]' file>, C<systemctl
 restart|reload|start|stop|enable|disable>, C<nmcli connection modify|up>,
-C<nmcli device reapply>, C<reboot>/C<shutdown>/C<poweroff> (zählen C<reboots>);
-Server: C<chmod [-R] oktal|u+x,…>, C<chown [-R] benutzer[:gruppe]>, C<chgrp>,
-C<usermod -aG>, C<gpasswd -a>, C<rm [-rf]> (eine von einem laufenden Dienst offene
-Datei belegt weiter Platz, bis er neu startet oder stoppt), C<truncate -s N>,
-C<: E<gt> datei>, C<touch>, C<mkdir>, C<cp>, C<mv> (auch mehrere Quellen in ein Verzeichnis), C<ln -s>, C<journalctl
+C<nmcli device reapply>, C<reboot>/C<shutdown>/C<poweroff> (count C<reboots>);
+servers: C<chmod [-R] octal|u+x,…>, C<chown [-R] user[:group]>, C<chgrp>,
+C<usermod -aG>, C<gpasswd -a>, C<rm [-rf]> (a file held open by a running service
+keeps taking space until the service restarts or stops), C<truncate -s N>,
+C<: E<gt> file>, C<touch>, C<mkdir>, C<cp>, C<mv> (also several sources into a directory), C<ln -s>, C<journalctl
 --vacuum-size|--vacuum-time>, C<systemctl start|restart|enable|disable [--now]|mask|
 unmask|daemon-reload|reset-failed>, C<resolvectl dns|domain IF …|revert>.
 
-B<Härtung>: C<chmod> auch mit C<s>/C<t>
-(C<u-s>, C<g+s>, C<ug-s>, vierstellig oktal), C<ls -l> zeigt C<s>/C<S>/C<t>/C<T>,
-C<find … -perm [-/]oktal|[-/]u=s,g=s> und C<-ls>; C<grep -r|-R|-l|-h|-H> über
-Verzeichnisse und mehrere Dateien mit Dateinamen; C<usermod -L|-U|-s shell|-e datum|
--r -G gruppen>, C<gpasswd -d>, C<getent shadow> sowie C<passwd>, C<chage>,
-C<deluser>, C<userdel>, C<visudo -c>, C<sudo -l -U benutzer> (siehe
-L<Langertha::Holmgang::Sim::Linux::Accounts>); C<sshd -t|-T>, C<ssh-keygen -A|-l> und die
-Wirkung von C<start|restart|reload> auf den Dienst C<ssh> (siehe
-L<Langertha::Holmgang::Sim::Linux::Sshd>); C<nft -c -f datei> prüft nur. Mit
-C<ssh_login: { user, from }> ist das Modell über SSH angemeldet: läuft sshd nicht
-mehr oder schließt seine Konfiguration den Benutzer aus, antwortet jeder weitere
-Aufruf wie ein abgewiesener SSH-Client. C<sed> liest Ausdrücke als BRE
-(C<\(…\)> gruppiert, C<(> ist ein Zeichen; mit C<-E>/C<-r> umgekehrt), C<\/> im
-Ersatz ist ein C</>; C<2E<gt>/dev/null> und C<2E<gt>&1> lenken nur die
-Fehlerausgabe um.
+B<Hardening>: C<chmod> also with C<s>/C<t>
+(C<u-s>, C<g+s>, C<ug-s>, four-digit octal), C<ls -l> shows C<s>/C<S>/C<t>/C<T>,
+C<find … -perm [-/]octal|[-/]u=s,g=s> and C<-ls>; C<grep -r|-R|-l|-h|-H> over
+directories and several files with file names; C<usermod -L|-U|-s shell|-e date|
+-r -G groups>, C<gpasswd -d>, C<getent shadow> as well as C<passwd>, C<chage>,
+C<deluser>, C<userdel>, C<visudo -c>, C<sudo -l -U user> (see
+L<Langertha::Holmgang::Sim::Linux::Accounts>); C<sshd -t|-T>, C<ssh-keygen -A|-l> and the
+effect of C<start|restart|reload> on the service C<ssh> (see
+L<Langertha::Holmgang::Sim::Linux::Sshd>); C<nft -c -f file> only checks. With
+C<ssh_login: { user, from }> the model is logged in over SSH: when sshd no longer
+runs or its configuration shuts the user out, every further call answers like
+an SSH client that was turned away. C<sed> reads expressions as BRE
+(C<\(…\)> groups, C<(> is a character; the other way round with C<-E>/C<-r>), C<\/> in
+the replacement is a C</>; C<2E<gt>/dev/null> and C<2E<gt>&1> redirect only the
+error output.
 
-B<Shell und Prozesse> (Runde 1 der Bench-Messung): C<for V in …; do …; done> (auch
-verschachtelt, C<done | filter>); Programme mit Pfad (C</usr/bin/id>, C</bin/…>
-wie C</usr/bin/…>); ausführbare Dateien im Zustand (z. B. F</usr/bin/redis-cli>)
-sind installierte Programme (C<which> findet sie, Aufruf ohne Nachbildung ist eine
-Lücke statt „command not found“); C<sudo> eines Benutzers ohne Root-Rechte
-(C<sudo -u x sudo …>, C<su - x -c "sudo …">) prüft dessen Regeln
-(L<Langertha::Holmgang::Sim::Linux::Accounts/sudo_check>); die üblichen Verzeichnisse
-eines Debian 12 gibt es, auch leer; C<crontab -l|-r [-u benutzer]>; C<ps -p|-C|-o>,
-C<pkill [-SIG] [-x] name>, C<kill [-SIG] pid> mit denselben PIDs wie C<ss> und
-C<systemctl status> (HUP liest neu ein, sonst endet der Dienst); C<nft --version>. C<find> wertet
-Ausdrücke wie find aus: C<\( \)>, C<!>/C<-not>, C<-a> (auch ohne Wort) vor
-C<-o>/C<-or>; Aktionen (C<-print>, C<-ls>, C<-printf>, C<-exec>, C<-delete>)
-gelten dort, wo die Auswertung sie erreicht. C<redis-cli>/C<redis-server> mit
-einem Dienst redis-server: siehe L<Langertha::Holmgang::Sim::Linux::Redis> (Zustand C<redis>) bzw.
-L<Langertha::Holmgang::Sim::Linux::RedisService> (nur der Dienst).
+B<Shell and processes> (round 1 of the bench measurement): C<for V in …; do …; done> (also
+nested, C<done | filter>); programs with a path (C</usr/bin/id>, C</bin/…>
+like C</usr/bin/…>); executable files in the state (e.g. F</usr/bin/redis-cli>)
+are installed programs (C<which> finds them, a call without a model is a
+gap instead of "command not found"); C<sudo> of a user without root rights
+(C<sudo -u x sudo …>, C<su - x -c "sudo …">) checks that user's rules
+(L<Langertha::Holmgang::Sim::Linux::Accounts/sudo_check>); the usual directories
+of a Debian 12 exist, also empty; C<crontab -l|-r [-u user]>; C<ps -p|-C|-o>,
+C<pkill [-SIG] [-x] name>, C<kill [-SIG] pid> with the same PIDs as C<ss> and
+C<systemctl status> (HUP rereads, otherwise the service ends); C<nft --version>. C<find> evaluates
+expressions like find: C<\( \)>, C<!>/C<-not>, C<-a> (also without the word) before
+C<-o>/C<-or>; actions (C<-print>, C<-ls>, C<-printf>, C<-exec>, C<-delete>)
+apply where the evaluation reaches them. C<redis-cli>/C<redis-server> with
+a service redis-server: see L<Langertha::Holmgang::Sim::Linux::Redis> (state C<redis>) or
+L<Langertha::Holmgang::Sim::Linux::RedisService> (the service alone).
 
-Ein Dienst B<startet nur>, wenn seine C<needs> halten (genug frei auf einem
-Einhängepunkt, ein Benutzer darf eine Datei lesen/schreiben/ausführen, eine
-Erwartung am Zustand, C<env: { VAR: muster }> — die Umgebung des Prozesses aus
-C<Environment=> und C<EnvironmentFile=> der geladenen Unit, wie systemd sie liest);
-sonst ist er C<failed>, und C<journalctl>/C<systemctl status> zeigen die
-C<log>-Zeilen der ersten nicht erfüllten Bedingung. Eine Bedingung C<can> ohne
-C<user> gilt für C<User=> der geladenen Unit. Auf einem Gerät mit
-C<check_accounts: true> muss es C<User=> und C<Group=> der Unit geben (sonst
-217/USER bzw. 216/GROUP wie systemd). Ist
-C<unit_loaded> gesetzt, wirkt eine geänderte Unit-Datei erst nach C<systemctl
-daemon-reload> (mit der Warnung von systemd); C<unit_loaded: current> übernimmt
-beim Vorbereiten die Unit, wie sie auf der Platte steht. Drop-ins
-(F<E<lt>unitE<gt>.service.d/*.conf> unter F</etc>, F</run>, F</lib>) gehören zur
-Unit (C<systemctl cat|status|show>); zwei C<ExecStart=> ohne leere Zuweisung
-dazwischen sind C<bad-setting>. Womit ein laufender Prozess gestartet wurde, steht
-unter C<services.E<lt>dienstE<gt>._started> (letzte Zuweisung je Schlüssel,
-C<ExecStart> als Liste, C<Environment> als Hash). Namen löst C<getent hosts> bzw.
-C<resolvectl query> über F</etc/hosts>, dann die Nameserver aus
-F</etc/resolv.conf> (Stub von systemd-resolved: die DNS-Server der Links) samt
-C<search>-Domänen auf, mit den Antworten aus C<dns_servers>.
+A service B<starts only> when its C<needs> hold (enough free space on a
+mount point, a user may read/write/execute a file, an
+expectation on the state, C<env: { VAR: pattern }> — the environment of the process from
+C<Environment=> and C<EnvironmentFile=> of the loaded unit, as systemd reads it);
+otherwise it is C<failed>, and C<journalctl>/C<systemctl status> show the
+C<log> lines of the first unmet condition. A condition C<can> without
+C<user> applies to C<User=> of the loaded unit. On a device with
+C<check_accounts: true>, C<User=> and C<Group=> of the unit must exist (else
+217/USER or 216/GROUP like systemd). When
+C<unit_loaded> is set, a changed unit file takes effect only after C<systemctl
+daemon-reload> (with systemd's warning); C<unit_loaded: current> takes over
+the unit as it is on disk at preparation. Drop-ins
+(F<E<lt>unitE<gt>.service.d/*.conf> under F</etc>, F</run>, F</lib>) belong to the
+unit (C<systemctl cat|status|show>); two C<ExecStart=> without an empty assignment
+between them are C<bad-setting>. What a running process was started with is
+under C<services.E<lt>serviceE<gt>._started> (last assignment per key,
+C<ExecStart> as a list, C<Environment> as a hash). C<getent hosts> and
+C<resolvectl query> resolve names through F</etc/hosts>, then the name servers from
+F</etc/resolv.conf> (stub of systemd-resolved: the DNS servers of the links) along with
+C<search> domains, with the answers from C<dns_servers>.
 
-Befehle lassen sich mit C<;>, C<&&>, C<||> verketten und in Filter leiten
-(C<| grep>, C<head>, C<tail>, C<wc -l>, C<sort>); C<sudo> wird übergangen.
-Alles andere antwortet wie Debian (C<bash: x: command not found>, Meldungen von
-iproute2/nft/systemctl). iptables ist nicht installiert (nftables-System).
+Commands can be chained with C<;>, C<&&>, C<||> and piped into filters
+(C<| grep>, C<head>, C<tail>, C<wc -l>, C<sort>); C<sudo> is skipped.
+Everything else answers like Debian (C<bash: x: command not found>, messages of
+iproute2/nft/systemctl). iptables is not installed (nftables system).
 
-B<Aussperren:> Steht C<nft_login> (Weg der SSH-Verbindung, über die das
-Modell arbeitet), ist jeder Aufruf eine neue Verbindung (C<ct new>, TCP 22):
-verwirft der Regelsatz sie (L<Langertha::Holmgang::Sim::Linux::Nft>), antwortet das
-Gerät für den Rest des Falls mit „Connection timed out" und trägt
+B<Locking out:> when C<nft_login> is set (the path of the SSH connection the
+model works over), every call is a new connection (C<ct new>, TCP 22):
+if the ruleset drops it (L<Langertha::Holmgang::Sim::Linux::Nft>), the
+device answers "Connection timed out" for the rest of the case and sets
 C<locked_out>.
 
-B<Neustarts stehen im Zustand>: jeder Neustart (C<restart>, C<try-restart>,
-C<reload-or-restart>) und jedes Stoppen eines laufenden Dienstes zählt
-C<services.E<lt>dienstE<gt>.restarts> hoch — ein Neustart, der die Aufgabe nicht
-verlangt, fällt so in „sonst nichts geändert" auf, auch wenn der Dienst danach
-wieder läuft. C<reload> zählt nicht; C<reload-or-restart> lädt einen laufenden
-Dienst mit C<ExecReload> nur neu (wie systemd).
+B<Restarts are in the state>: every restart (C<restart>, C<try-restart>,
+C<reload-or-restart>) and every stop of a running service increments
+C<services.E<lt>serviceE<gt>.restarts> — so a restart the task does not
+ask for shows up in "nothing else changed", even when the service is
+running again afterwards. C<reload> does not count; C<reload-or-restart> only
+reloads a running service with C<ExecReload> (like systemd).
 
-B<Ein Start ist sichtbar>: jeder Start und Neustart eines Dienstes
-vergibt eine neue Haupt-PID (die PID seiner Startmeldungen im Journal, unter
-C<services.E<lt>dienstE<gt>._pid>) und setzt die Startzeit auf die Zeit der
-Journalzeile „Started" (C<_since>, Uhr C<clock> des Geräts); C<reload> lässt beides
-stehen. Ohne Start im Simulator gilt C<since> des Dienstes im Zustand
-(C<"Thu 2026-10-29 06:10:12 CET">), sonst Tue 2026-10-20 09:00:00 CEST. Daraus
-lesen C<systemctl status> („since …; 4h 47min ago", gemessen an der Uhr des
-Geräts), C<systemctl show> (C<MainPID>, C<ExecMainPID>, C<ExecMainStartTimestamp>,
-C<ActiveEnterTimestamp>, C<NRestarts>=0 — systemd zählt dort nur automatische
-Neustarts) und C<ps> (C<lstart>, C<etime>, START/STIME).
+B<A start is visible>: every start and restart of a service
+assigns a new main PID (the PID of its start messages in the journal, under
+C<services.E<lt>serviceE<gt>._pid>) and sets the start time to the time of the
+journal line "Started" (C<_since>, the device's clock C<clock>); C<reload> leaves both
+as they are. Without a start in the simulator the service's C<since> in the state applies
+(C<"Thu 2026-10-29 06:10:12 CET">), else Tue 2026-10-20 09:00:00 CEST. From this
+C<systemctl status> ("since …; 4h 47min ago", measured against the device's
+clock), C<systemctl show> (C<MainPID>, C<ExecMainPID>, C<ExecMainStartTimestamp>,
+C<ActiveEnterTimestamp>, C<NRestarts>=0 — systemd counts only automatic
+restarts there) and C<ps> (C<lstart>, C<etime>, START/STIME) read.
 
-B<Filter mit Datei> (C<head>, C<tail>, C<wc>, C<sort>, C<uniq>, C<cut>, C<awk>,
-C<fold>): eine fehlende Datei meldet der Filter wie coreutils bzw. mawk
+B<Filters with a file> (C<head>, C<tail>, C<wc>, C<sort>, C<uniq>, C<cut>, C<awk>,
+C<fold>): the filter reports a missing file like coreutils or mawk
 (C<wc: /x: No such file or directory>, C<head: cannot open '/x' for reading: …>,
-C<sort: cannot read: /x: …>, C<awk: cannot open /x (…)>) mit Status 1; C<wc> zählt
-die übrigen. B<Programme>: C<ls /usr/bin> und C<ls /usr/sbin> zeigen genau die
-Programme, die C<which> auf dem Gerät findet (C</bin>, C</sbin> verweisen dorthin,
-C<ls -l /bin> zeigt den Verweis); nicht Installiertes fehlt. B<C</dev/tcp>> (und
-C</dev/udp>) als Umleitung ist eine Verbindung der bash, ohne Netz nicht
-nachgebildet: eine Lücke, keine fehlende Datei. B<Journal und Uhr>: C<journalctl
---since/--until> rechnen relativ zur Uhr des Geräts (C<today>, C<"1 hour ago">,
-C<06:00> für heute 06:00), C<--list-boots> endet dort; nachgebildet ist nur der
-laufende Start (C<-b -1> meldet wie journalctl, dass es ihn nicht gibt).
+C<sort: cannot read: /x: …>, C<awk: cannot open /x (…)>) with status 1; C<wc> counts
+the others. B<Programs>: C<ls /usr/bin> and C<ls /usr/sbin> show exactly the
+programs C<which> finds on the device (C</bin>, C</sbin> point there,
+C<ls -l /bin> shows the link); what is not installed is missing. B<C</dev/tcp>> (and
+C</dev/udp>) as a redirection is a bash connection, not modelled without a
+network: a gap, not a missing file. B<Journal and clock>: C<journalctl
+--since/--until> count relative to the device's clock (C<today>, C<"1 hour ago">,
+C<06:00> for today 06:00), C<--list-boots> ends there; only the current boot
+is modelled (C<-b -1> reports like journalctl that it does not exist).
 
-B<Lauscher und Log der Anwendung> (Runde 2): ein Dienst mit C<listen> (Liste
-C<"adresse:port"> oder C<{ file, regex }> — die Fangruppe aus der Datei, wie der Prozess
-sie beim Start gelesen hat) lauscht, solange er läuft, und C<ss -tlnp> zeigt ihn mit
-seiner PID; nginx lauscht nach den C<listen>-Zeilen seiner Konfiguration, sshd ohne
-F<sshd_config> im Zustand auf 22. C<app_log: { file, start: [ … ], fail: [ … ] }> hängt
-bei Start bzw. Fehlstart Zeilen an die Logdatei (C<{ts}>, C<{listen}>, C<{pid}>); sie
-sind Laufzeitspur (C<_append> am Gerät) und gelten, solange die Datei nicht neu
-geschrieben wird. B<nginx liefert statische Dateien>: C<wget> gegen die eigene Maschine
-(C<-O -|DATEI>, C<-q>, C<-S>, C<--spider>, C<--header='Host: …'>) antwortet aus C<root>
-des passenden C<server>-Blocks mit 200, 403 (der Arbeiter, C<user> bzw. www-data, darf
-ein Verzeichnis nicht betreten oder die Datei nicht lesen) oder 404; C<proxy_pass> ist
-eine Lücke. B<Zeiten von Dateien>: C<touch -d|--date> (wie C<date -d>: C<"20 days ago">,
-C<"2026-09-30 01:30">, C<yesterday>), C<-t [[CC]JJ]MMTThhmm>, C<-r DATEI>, C<-c>; ohne
-Angabe jetzt — an der Uhr des Geräts; C<find -mtime/-mmin/-newer/-newermt>, C<stat>
-(C<%y %Y>, Zeilen Access/Modify/Change) und C<ls -l --time-style=full-iso|long-iso|iso>,
-C<--full-time> lesen sie. B<C<2E<gt>/dev/null>> an einem Befehl lässt seine
-Fehlermeldungen (C<prog: …>, C<bash: cd: …>) verschwinden, auch in der Pipe.
+B<Listeners and the application log> (round 2): a service with C<listen> (a list of
+C<"address:port"> or C<{ file, regex }> — the capture group from the file, as the process
+read it at start) listens while it runs, and C<ss -tlnp> shows it with
+its PID; nginx listens per the C<listen> lines of its configuration, sshd without
+F<sshd_config> in the state on 22. C<app_log: { file, start: [ … ], fail: [ … ] }> appends
+lines to the log file on start or failed start (C<{ts}>, C<{listen}>, C<{pid}>); they
+are a runtime trace (C<_append> on the device) and apply as long as the file is not
+rewritten. B<nginx serves static files>: C<wget> against the own machine
+(C<-O -|FILE>, C<-q>, C<-S>, C<--spider>, C<--header='Host: …'>) answers from C<root>
+of the matching C<server> block with 200, 403 (the worker, C<user> or www-data, may not
+enter a directory or may not read the file) or 404; C<proxy_pass> is
+a gap. B<File times>: C<touch -d|--date> (like C<date -d>: C<"20 days ago">,
+C<"2026-09-30 01:30">, C<yesterday>), C<-t [[CC]YY]MMDDhhmm>, C<-r FILE>, C<-c>; without
+an argument now — by the device's clock; C<find -mtime/-mmin/-newer/-newermt>, C<stat>
+(C<%y %Y>, lines Access/Modify/Change) and C<ls -l --time-style=full-iso|long-iso|iso>,
+C<--full-time> read them. B<C<2E<gt>/dev/null>> on a command makes its
+error messages (C<prog: …>, C<bash: cd: …>) disappear, also in a pipe.
 
-B<Runde 3>: Als Benutzer zählen an Verzeichnissen B<x> (Durchqueren: C<cd>, C<ls>,
-C<cat>, Filter, Umleitungen) und B<r> (C<ls> eines Verzeichnisses); C<rm> braucht w und x
-am Elternordner (sticky: nur der Eigentümer der Datei oder des Ordners). C<trap BEFEHLE
-EXIT> läuft am Ende der Shell (auch nach C<exit> und C<set -e>), C<trap -p>, C<trap -
-SIGNAL>; Shell-Funktionen (C<name() { … }>, C<function name>, C<return N>), C<! befehl>,
-C<#!/usr/bin/env bash>, C<bash -n>, C<read -d "">, C<done E<lt> E<lt>( befehl )>; C<od -c>,
-C<env>, C<uptime>, C<last [-a] [reboot|benutzer]> und C<lastlog> (aus C<logins> im
-Zustand und dem laufenden Start), C<journalctl -k> (keine Kernel-Meldungen). B<TCP
-zwischen Geräten>: C<nc -z>, C</dev/tcp>, C<wget> und C<curl> (wo installiert) prüfen
-eine Verbindung zu einem Gerät im Zustand an dessen Firewall (nft, Ketten mit hook
-input: erste passende Regel, sonst Policy; drop: timed out, reject: refused) und dessen
-Lauschern (C<listen>, Vorgaben nach Programm wie sshd 22, postgres 5432); ein Gerät mit
-Diensten unbekannter Ports, ein Ziel außerhalb des Zustands oder eine nicht nachgebildete
-Regel sind eine Lücke; ein Name, den der Resolver nicht kennt (wie C<getent hosts>), ist
-nicht auflösbar.
+B<Round 3>: as a user, on directories B<x> counts (traversal: C<cd>, C<ls>,
+C<cat>, filters, redirections) and B<r> (C<ls> of a directory); C<rm> needs w and x
+on the parent directory (sticky: only the owner of the file or of the directory). C<trap COMMANDS
+EXIT> runs at the end of the shell (also after C<exit> and C<set -e>), C<trap -p>, C<trap -
+SIGNAL>; shell functions (C<name() { … }>, C<function name>, C<return N>), C<! command>,
+C<#!/usr/bin/env bash>, C<bash -n>, C<read -d "">, C<done E<lt> E<lt>( command )>; C<od -c>,
+C<env>, C<uptime>, C<last [-a] [reboot|user]> and C<lastlog> (from C<logins> in the
+state and the current boot), C<journalctl -k> (no kernel messages). B<TCP
+between devices>: C<nc -z>, C</dev/tcp>, C<wget> and C<curl> (where installed) check
+a connection to a device in the state against its firewall (nft, chains with hook
+input: first matching rule, else policy; drop: timed out, reject: refused) and its
+listeners (C<listen>, defaults per program like sshd 22, postgres 5432); a device with
+services on unknown ports, a target outside the state or a rule that is not modelled
+are a gap; a name the resolver does not know (like C<getent hosts>) does
+not resolve.
 
-B<Runde 4>: C<flock [-n] FD|DATEI [-c BEFEHL|BEFEHL]> (gelingt, legt die Sperrdatei an),
-C<exec NE<gt>datei> (öffnet nur), C<${PIPESTATUS[@]}>, C<done E<lt> E<lt>( … )> auch über
-mehrere Zeilen, C<sha256sum> von stdin, C<ps -fp PID>, C<ps -u BENUTZER>, C<lsblk> aus den
-Einhängepunkten (ohne Platten im Zustand).
+B<Round 4>: C<flock [-n] FD|FILE [-c COMMAND|COMMAND]> (succeeds, creates the lock file),
+C<exec NE<gt>file> (only opens), C<${PIPESTATUS[@]}>, C<done E<lt> E<lt>( … )> also over
+several lines, C<sha256sum> from stdin, C<ps -fp PID>, C<ps -u USER>, C<lsblk> from the
+mount points (without disks in the state).
 
-B<Kubernetes> (L<Langertha::Holmgang::Sim::Linux::Kubernetes>): C<kubectl> gegen den
-Cluster unter C<kubernetes> des Geräts (Admin-Rechner).
+B<Kubernetes> (L<Langertha::Holmgang::Sim::Linux::Kubernetes>): C<kubectl> against the
+cluster under the device's C<kubernetes> (admin host).
 
-B<Helm> (L<Langertha::Holmgang::Sim::Linux::Helm>): C<helm> gegen C<kubernetes.helm>.
-B<git> (L<Langertha::Holmgang::Sim::Linux::Git>): C<git> auf den Arbeitskopien unter
-C<git.repos>, Push an das Gerät eines Forgejo-Servers (C<forgejo.repos>);
-C<forgejo-runner register>; C<docker ps|info|version> nur mit
-F</var/run/docker.sock> und nach dessen Rechten. C<cd> und C<pwd> gelten bis
-zum Ende der Befehlszeile; danach werden relative Dateiargumente absolut. Ein
-Dienst mit C<journal_start> schreibt diese Zeilen bei jedem Start ins Journal;
-mit C<no_reload> lehnt er C<reload> ab wie eine Unit ohne ExecReload.
+B<Helm> (L<Langertha::Holmgang::Sim::Linux::Helm>): C<helm> against C<kubernetes.helm>.
+B<git> (L<Langertha::Holmgang::Sim::Linux::Git>): C<git> on the working copies under
+C<git.repos>, push to the device of a Forgejo server (C<forgejo.repos>);
+C<forgejo-runner register>; C<docker ps|info|version> only with
+F</var/run/docker.sock> and according to its permissions. C<cd> and C<pwd> hold until
+the end of the command line; after that, relative file arguments become absolute. A
+service with C<journal_start> writes these lines to the journal on every start;
+with C<no_reload> it refuses C<reload> like a unit without ExecReload.
 
-B<PostgreSQL> (L<Langertha::Holmgang::Sim::Linux::Postgres>): C<psql> (Benutzer aus
-C<sudo -u>, C<su [-] benutzer -c '…'>, C<runuser -u>), C<pg_lsclusters>,
-C<pg_ctlcluster VER NAME start|stop|restart|reload|status>; Start, Neustart und
-C<reload> des Clusters wirken wie in Debian.
+B<PostgreSQL> (L<Langertha::Holmgang::Sim::Linux::Postgres>): C<psql> (user from
+C<sudo -u>, C<su [-] user -c '…'>, C<runuser -u>), C<pg_lsclusters>,
+C<pg_ctlcluster VER NAME start|stop|restart|reload|status>; start, restart and
+C<reload> of the cluster act as in Debian.
 
-Start, Neustart und Stopp schreiben Zeilen ins Journal (Zeit aus C<clock> des
-Geräts, z. B. C<"Oct 24 09:12">), dazu die Startmeldungen C<start_log> (beim
-C<reload>: C<reload_log>) des Dienstes
-(Liste von Kolon-Vorlagen über C<$state>); sie stehen unter C<_log> des Dienstes —
-Schlüssel mit C<_> sind Laufzeitspuren und zählen in „sonst nichts geändert" nicht.
-Beim Start legt systemd C<RuntimeDirectory=> (F</run>), C<StateDirectory=>,
-C<LogsDirectory=> und C<CacheDirectory=> der geladenen Unit für C<User>/C<Group>
-an; der laufende Dienst legt seine C<runtime_files> (Socket, PID-Datei: C<path>,
-C<owner>, C<group>, C<mode>, C<type: socket>) an, wenn es das Verzeichnis gibt.
+Start, restart and stop write lines to the journal (time from the device's
+C<clock>, e.g. C<"Oct 24 09:12">), plus the service's start messages C<start_log> (on
+C<reload>: C<reload_log>)
+(a list of Kolon templates over C<$state>); they are under the service's C<_log> —
+keys with C<_> are runtime traces and do not count in "nothing else changed".
+At start systemd creates C<RuntimeDirectory=> (F</run>), C<StateDirectory=>,
+C<LogsDirectory=> and C<CacheDirectory=> of the loaded unit for C<User>/C<Group>;
+the running service creates its C<runtime_files> (socket, PID file: C<path>,
+C<owner>, C<group>, C<mode>, C<type: socket>) when the directory exists.
 
-B<Timer und Logs>: Units heißen mit ihrer Endung
-(C<backup.timer>; ohne Endung ist C<.service> gemeint). Eine neue Unit-Datei
-unter F</etc/systemd/system> bzw. F</lib/systemd/system> lädt beim ersten
-ändernden Zugriff (C<enable>, C<start>); C<status>, C<cat> und C<is-*> zeigen
-sie nur an. Ein Timer startet nur mit gültigem Auslöser (C<OnCalendar=> nach
-L<Langertha::Holmgang::Sim::Linux::Calendar> oder C<On*Sec=>) und vorhandener Ziel-Unit
-(C<Unit=>, sonst gleicher Name C<.service>); ungültige Kalenderausdrücke stehen
-mit Zeilennummer im Journal. Im Zustand führt jeder Timer die abgeleiteten
-Felder C<triggers> (Normalformen der gültigen C<OnCalendar=>) und C<activates>,
-neu berechnet, wenn sich die geladene Unit ändert (C<daemon-reload>, erstes
-Laden) — Regeln prüfen sie statt des Texts; C<last> (Text wie
-„Tue 2026-10-20 02:00:04 CEST") zeigt C<list-timers> als LAST. C<enable> hängt
-einen Timer in C<timers.target>, einen Dienst in sein C<WantedBy=>; eine ganze
-Unit (mit C<[Unit]>) ohne C<[Install]> ist C<static>: C<enable>/C<disable>
-melden das wie systemd und wirken nicht. Ein Dienst mit C<Type=oneshot> (ohne
-C<RemainAfterExit=yes>) läuft beim Start einmal durch (C<runs> zählt die
-erfolgreichen Läufe) und ist danach C<inactive>. C<systemctl list-timers
-[--all]>, C<list-units [--type=timer]>, C<systemd-analyze calendar AUSDRUCK…>
-(Normalform, nächster Ablauf in Ortszeit Europe/Berlin und UTC) und
-C<systemd-analyze verify DATEI> (Kalender eines Timers); andere
-Unterkommandos von C<systemd-analyze> sind eine Lücke der Simulation.
-B<Dateien, Journal, Zeit> (nachgezogen aus der ersten Messrunde): C<ls> zeigt
-mit C<-a> auch F<.> und F<..>, versteckt Punkt-Dateien ohne C<-a>/C<-A>, zeigt
-leere Verzeichnisse (C<total 0>), C<-R> rekursiv und die C<*.wants> von systemd
-als Verweise der enabled Units; C<find> liefert Wurzel, Verzeichnisse und
-Dateien und kennt C<-maxdepth>, C<-mindepth>, C<-type f|d|l>, C<-name>,
+B<Timers and logs>: units are named with their suffix
+(C<backup.timer>; without a suffix C<.service> is meant). A new unit file
+under F</etc/systemd/system> or F</lib/systemd/system> loads on the first
+changing access (C<enable>, C<start>); C<status>, C<cat> and C<is-*> only
+display it. A timer starts only with a valid trigger (C<OnCalendar=> per
+L<Langertha::Holmgang::Sim::Linux::Calendar> or C<On*Sec=>) and an existing target unit
+(C<Unit=>, else the same name with C<.service>); invalid calendar expressions are
+in the journal with their line number. In the state every timer carries the derived
+fields C<triggers> (normal forms of the valid C<OnCalendar=>) and C<activates>,
+recomputed when the loaded unit changes (C<daemon-reload>, first
+load) — rules check them instead of the text; C<last> (text like
+"Tue 2026-10-20 02:00:04 CEST") is what C<list-timers> shows as LAST. C<enable> hooks
+a timer into C<timers.target>, a service into its C<WantedBy=>; a complete
+unit (with C<[Unit]>) without C<[Install]> is C<static>: C<enable>/C<disable>
+report that like systemd and have no effect. A service with C<Type=oneshot> (without
+C<RemainAfterExit=yes>) runs through once at start (C<runs> counts the
+successful runs) and is C<inactive> afterwards. C<systemctl list-timers
+[--all]>, C<list-units [--type=timer]>, C<systemd-analyze calendar EXPRESSION…>
+(normal form, next elapse in local time Europe/Berlin and UTC) and
+C<systemd-analyze verify FILE> (a timer's calendars); other
+subcommands of C<systemd-analyze> are a gap in the simulation.
+B<Files, journal, time> (added after the first measurement round): C<ls> shows
+F<.> and F<..> with C<-a>, hides dot files without C<-a>/C<-A>, shows
+empty directories (C<total 0>), C<-R> recursively, and systemd's C<*.wants>
+as links of the enabled units; C<find> returns the root, directories and
+files and knows C<-maxdepth>, C<-mindepth>, C<-type f|d|l>, C<-name>,
 C<-iname>, C<-path>, C<-user>, C<-group>, C<-empty>, C<-newer>, C<-newermt>,
-C<-o>, C<-not>/C<!>, C<-exec … {} +|;>, C<-delete>, C<-printf> (Klammern und
-C<-prune> sind eine Lücke). Das Journal reicht so weit zurück wie seine Dateien
-(je Datei eine Zeile zu ihrer Zeit), Zeilen stehen nach der Zeit geordnet;
-C<journalctl> kennt C<-u> (mehrfach), C<-n>, C<-g>, C<-S|--since>,
+C<-o>, C<-not>/C<!>, C<-exec … {} +|;>, C<-delete>, C<-printf> (parentheses and
+C<-prune> are a gap). The journal reaches back as far as its files
+(one line per file at its time), lines are ordered by time;
+C<journalctl> knows C<-u> (repeatable), C<-n>, C<-g>, C<-S|--since>,
 C<-U|--until>, C<-o short|short-iso|cat>, C<-r>, C<--file>, C<--list-boots>,
-C<--flush> (übernimmt F</run/log/journal> nach F</var/log/journal>, wenn
-journald dauerhaft speichert), C<--verify>, C<--disk-usage> (F</var/log/journal>
-und F</run/log/journal>); unbekannte Optionen meldet es wie journalctl. Ein
-Neustart von journald mit C<Storage=persistent> (oder C<auto> und vorhandenem
-F</var/log/journal>) übernimmt das Laufzeit-Journal. C<timedatectl
-[status|show|set-timezone|list-timezones]> aus C<timezone> des Geräts (Vorgabe
-Europe/Berlin; sie gilt auch für die Kalender), C<file>, C<dpkg -L|-S|-l|-s> für
-die Pakete in C<%PACKAGES> und C<packages> des Geräts (andere: Lücke), C<bash|sh
--c '…'>, C<logrotate> (L<Langertha::Holmgang::Sim::Linux::Logrotate>). Ein Dienst mit
-C<creates> (Pfad → Eintrag) legt bei jedem erfolgreichen oneshot-Lauf diese
-Dateien an, C<run_journal> sind seine Journalzeilen je Lauf. Ein Dienst öffnet
-seine Logdateien bei C<reload> und Neustart neu (nach einer Rotation durch
-Umbenennen). C<disable> entfernt einen vorhandenen Verweis auch bei einer Unit
-ohne C<[Install]>.
+C<--flush> (moves F</run/log/journal> to F</var/log/journal> when
+journald stores persistently), C<--verify>, C<--disk-usage> (F</var/log/journal>
+and F</run/log/journal>); it reports unknown options like journalctl. A
+restart of journald with C<Storage=persistent> (or C<auto> and an existing
+F</var/log/journal>) takes over the runtime journal. C<timedatectl
+[status|show|set-timezone|list-timezones]> from the device's C<timezone> (default
+Europe/Berlin; it also applies to the calendars), C<file>, C<dpkg -L|-S|-l|-s> for
+the packages in C<%PACKAGES> and the device's C<packages> (others: gap), C<bash|sh
+-c '…'>, C<logrotate> (L<Langertha::Holmgang::Sim::Linux::Logrotate>). A service with
+C<creates> (path → entry) creates these files on every successful oneshot
+run, C<run_journal> are its journal lines per run. A service reopens
+its log files on C<reload> and restart (after a rotation by
+renaming). C<disable> removes an existing link also for a unit
+without C<[Install]>.
 
-C<systemctl show UNIT… [-p A,B|--property=A,B]… [--value]> liefert die
-gängigen Eigenschaften aus dem Zustand (Id, Names, Description, LoadState,
+C<systemctl show UNIT… [-p A,B|--property=A,B]… [--value]> returns the
+common properties from the state (Id, Names, Description, LoadState,
 ActiveState, SubState, UnitFileState, FragmentPath, CanReload, Type, Restart,
-User, MainPID, ExecStart; für Timer Unit, TimersCalendar,
+User, MainPID, ExecStart; for timers Unit, TimersCalendar,
 NextElapseUSecRealtime, LastTriggerUSec, AccuracyUSec, RandomizedDelayUSec,
-Persistent) in der Reihenfolge von systemd; unbekannte Eigenschaften fehlen
-wie bei systemd. C<systemctl reload systemd-journald> (und jeder Dienst mit
-C<reload: false>) meldet wie systemd „Job type reload is not applicable".
-C<journalctl -g|--grep MUSTER> filtert, C<--flush|--rotate|--sync> antworten
-leer. Ein Neustart von systemd-journald setzt C<MaxRetentionSec=> (löscht
-ältere Archive) und C<Storage=persistent> (legt F</var/log/journal> an) aus
-seiner Datei um. Ein Verzeichnis unter C<dirs> (C<owner>, C<group>, C<mode>)
-zählt für die Startbedingung C<can> wie eine Datei.
+Persistent) in systemd's order; unknown properties are missing
+as with systemd. C<systemctl reload systemd-journald> (and every service with
+C<reload: false>) reports like systemd "Job type reload is not applicable".
+C<journalctl -g|--grep PATTERN> filters, C<--flush|--rotate|--sync> answer
+empty. A restart of systemd-journald applies C<MaxRetentionSec=> (deletes
+older archives) and C<Storage=persistent> (creates F</var/log/journal>) from
+its file. A directory under C<dirs> (C<owner>, C<group>, C<mode>)
+counts for the start condition C<can> like a file.
 
-Ein Dienst mit C<config> (z. B. dnsmasq) liest seine Datei beim Start und
-Neustart in C<running> ein, beim C<reload> nur mit C<reload_config: true>
-(gunicorn, prometheus: SIGHUP liest die Konfiguration); C<wg-quick@wgN> übernimmt
-F</etc/wireguard/wgN.conf> in den WireGuard-Zustand. Was nur in der Datei
-steht, wirkt erst danach.
+A service with C<config> (e.g. dnsmasq) reads its file into C<running> on start and
+restart, on C<reload> only with C<reload_config: true>
+(gunicorn, prometheus: SIGHUP rereads the configuration); C<wg-quick@wgN> takes
+F</etc/wireguard/wgN.conf> over into the WireGuard state. What is only in the file
+takes effect only after that.
 
-B<Alltag im Terminal>: C<mkdir [-p] [-m MODUS]>
-(ohne C<-p> muss der Elternordner da sein, C<File exists>), C<umask [-S] [MODUS]>
-(eingebaut, je Shell), C<pwd>; als Benutzer ohne Root-Rechte (C<su - x -c>, C<sudo -u x>,
-C<bash -c> darunter) brauchen C<touch>, C<mkdir> und Umleitungen Schreibrecht am
-Verzeichnis bzw. an der Datei (sonst C<Permission denied>); neue Einträge gehören dem
-Benutzer und seiner ersten Gruppe, im setgid-Verzeichnis der Gruppe des Verzeichnisses
-(Verzeichnisse erben setgid), Rechte 0666/0777 ohne umask; F</tmp> ist für alle
-schreibbar. C<rm> der letzten Datei lässt das Verzeichnis stehen (Laufzeitspur
-C<_dirs>), C<rm -r> entfernt auch angelegte Verzeichnisse; Pfade mit C<.> und C<..>
-werden aufgelöst. C<install [-d] [-D] [-m] [-o] [-g]>, C<crontab [-u benutzer]
-DATEI|-> (Syntax wie Debian-cron, ersetzt den ganzen crontab, Datei
-C<benutzer:crontab 0600> mit Kopf; C<-l> zeigt ihn ohne Kopf), C<useradd>
-(C<-m|-M>, C<-r>, C<-s>, C<-d>, C<-g>, C<-G>, C<-u>, C<-U|-N>; Nummern wie shadow,
-Gruppe gleichen Namens, Vorgabe-Shell F</bin/sh>), C<groupadd [-r] [-g]>,
-C<addgroup [--system]>, C<adduser --system …> und C<adduser BENUTZER GRUPPE>
-(interaktives C<adduser>: Lücke), C<getent group> nur für vorhandene Gruppen,
-C<getent passwd> mit C<home>, C<mv QUELLE… VERZEICHNIS> (auch Verzeichnisse),
-C<ls -t|-r>, C<stat> eines Verzeichnisses, C<su> in ein Konto mit F<nologin>/F<false>
-(ohne C<-s>) lehnt ab, C<( … )> als Subshell. Ein Gerät mit C<oneshot_scripts: true>
-führt beim Start einer C<Type=oneshot>-Unit, deren C<ExecStart=> Shell-Skripte im
-Zustand starten, diese Skripte als C<User=> aus (Exit-Status und Journal; ohne
-Ausführrecht 203/EXEC). C<systemctl reload|restart|start|stop postgresql> wirkt auf den
-Cluster des Geräts.
+B<Everyday terminal use>: C<mkdir [-p] [-m MODE]>
+(without C<-p> the parent directory must exist, C<File exists>), C<umask [-S] [MODE]>
+(builtin, per shell), C<pwd>; as a user without root rights (C<su - x -c>, C<sudo -u x>,
+C<bash -c> beneath them) C<touch>, C<mkdir> and redirections need write permission on the
+directory or the file (else C<Permission denied>); new entries belong to the
+user and their first group, in a setgid directory to the directory's group
+(directories inherit setgid), permissions 0666/0777 minus umask; F</tmp> is writable
+for everyone. C<rm> of the last file leaves the directory in place (runtime trace
+C<_dirs>), C<rm -r> also removes created directories; paths with C<.> and C<..>
+are resolved. C<install [-d] [-D] [-m] [-o] [-g]>, C<crontab [-u user]
+FILE|-> (syntax like Debian cron, replaces the whole crontab, file
+C<user:crontab 0600> with a header; C<-l> shows it without the header), C<useradd>
+(C<-m|-M>, C<-r>, C<-s>, C<-d>, C<-g>, C<-G>, C<-u>, C<-U|-N>; numbers like shadow,
+group of the same name, default shell F</bin/sh>), C<groupadd [-r] [-g]>,
+C<addgroup [--system]>, C<adduser --system …> and C<adduser USER GROUP>
+(interactive C<adduser>: gap), C<getent group> only for existing groups,
+C<getent passwd> with C<home>, C<mv SOURCE… DIRECTORY> (also directories),
+C<ls -t|-r>, C<stat> of a directory, C<su> into an account with F<nologin>/F<false>
+(without C<-s>) refuses, C<( … )> as a subshell. A device with C<oneshot_scripts: true>
+runs, on the start of a C<Type=oneshot> unit whose C<ExecStart=> starts shell scripts in the
+state, these scripts as C<User=> (exit status and journal; without
+execute permission 203/EXEC). C<systemctl reload|restart|start|stop postgresql> acts on the
+device's cluster.
 
-Grenzen (dokumentiert): IPv4-Rechnung für Routen (IPv6-Routen werden nur
-gespeichert); nft-Handles werden je Tabelle beim ersten Blick aus der Reihenfolge
-gezählt und bleiben danach fest (neue Regeln bekommen die nächste Nummer);
-nft-Regeltext wird nur leicht normalisiert (Leerraum, Anführungszeichen um
-Schnittstellennamen).
+Limits (documented): IPv4 arithmetic for routes (IPv6 routes are only
+stored); nft handles are counted per table from the order on first look
+and stay fixed afterwards (new rules get the next number);
+nft rule text is only lightly normalised (whitespace, quotes around
+interface names).
 
 =cut
 
@@ -472,9 +472,9 @@ sub _svc_hook {
 
 =func cwd_path
 
-  my $abs = cwd_path('compose.yaml');   # /srv/shop/compose.yaml nach cd /srv/shop
+  my $abs = cwd_path('compose.yaml');   # /srv/shop/compose.yaml after cd /srv/shop
 
-Ein Pfad relativ zum aktuellen Verzeichnis der Befehlszeile (C<cd>), sonst zu F</root>.
+A path relative to the current directory of the command line (C<cd>), else to F</root>.
 
 =cut
 
@@ -484,8 +484,8 @@ sub cwd_path { return _absp( $_[0] ) }
 
   my %env = shell_env();
 
-Umgebung, die ein Programm der Befehlszeile sieht: exportierte Variablen der Shell
-und C<NAME=wert befehl> (z. B. für C<docker compose>).
+The environment a program of the command line sees: exported shell variables
+and C<NAME=value command> (e.g. for C<docker compose>).
 
 =cut
 
@@ -654,11 +654,11 @@ sub clone_state { my ( $d ) = @_; return $CLONE_JSON->decode( $CLONE_JSON->encod
 
 =method run
 
-  my ( $output, $ok, $gap ) = Langertha::Holmgang::Sim::Linux->run( $dev, $befehlszeile, $ctx );
+  my ( $output, $ok, $gap ) = Langertha::Holmgang::Sim::Linux->run( $dev, $command_line, $ctx );
 
-Die Befehlszeile selbst, als Klassen- oder Objektmethode — so rufen auch Teile
-(Kubernetes: ein Befehl im Pod) den Simulator. Ein fehlender Teil stirbt hier;
-L</run_command> macht daraus die Lücke.
+The command line itself, as a class or object method — this is also how parts
+(Kubernetes: a command in a pod) call the simulator. A missing part dies here;
+L</run_command> turns that into the gap.
 
 =cut
 
@@ -2149,10 +2149,10 @@ sub _maria { return _part('MariaDB') }
 
   Langertha::Holmgang::Sim::Linux->prepare( $dev, $ctx );
 
-Anfangszustand: Redis und MariaDB laufen mit den Werten ihrer Dateien
-(C<redis.running>, C<mariadb.variables>), sofern der Fall sie nicht selbst setzt;
-BIND und Postfix haben geladen, was ein frisch gestartetes System geladen hätte
-(Zonen, Parameter).
+Initial state: Redis and MariaDB run with the values of their files
+(C<redis.running>, C<mariadb.variables>) unless the case sets them itself;
+BIND and Postfix have loaded what a freshly booted system would have loaded
+(zones, parameters).
 
 =cut
 
@@ -2765,7 +2765,7 @@ sub _write_path {
 
 =method write
 
-Schreibt eine Datei (ganz ersetzt). F</proc/sys/…> setzt den Kernel-Parameter.
+Writes a file (replaced whole). F</proc/sys/…> sets the kernel parameter.
 
 =cut
 

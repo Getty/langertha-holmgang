@@ -20,57 +20,59 @@ our $VERSION = '0.001';
 
 =description
 
-Eine Welt ohne Gerät (Vertrag: L<Langertha::Holmgang::Role::AnswerWorld>;
-Typ C<kueche>): eine Küche mit B<Rezeptsammlung>, B<Vorrat>, B<Einkaufsliste>
-und B<Wochenplan>. Die Werkzeuge sind allgemein und für alle Fälle gleich;
-kein Name verrät einen Fehler:
+A world without a device (contract: L<Langertha::Holmgang::Role::AnswerWorld>;
+type C<kueche>): a kitchen with a B<recipe collection>, B<pantry>, B<shopping
+list> and B<week plan>. The tools are general and the same for every case; no
+name gives away a fault. Tool names, parameters and world keys are German,
+as the model sees them:
 
-  rezepte_suchen   { suchbegriff? }                 Titel und Zutaten durchsuchen
-  rezept_lesen     { rezept }                       ein Rezept (ID oder genauer Titel)
-  vorrat_lesen     { }                              was da ist
-  liste_lesen      { }                              die Einkaufsliste
-  auf_liste_setzen { zutat, menge }                 Menge zur Liste hinzufuegen (addiert)
-  von_liste_nehmen { zutat, menge? }                Menge abziehen; ohne Menge ganz streichen
-  plan_lesen       { }                              der Wochenplan
-  plan_setzen      { tag, rezept, portionen }       ein Gericht fuer einen Tag festlegen
+  rezepte_suchen   { suchbegriff? }                 search titles and ingredients
+  rezept_lesen     { rezept }                       one recipe (ID or exact title)
+  vorrat_lesen     { }                              what is in the pantry
+  liste_lesen      { }                              the shopping list
+  auf_liste_setzen { zutat, menge }                 add an amount to the list (adds up)
+  von_liste_nehmen { zutat, menge? }                subtract an amount; without one, strike it entirely
+  plan_lesen       { }                              the week plan
+  plan_setzen      { tag, rezept, portionen }       set a dish for one day
 
-=head2 Einheiten
+=head2 Units
 
-Mengen nehmen die Werkzeuge in jeder Form an, die die B<Masstabelle> kennt
-(C<"2 EL">, C<"30 g">, C<"0,5 l">, C<"3">, C<"2 Dosen">). Die Welt rechnet sie
-in die B<Grundeinheit der Zutat> um (Gewicht C<g>, Raum C<ml> oder eine
-Zähleinheit wie C<Stück>, C<Dose>, C<Zehe>), so vergleicht die Bewertung nur
-Zahlen. Löffel sind Küchenmaße: 1 EL = 15 g bzw. 15 ml, 1 TL = 5 g bzw.
-5 ml. Gewicht und Raum werden nie ineinander umgerechnet; was nicht passt,
-lehnt das Werkzeug ab wie eine Waage („Mehl wird in g geführt").
+The tools take amounts in any form the B<measure table> knows (C<"2 EL">,
+C<"30 g">, C<"0,5 l">, C<"3">, C<"2 Dosen">). The world converts them into the
+B<base unit of the ingredient> (weight C<g>, volume C<ml> or a count unit such
+as C<Stück>, C<Dose>, C<Zehe>), so grading compares only numbers. Spoons are
+kitchen measures: 1 EL (tablespoon) = 15 g or 15 ml, 1 TL (teaspoon) = 5 g or
+5 ml. Weight and volume are never converted into each other; what does not
+fit, the tool refuses like a scale would („Mehl wird in g geführt", flour is
+kept in g).
 
-Unklare Angaben (Prise, etwas, nach Belieben, Spannen) kennt die Tabelle
-nicht; ein Generator erzeugt aus ihnen keine Fälle.
+Vague amounts (Prise, etwas, nach Belieben, ranges — a pinch, some, to taste)
+are not in the table; a generator makes no cases from them.
 
-=head2 Zustand
+=head2 State
 
   kueche:
     type: kueche
     zutaten: { Ei: { einheit: Stück, namen: [Eier] }, Mehl: { einheit: g } }
     rezepte: { apfelkuchen: { titel, portionen, zeit, vegetarisch, nuesse, zutaten: [ { zutat, menge, text } ], quelle } }
-    vorrat:  { Mehl: 1000, Salz: vorhanden }   # Grundeinheit der Zutat; ohne Menge: Text
-    liste:   { Ei: 2 }               # Grundeinheit der Zutat
+    vorrat:  { Mehl: 1000, Salz: vorhanden }   # base unit of the ingredient; without an amount: text
+    liste:   { Ei: 2 }               # base unit of the ingredient
     plan:    { Montag: { rezept: apfelkuchen, portionen: 4 } }
 
-C<zutaten> nennt je Zutat ihre Grundeinheit (C<einheit>) und weitere Namen, unter
-denen die Werkzeuge sie annehmen (C<namen>, etwa die Mehrzahl). C<rezepte> ist
-die Sammlung nach ID: C<vegetarisch> ist C<ja>, C<vegan> oder C<nein>, C<zeit>
-die Zubereitungszeit in Minuten; C<nuesse> lesen die Werkzeuge nicht (für die
-Regeln eines Falls). C<menge> in einer Rezeptzeile steht in der Grundeinheit
-der Zutat, C<text> ist die Zeile, wie das Rezept sie schreibt; eine Zeile ohne
-Menge (Salz, „1 Prise Zucker") hat kein C<menge>, ihre Zutat steht im Vorrat
-als C<vorhanden>.
+C<zutaten> (ingredients) gives each ingredient its base unit (C<einheit>) and
+further names the tools accept it under (C<namen>, e.g. the plural).
+C<rezepte> (recipes) is the collection by ID: C<vegetarisch> is C<ja>,
+C<vegan> or C<nein>, C<zeit> the preparation time in minutes; the tools do not
+read C<nuesse> (nuts; for a case's rules). C<menge> (amount) in a recipe line
+is in the ingredient's base unit, C<text> is the line as the recipe writes it;
+a line without an amount (Salz, „1 Prise Zucker") has no C<menge>, and its
+ingredient is in the pantry (C<vorrat>) as C<vorhanden> (present).
 
-Eine Zutat, die nicht in C<zutaten> steht, kommt mit der Grundeinheit ihrer
-Angabe auf die Liste; C<auf_liste_setzen> trägt sie dann mit dieser
-C<einheit> in C<zutaten> ein.
+An ingredient not listed in C<zutaten> goes on the list (C<liste>) with the
+base unit of its amount; C<auf_liste_setzen> then enters it into C<zutaten>
+with that C<einheit>.
 
-Nur der Zustand, deterministisch, neutral.
+Only the state, deterministic, neutral.
 
 =cut
 
@@ -143,7 +145,7 @@ sub tools { return \%TOOLS }
 
   my $tools = $world->tools;   # { auf_liste_setzen => [qw( zutat menge )], … }
 
-Die Werkzeuge dieser Welt mit ihren Pflichtparametern (für den Lader).
+The tools of this world with their required parameters (for the loader).
 
 =cut
 
@@ -159,8 +161,8 @@ sub tool {
 
   my ( $output, $ok ) = $world->tool( $kueche, $name, \%args, $ctx );
 
-Ein Werkzeugaufruf auf dem Zustand der Küche (C<$kueche> wird geändert). Ein
-Name, der nicht in L</tools> steht, ist ein Fehler.
+A tool call on the state of the kitchen (C<$kueche> is changed). A name not
+in L</tools> is an error.
 
 =cut
 
@@ -183,8 +185,8 @@ sub number {
   number('1,5');   # 1.5
   number('1/2');   # 0.5
 
-Eine Zahl, wie sie in Rezepten steht (Komma oder Punkt, einfacher Bruch,
-C<½>), oder C<undef>.
+A number as recipes write it (comma or point, simple fraction, C<½>), or
+C<undef>.
 
 =cut
 
@@ -216,7 +218,7 @@ sub unit_of {
   my ( $dim, $factor ) = unit_of('EL');     # ( 'loeffel', 15 )
   my ( $dim, $factor ) = unit_of('Dosen');  # ( 'Dose', 1 )
 
-Eine Einheit nach der Masstabelle oder leer.
+A unit from the measure table, or empty.
 
 =cut
 
@@ -246,9 +248,9 @@ sub parse_amount {
 
   my ( $value, $unit, $error ) = parse_amount( '2 EL', 'g' );   # ( 30, 'g' )
 
-Liest eine Mengenangabe und rechnet sie in die Grundeinheit C<$base> um
-(C<g>, C<ml> oder eine Zähleinheit; ohne C<$base> die natürliche Grundeinheit
-der Angabe). Fehler als Text.
+Reads an amount and converts it into the base unit C<$base> (C<g>, C<ml> or
+a count unit; without C<$base> the natural base unit of the amount). Errors
+as text.
 
 =cut
 

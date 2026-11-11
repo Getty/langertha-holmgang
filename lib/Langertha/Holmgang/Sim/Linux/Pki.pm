@@ -12,40 +12,40 @@ use Time::Local ();
 
 our $VERSION = '0.001';
 
-=head1 SYNOPSIS
+=synopsis
 
-  # aus dem Linux-Simulator
+  # from the Linux simulator
   my ( $out, $ok ) = Langertha::Holmgang::Sim::Linux::Pki::openssl( $dev, \@argv, $ctx, $stdin );
   my ( $out, $ok ) = Langertha::Holmgang::Sim::Linux::Pki::update_ca_certificates( $dev, \@argv, $ctx );
 
-  # fuer Fall-Autoren: PEM-Text eines Zertifikats bzw. Schluessels
+  # for case authors: PEM text of a certificate or key
   my $pem = Langertha::Holmgang::Sim::Linux::Pki::pem( cert => 'shop-2026' );
 
-=head1 DESCRIPTION
+=description
 
-Zertifikate sind B<Daten im Zustand>, ihr PEM-Text in Dateien verweist nur auf
-sie (cai-platform F<docs/entwurf-evals.md> §3.3). Der Katalog steht unter C<pki> eines
-oder mehrerer Geräte (zusammengeführt):
+Certificates are B<data in the state>; their PEM text in files only refers to
+them (cai-platform F<docs/entwurf-evals.md> §3.3). The catalog lives under C<pki> of one
+or more devices (merged):
 
   pki:
-    now: "2026-10-24T08:00:00Z"             # Uhrzeit fuer Gueltigkeit
+    now: "2026-10-24T08:00:00Z"             # time for validity
     certs:
       shop-2026: { subject: "CN=shop.example.com", sans: [shop.example.com, www.shop.example.com],
                    issuer: int-r3, not_before: "2026-09-01T00:00:00Z", not_after: "2026-11-30T00:00:00Z",
                    key: k-shop-2026, serial: "04A1…" }
       int-r3:    { subject: "C=US,O=Example Trust,CN=Example R3", issuer: root-x1, ca: true, key: k-int, … }
       root-x1:   { subject: "C=US,O=Example Trust,CN=Example Root X1", issuer: root-x1, ca: true, … }
-    keys:   { k-shop-2026: { bits: 2048, passphrase: "…" } }   # passphrase: nur fuer verschluesselte Dateien
-    trusted: [ root-x1 ]                      # Vertrauensspeicher dieses Geraets (Client)
-    installed: [ … ]                          # vom Simulator: per update-ca-certificates installiert
+    keys:   { k-shop-2026: { bits: 2048, passphrase: "…" } }   # passphrase: only for encrypted files
+    trusted: [ root-x1 ]                      # trust store of this device (client)
+    installed: [ … ]                          # by the simulator: installed via update-ca-certificates
 
-Ein PEM-Block trägt als Rumpf C<base64("cai-sim-cert:<id>")> (bzw. C<key>,
-verschlüsselt im Block C<ENCRYPTED PRIVATE KEY>); Dateien bleiben Text, C<cat
-a b E<gt> kette> geht wie echt. CSRs tragen ihren Inhalt (Subjekt, Namen,
-Schlüssel) kanonisch im Block. Selbst erzeugte Zertifikate und Schlüssel
-(C<openssl req -x509 -newkey>) kommen unter C<pki> des Geräts dazu.
+A PEM block carries C<base64("cai-sim-cert:<id>")> as its body (or C<key>,
+encrypted in an C<ENCRYPTED PRIVATE KEY> block); files stay text, C<cat
+a b E<gt> chain> works as for real. CSRs carry their content (subject, names,
+key) canonically in the block. Self-generated certificates and keys
+(C<openssl req -x509 -newkey>) are added under the device's C<pki>.
 
-B<openssl>: C<x509> (C<-in>/Eingabe, C<-noout>, C<-subject>, C<-issuer>,
+B<openssl>: C<x509> (C<-in>/input, C<-noout>, C<-subject>, C<-issuer>,
 C<-dates>, C<-startdate>, C<-enddate>, C<-serial>, C<-fingerprint
 [-sha256|-sha1]>, C<-ext subjectAltName>, C<-text>, C<-checkend N>,
 C<-modulus>, C<-pubkey>, C<-subject_hash>), C<rsa>/C<pkey> (C<-in>,
@@ -54,16 +54,16 @@ pass:…|file:…|env:…>), C<verify [-CAfile] [-untrusted]>, C<s_client -conne
 h:p [-servername] [-showcerts] [-tls1_2|-tls1_3|-tls1_1|-tls1] [-CAfile]>,
 C<crl2pkcs7 -nocrl -certfile>, C<pkcs7 -print_certs>, C<req> (C<-new>,
 C<-x509>, C<-key>, C<-newkey rsa:N>, C<-nodes>/C<-noenc>, C<-keyout>, C<-out>,
-C<-subj>, C<-addext>, C<-config> mit C<[alt_names]>, C<-days>, C<-in … -noout
--text|-subject|-verify>), C<dgst -sha256>/C<sha256>/C<md5> über die Eingabe,
-C<version>. Anderes: Lücke der Simulation.
+C<-subj>, C<-addext>, C<-config> with C<[alt_names]>, C<-days>, C<-in … -noout
+-text|-subject|-verify>), C<dgst -sha256>/C<sha256>/C<md5> over the input,
+C<version>. Anything else: gap in the simulation.
 
-B<update-ca-certificates> installiert die Zertifikate aller F<*.crt> unter
-F</usr/local/share/ca-certificates> (andere Endungen nicht — wie Debian).
+B<update-ca-certificates> installs the certificates of all F<*.crt> under
+F</usr/local/share/ca-certificates> (not other extensions — as on Debian).
 
-L</client_verify> prüft, was ein Server vorzeigt, wie curl mit OpenSSL:
-Kette bis zu einem vertrauten Zertifikat (C<trusted> + C<installed> des
-Clients, oder nur C<--cacert>), Gültigkeit, Name (SAN, sonst CN).
+L</client_verify> checks what a server presents, like curl with OpenSSL:
+chain up to a trusted certificate (C<trusted> + C<installed> of the
+client, or only C<--cacert>), validity, name (SAN, otherwise CN).
 
 =cut
 
@@ -81,9 +81,9 @@ my %LABEL = ( cert => 'CERTIFICATE', key => 'PRIVATE KEY', enckey => 'ENCRYPTED 
 
 =func pem
 
-  my $text = pem( cert => 'shop-2026' );        # auch key, enckey, pub
+  my $text = pem( cert => 'shop-2026' );        # also key, enckey, pub
 
-PEM-Text (mit abschliessendem Zeilenumbruch) für einen Eintrag des Katalogs.
+PEM text (with a trailing newline) for an entry of the catalog.
 
 =cut
 
@@ -100,8 +100,8 @@ sub pem {
 
   my @b = blocks($text);   # ( { kind => cert|key|enckey|csr|pub|p7|bad|other, id, text }, … )
 
-Die PEM-Blöcke eines Textes in Reihenfolge; ein Rumpf, der auf nichts im
-Katalog verweist, ist C<bad>.
+The PEM blocks of a text in order; a body that refers to nothing in the
+catalog is C<bad>.
 
 =cut
 
@@ -131,7 +131,7 @@ sub blocks {
 
   my $cat = catalog($state);   # { certs, keys, now }
 
-Der Katalog aus C<pki> aller Geräte, zusammengeführt.
+The catalog from C<pki> of all devices, merged.
 
 =cut
 
@@ -169,7 +169,7 @@ sub _iso { my ($e) = @_; my @g = gmtime($e); return sprintf( '%04d-%02d-%02dT%02
 
   dn('C=US,O=Example Trust,CN=Example R3');   # "C = US, O = Example Trust, CN = Example R3"
 
-Ein Subjekt so geschrieben, wie OpenSSL 3 es ausgibt.
+A subject written the way OpenSSL 3 prints it.
 
 =cut
 
@@ -184,7 +184,7 @@ sub _hex { my ( $id, $n, $sep ) = @_; my $h = uc Digest::SHA::sha512_hex("cai-si
 
 =func modulus
 
-Der (simulierte) Modulus eines Schlüssels, gleich für Zertifikat und Schlüssel.
+The (simulated) modulus of a key, the same for certificate and key.
 
 =cut
 
@@ -200,8 +200,8 @@ our %ERR = (
 
 =func verify_chain
 
-  my $err = verify_chain( $katalog, $blatt, \@zwischen, \@vertraut );
-  # undef = gültig, sonst { code, depth, cert }
+  my $err = verify_chain( $catalog, $leaf, \@intermediates, \@trusted );
+  # undef = valid, otherwise { code, depth, cert }
 
 =cut
 
@@ -230,10 +230,10 @@ sub verify_chain {
 
 =func name_matches
 
-  name_matches( $zertifikat, 'www.shop.example.com' );
+  name_matches( $certificate, 'www.shop.example.com' );
 
-Passt der Name auf die SANs (mit C<*.>-Platzhalter für genau eine Ebene), ohne
-SANs auf den CN?
+Does the name match the SANs (with C<*.> wildcard for exactly one level), or,
+without SANs, the CN?
 
 =cut
 
@@ -252,7 +252,7 @@ sub name_matches {
 
 =func trust_of
 
-Die Zertifikate, denen ein Gerät als Client vertraut (Liste der IDs).
+The certificates a device trusts as a client (list of IDs).
 
 =cut
 
@@ -270,7 +270,7 @@ sub _cert_ids { my ($t) = @_; return map { $_->{id} } grep { $_->{kind} eq 'cert
 
 =func client_verify
 
-  my $bad = client_verify( $state, $von, $tls, $req );   # undef oder [ 60, "(60) …" ]
+  my $bad = client_verify( $state, $from, $tls, $req );   # undef or [ 60, "(60) …" ]
 
 =cut
 
@@ -298,7 +298,7 @@ sub client_verify {
 
 =func tls_lines
 
-Zeilen von C<curl -v> zum vorgezeigten Zertifikat.
+Lines of C<curl -v> about the presented certificate.
 
 =cut
 
@@ -345,7 +345,7 @@ sub _usage { my ( $cmd, $msg ) = @_; return ( "$cmd: $msg\n$cmd: Use -help for s
 
   my ( $out, $ok ) = openssl( $dev, \@argv, $ctx, $stdin );
 
-Der Befehl C<openssl> (Unterbefehle s. oben).
+The command C<openssl> (subcommands see above).
 
 =cut
 
@@ -734,8 +734,8 @@ sub _csr_pem { my ($json) = @_; my $b = MIME::Base64::encode_base64( "cai-sim-cs
 
   my $text = csr_pem_for( subject => 'CN=shop.example.com', sans => [ 'shop.example.com' ], key => 'k-shop' );
 
-PEM-Text einer CSR (kanonisch: Subjekt-Felder und Namen sortiert) — für
-Regeln an einer erzeugten CSR-Datei.
+PEM text of a CSR (canonical: subject fields and names sorted) — for
+rules on a generated CSR file.
 
 =cut
 
@@ -826,9 +826,9 @@ sub _req {
 
 =func update_ca_certificates
 
-Der Befehl C<update-ca-certificates>: installiert die F<*.crt> unter
-F</usr/local/share/ca-certificates> in C<pki.installed> und schreibt das Bündel
-F</etc/ssl/certs/ca-certificates.crt> neu, falls es im Zustand liegt.
+The command C<update-ca-certificates>: installs the F<*.crt> under
+F</usr/local/share/ca-certificates> into C<pki.installed> and rewrites the bundle
+F</etc/ssl/certs/ca-certificates.crt> if it is in the state.
 
 =cut
 

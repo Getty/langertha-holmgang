@@ -11,7 +11,7 @@ with 'Langertha::Holmgang::Role::Simulator';
 
 our $VERSION = '0.001';
 
-=head1 SYNOPSIS
+=synopsis
 
   my $sims = Langertha::Holmgang::Simulators->new;
   my ( $out, $ok, $gap ) = $sims->run_command( $state, 'sw-core', 'show vlan brief' );
@@ -22,35 +22,35 @@ our $VERSION = '0.001';
       "configure terminal\ninterface Gi1/0/24\nswitchport trunk allowed vlan add 30\nend",
       { host => 'sw-core', state => $state } );
 
-=head1 DESCRIPTION
+=description
 
-Simuliert die Kommandozeile eines Catalyst-Switches (IOS XE) für die
-Test-Suites (Vertrag in L<Langertha::Holmgang::Role::Simulator>). Ein Aufruf von
-C<run> ist eine frische SSH-Sitzung im privilegierten Modus (C<sw#>); mehrere
-Zeilen (durch Zeilenumbruch getrennt) laufen nacheinander wie eingefügt.
-Leere Zeilen und Zeilen mit C<!> vorn werden übergangen.
+Simulates the command line of a Catalyst switch (IOS XE) for the test suites
+(contract in L<Langertha::Holmgang::Role::Simulator>). A call of C<run> is a
+fresh SSH session in privileged mode (C<sw#>); several lines (separated by
+newlines) run one after another as if pasted. Empty lines and lines starting
+with C<!> are skipped.
 
-Die gängigen Lese- und Konfigurationsbefehle werden B<wirklich auf dem
-Zustand> ausgeführt. Was der Simulator nicht kennt, beantwortet er wie IOS:
+The common show and configuration commands are B<really executed on the
+state>. What the simulator does not know, it answers like IOS:
 
   sw-core(config-if)#switchport trunk alowed vlan 30
                                        ^
   % Invalid input detected at '^' marker.
 
-sowie C<% Incomplete command.> und C<% Ambiguous command:  "…">. Bei
-Fehlern wird nur die fehlerhafte Zeile samt Prompt wiederholt; gelungene
-Zeilen geben nur ihre Ausgabe. Eine fehlerhafte Zeile ändert nichts, die
-übrigen Zeilen laufen weiter (IOS bricht eine eingefügte Konfiguration nicht
-ab); C<$ok> ist dann falsch. Nach C<reload>, C<exit> oder C<logout> im
-privilegierten Modus ist die Sitzung zu, weitere Zeilen entfallen.
+as well as C<% Incomplete command.> and C<% Ambiguous command:  "…">. On an
+error only the failing line is echoed with its prompt; successful lines give
+only their output. A failing line changes nothing, the remaining lines go on
+(IOS does not abort a pasted configuration); C<$ok> is then false. After
+C<reload>, C<exit> or C<logout> in privileged mode the session is closed and
+further lines are dropped.
 
-Befehle und Schlüsselwörter dürfen wie bei IOS abgekürzt werden (eindeutige
-Präfixe: C<sh run>, C<conf t>, C<int Gi1/0/24>, C<sw tr al vl add 30>),
-Schnittstellennamen ebenso (C<Gi>, C<Gig>, C<GigabitEthernet>, C<Fa>, C<Te>,
-C<Po>/C<Port-channel>, C<Vlan>, auch mit Leerzeichen: C<gi 1/0/24>). Im
-Zustand stehen immer die vollen Namen.
+Commands and keywords may be abbreviated as in IOS (unique prefixes:
+C<sh run>, C<conf t>, C<int Gi1/0/24>, C<sw tr al vl add 30>), interface names
+too (C<Gi>, C<Gig>, C<GigabitEthernet>, C<Fa>, C<Te>, C<Po>/C<Port-channel>,
+C<Vlan>, also with a space: C<gi 1/0/24>). The state always holds the full
+names.
 
-=head2 Zustand
+=head2 State
 
   sw-core:
     type: ios
@@ -58,23 +58,23 @@ Zustand stehen immer die vollen Namen.
     vlans: { "1": { name: default }, "10": { name: BUERO }, "30": { name: GAST } }
     interfaces:
       GigabitEthernet1/0/24:
-        description: Uplink zum Router
-        mode: trunk              # trunk | access (fehlt = access; dynamic auto wird nicht modelliert)
-        trunk_allowed: [10, 20]  # Liste von Zahlen oder "all" (fehlt = all)
-        native_vlan: 1           # fehlt = 1
-        access_vlan: 1           # fehlt = 1
+        description: Uplink to the router
+        mode: trunk              # trunk | access (missing = access; dynamic auto is not modelled)
+        trunk_allowed: [10, 20]  # list of numbers or "all" (missing = all)
+        native_vlan: 1           # missing = 1
+        access_vlan: 1           # missing = 1
         shutdown: false
         status: connected        # connected | notconnect | disabled (shutdown -> disabled)
-        link: notconnect         # optional: Status nach "no shutdown" (fehlt = connected)
-    reloads: 0                   # optional, zaehlt "reload"
+        link: notconnect         # optional: status after "no shutdown" (missing = connected)
+    reloads: 0                   # optional, counts "reload"
 
-Geschrieben wird nur, was sich wirklich ändert (ein C<no shutdown> auf einer
-offenen Schnittstelle legt keinen Schlüssel an). Eine Liste in
-C<trunk_allowed>, die alle VLANs 1–4094 enthält, wird zu C<all>.
+Only what really changes is written (a C<no shutdown> on an open interface
+creates no key). A list in C<trunk_allowed> that contains all VLANs 1–4094
+becomes C<all>.
 
-=head2 Befehle
+=head2 Commands
 
-Privilegierter Modus (und mit C<do …> in jedem Konfigurationsmodus):
+Privileged mode (and with C<do …> in every configuration mode):
 
   show running-config [interface X]
   show interfaces [X [switchport|trunk|status] | trunk | status]
@@ -83,46 +83,46 @@ Privilegierter Modus (und mit C<do …> in jedem Konfigurationsmodus):
   show version
   … | include RE  | exclude RE  | begin RE  | section RE  | count RE
   configure terminal
-  terminal length N, terminal width N, enable, end     (ohne Wirkung)
-  write [memory], copy running-config startup-config  ("Building configuration...", Zustand unveraendert)
-  reload                                               (reloads + 1, Sitzung zu)
-  ping ADRESSE                                         (immer der Normalfall: !!!!!, 100 percent)
+  terminal length N, terminal width N, enable, end     (no effect)
+  write [memory], copy running-config startup-config  ("Building configuration...", state unchanged)
+  reload                                               (reloads + 1, session closed)
+  ping ADDRESS                                         (always the normal case: !!!!!, 100 percent)
   exit, logout
 
-Konfiguration (C<(config)#>):
+Configuration (C<(config)#>):
 
   interface X | interface range Gi1/0/1 - 4[, Gi1/0/8]
   vlan N[,M-K]      no vlan N
   hostname NAME     exit     end
 
-Schnittstelle (C<(config-if)#>, C<(config-if-range)#>):
+Interface (C<(config-if)#>, C<(config-if-range)#>):
 
   description TEXT                  no description
   switchport mode trunk|access      no switchport mode
   switchport access vlan N          no switchport access vlan
   switchport trunk native vlan N    no switchport trunk native vlan
-  switchport trunk allowed vlan LISTE          (ERSETZT die Liste)
-  switchport trunk allowed vlan add|remove|except LISTE
+  switchport trunk allowed vlan LIST           (REPLACES the list)
+  switchport trunk allowed vlan add|remove|except LIST
   switchport trunk allowed vlan all|none       no switchport trunk allowed vlan
   shutdown                          no shutdown
   exit     end
 
 VLAN (C<(config-vlan)#>): C<name NAME>, C<no name>, C<exit>, C<end>.
 
-Ein Befehl der globalen Konfiguration in einem Untermodus (z. B. C<interface
-Gi1/0/2> im C<config-if>) verlässt den Untermodus wie bei IOS.
+A global configuration command in a submode (e.g. C<interface Gi1/0/2> in
+C<config-if>) leaves the submode as in IOS.
 
-=head2 Grenzen
+=head2 Limits
 
-Keine Startkonfiguration (C<write memory> und C<reload> ändern die laufende
-Konfiguration nicht), kein VTP, kein Spanning-Tree (die Abschnitte von C<show
-interfaces trunk> zeigen die erlaubten und vorhandenen VLANs), keine
-IP-Adressen, kein C<no switchport>, keine Port-Security, kein Voice-VLAN. C<ping>
-zeigt nur den Normalfall — Fälle mit Störungen liefern ihre Beobachtungen
-selbst. C<show vlan> ohne C<brief> zeigt die Kurzform. Lange Listen in C<show
-running-config> werden nicht umbrochen.
+No startup configuration (C<write memory> and C<reload> do not change the
+running configuration), no VTP, no spanning tree (the sections of C<show
+interfaces trunk> show the allowed and present VLANs), no IP addresses, no
+C<no switchport>, no port security, no voice VLAN. C<ping> shows only the
+normal case — cases with faults bring their own observations. C<show vlan>
+without C<brief> shows the short form. Long lists in C<show running-config>
+are not wrapped.
 
-Reine Funktionen, deterministisch, neutral.
+Pure functions, deterministic, neutral.
 
 =cut
 
@@ -311,8 +311,8 @@ my %GRAMMAR = ( exec => $EXEC, config => $CONFIG, if => $IF, range => $IF, vlan 
 
   my ( $output, $ok ) = Langertha::Holmgang::Sim::IOS->run( $dev, $command, $ctx );
 
-Führt eine Sitzung aus (eine oder mehrere Zeilen in C<$command>) und ändert
-C<$dev>. C<$ok> ist wahr, wenn jede Zeile gelang.
+Runs a session (one or more lines in C<$command>) and changes C<$dev>.
+C<$ok> is true when every line succeeded.
 
 =cut
 
@@ -587,7 +587,7 @@ sub _filter {
 
 =func parse_vlan_list
 
-  my $list = parse_vlan_list('10,20,30-32');   # [10,20,30,31,32] oder undef
+  my $list = parse_vlan_list('10,20,30-32');   # [10,20,30,31,32] or undef
 
 =cut
 
@@ -608,7 +608,7 @@ sub parse_vlan_list {
 
   format_vlan_list( 10, 11, 12, 20 );   # "10-12,20"
 
-Fasst wie IOS zusammen: Läufe ab drei Nummern als Bereich.
+Compresses like IOS: runs of three or more numbers become a range.
 
 =cut
 

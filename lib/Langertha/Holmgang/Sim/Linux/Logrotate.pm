@@ -7,41 +7,41 @@ use utf8;
 
 our $VERSION = '0.001';
 
-=head1 SYNOPSIS
+=synopsis
 
   my ( $out, $ok ) = Langertha::Holmgang::Sim::Linux::Logrotate::run( $dev, [ '-d', '/etc/logrotate.d/app' ], $ctx );
 
-=head1 DESCRIPTION
+=description
 
-Bildet C<logrotate> eines Debian 12 (3.21.0) auf dem Zustand eines Geräts nach
+Models C<logrotate> of a Debian 12 (3.21.0) on the state of a device
 (L<Langertha::Holmgang::Sim::Linux>):
 
 =over
 
-=item * Konfiguration: globale Angaben, Blöcke C<muster … { … }>, C<include>
-(Verzeichnis: Dateien in Namensreihenfolge, Endungen wie C<.dpkg-old> werden
-übergangen), Skripte C<postrotate>/C<prerotate>/C<firstaction>/C<lastaction>
-bis C<endscript>. Fehler wie logrotate: unbekannte Angabe, fehlendes C<{>,
-fehlendes C<}>, C<rotate> ohne Zahl, doppelter Eintrag für dieselbe Datei,
-Konfigurationsdatei für Gruppe/andere schreibbar.
+=item * Configuration: global directives, blocks C<pattern … { … }>, C<include>
+(directory: files in name order, endings like C<.dpkg-old> are
+skipped), scripts C<postrotate>/C<prerotate>/C<firstaction>/C<lastaction>
+up to C<endscript>. Errors like logrotate: unknown directive, missing C<{>,
+missing C<}>, C<rotate> without a number, duplicate entry for the same file,
+configuration file writable by group/others.
 
-=item * C<-d>: Prüflauf mit der Ausgabe von logrotate, ändert nichts.
-C<-f>: rotiert jetzt (C<-v> zeigt dabei dieselbe Ausgabe): ältere Generationen
-weiterschieben und über C<rotate> hinaus löschen, C<copytruncate> (Kopie,
-Original geleert, der Dienst schreibt weiter in die Originaldatei) oder
-umbenennen (der Dienst schreibt weiter in die umbenannte Datei, bis er sie neu
-öffnet) mit C<create> (neue leere Datei mit Rechten), C<compress> und
-C<delaycompress>, Skripte laufen im Simulator (C<systemctl reload|restart …>
-lässt einen Dienst seine Logdateien neu öffnen). Ohne C<-f> ist jede Datei
-heute schon rotiert worden (nichts zu tun).
+=item * C<-d>: dry run with logrotate's output, changes nothing.
+C<-f>: rotates now (C<-v> shows the same output while doing so): shift older
+generations and delete those beyond C<rotate>, C<copytruncate> (copy,
+original emptied, the service keeps writing to the original file) or
+rename (the service keeps writing to the renamed file until it reopens
+it) with C<create> (new empty file with permissions), C<compress> and
+C<delaycompress>, scripts run in the simulator (C<systemctl reload|restart …>
+makes a service reopen its log files). Without C<-f> every file has
+already been rotated today (nothing to do).
 
 =item * C<--version>, C<--help>.
 
 =back
 
-Grenzen: Die Statusdatei (F</var/lib/logrotate/status>) wird nicht geschrieben;
-C<size>, C<maxage>, C<olddir>, C<dateext> und C<mail> werden gelesen und
-angezeigt, aber nicht ausgewertet.
+Limits: the state file (F</var/lib/logrotate/status>) is not written;
+C<size>, C<maxage>, C<olddir>, C<dateext> and C<mail> are read and
+shown, but not evaluated.
 
 =cut
 
@@ -59,9 +59,9 @@ my @TABOO = qw( .rpmsave .rpmorig ~ .disabled .dpkg-old .dpkg-dist .dpkg-new .cf
 
 =func run
 
-  my ( $ausgabe, $ok ) = run( $gerät, \@argumente, $kontext );
+  my ( $output, $ok ) = run( $device, \@args, $ctx );
 
-C<logrotate [-d] [-f] [-v] [-s datei] konfiguration…>.
+C<logrotate [-d] [-f] [-v] [-s file] configuration…>.
 
 =cut
 

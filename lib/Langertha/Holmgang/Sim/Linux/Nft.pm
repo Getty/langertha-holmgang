@@ -9,55 +9,55 @@ use Socket qw( inet_pton AF_INET AF_INET6 );
 
 our $VERSION = '0.001';
 
-=head1 SYNOPSIS
+=synopsis
 
   use Langertha::Holmgang::Sim::Linux::Nft ();
 
   my ( $verdict, $why ) = Langertha::Holmgang::Sim::Linux::Nft::verdict( $dev, {
       hook => 'input', iif => 'eth0', saddr => '203.0.113.7', daddr => '198.51.100.2',
-      proto => 'tcp', dport => 22,                     # ct: new (Vorgabe)
+      proto => 'tcp', dport => 22,                     # ct: new (default)
   } );
   # ( 'accept' | 'drop', 'inet filter input: tcp dport 22 drop' )
-  # ( undef, 'nicht auswertbar: …' ), wenn eine Regel auf dem Weg nicht verstanden wird
+  # ( undef, 'nicht auswertbar: …' ) when a rule on the way is not understood
 
-  my $err = Langertha::Holmgang::Sim::Linux::Nft::parse_error('ip saddr @admins tcp dport ssh accept');   # undef = verstanden
+  my $err = Langertha::Holmgang::Sim::Linux::Nft::parse_error('ip saddr @admins tcp dport ssh accept');   # undef = understood
 
-=head1 DESCRIPTION
+=description
 
-Bewertet einen nftables-Regelsatz (C<nft> im Zustand eines Geräts vom Typ
-C<linux>, s. L<Langertha::Holmgang::Sim::Linux>) am B<Verhalten>: Was geschieht
-mit einem bestimmten Paket? So zählt jede fachlich richtige Schreibweise einer
-Regel (Port als Zahl oder Dienstname, Menge oder einzelne Regeln, benanntes Set,
-C<vmap>, eigene Kette mit C<jump>), und eine Regel an der falschen Stelle fällt
-auf, auch wenn ihr Text stimmt.
+Evaluates an nftables ruleset (C<nft> in the state of a device of type
+C<linux>, see L<Langertha::Holmgang::Sim::Linux>) by its B<behaviour>: what happens
+to a given packet? So every technically correct way of writing a
+rule counts (port as number or service name, set or single rules, named set,
+C<vmap>, own chain with C<jump>), and a rule in the wrong place stands
+out even when its text is right.
 
-B<Weg des Pakets:> alle Basisketten mit dem C<hook> des Pakets und C<type
-filter> in Tabellen passender Familie (C<inet> für IPv4 und IPv6, C<ip> nur
-IPv4, C<ip6> nur IPv6), nach C<priority> geordnet (Zahl oder C<raw>, C<mangle>,
-C<dstnat>, C<filter>, C<security>, C<srcnat>, auch C<filter - 5>). C<accept>
-beendet nur die Kette — die nächste Basiskette prüft weiter; C<drop>/C<reject>
-beenden alles. Am Ende einer Basiskette gilt ihre C<policy>; C<jump> kehrt
-zurück, C<goto> nicht, C<return> kehrt zur rufenden Kette zurück.
+B<Path of the packet:> all base chains with the packet's C<hook> and C<type
+filter> in tables of a matching family (C<inet> for IPv4 and IPv6, C<ip> IPv4
+only, C<ip6> IPv6 only), ordered by C<priority> (number or C<raw>, C<mangle>,
+C<dstnat>, C<filter>, C<security>, C<srcnat>, also C<filter - 5>). C<accept>
+ends only the chain — the next base chain keeps checking; C<drop>/C<reject>
+end everything. At the end of a base chain its C<policy> applies; C<jump> returns,
+C<goto> does not, C<return> returns to the calling chain.
 
-B<Paket:> C<hook>, C<iif>, C<oif>, C<saddr>, C<daddr> (IPv4 oder IPv6 — die
-Familie folgt aus der Adresse), C<proto> (C<tcp>, C<udp>, C<icmp>, C<icmpv6>),
-C<sport>, C<dport>, C<icmp_type> (Vorgabe C<echo-request>), C<icmp_code>, C<ct> (Vorgabe
-C<new>), C<ct_status> (z. B. C<dnat> für eine weitergeleitete Verbindung; mehrere mit Komma).
+B<Packet:> C<hook>, C<iif>, C<oif>, C<saddr>, C<daddr> (IPv4 or IPv6 — the
+family follows from the address), C<proto> (C<tcp>, C<udp>, C<icmp>, C<icmpv6>),
+C<sport>, C<dport>, C<icmp_type> (default C<echo-request>), C<icmp_code>, C<ct> (default
+C<new>), C<ct_status> (e.g. C<dnat> for a forwarded connection; several separated by commas).
 
-B<Verstandene Ausdrücke:> C<iifname>/C<oifname>/C<iif>/C<oif> (auch mit
-C<meta>, Platzhalter C<*>), C<ip>/C<ip6 saddr|daddr> (Adresse, Präfix,
-Bereich C<a-b>, Menge C<{ … }>, benanntes Set C<@name>), C<ip protocol>,
+B<Understood expressions:> C<iifname>/C<oifname>/C<iif>/C<oif> (also with
+C<meta>, wildcard C<*>), C<ip>/C<ip6 saddr|daddr> (address, prefix,
+range C<a-b>, set C<{ … }>, named set C<@name>), C<ip protocol>,
 C<ip6 nexthdr>, C<meta l4proto>, C<meta nfproto>, C<tcp>/C<udp>/C<th
-dport|sport> (Zahl, Dienstname, Bereich, Menge, Set), C<ct state>
-(auch C<a,b>), C<ct status>, C<icmp type|code>, C<icmpv6 type|code>, Vergleich mit C<!=>, C<vmap>
-hinter jedem dieser Ausdrücke; ohne Wirkung auf das Urteil: C<counter>,
-C<log …>, C<tcp option maxseg size set …>, C<limit rate …> (passt; C<over> passt nie), C<comment "…">.
-Urteile: C<accept>, C<drop>, C<reject [with …]>, C<jump>, C<goto>,
-C<return>, C<continue>. Alles andere ist B<nicht auswertbar>: das Urteil ist
-dann C<undef> mit Grund, und der Linux-Simulator vermerkt beim Anlegen einer
-solchen Regel eine Lücke der Simulation (cai-platform F<docs/entwurf-evals.md> §3.3.2).
+dport|sport> (number, service name, range, set, named set), C<ct state>
+(also C<a,b>), C<ct status>, C<icmp type|code>, C<icmpv6 type|code>, comparison with C<!=>, C<vmap>
+after each of these expressions; without effect on the verdict: C<counter>,
+C<log …>, C<tcp option maxseg size set …>, C<limit rate …> (matches; C<over> never matches), C<comment "…">.
+Verdicts: C<accept>, C<drop>, C<reject [with …]>, C<jump>, C<goto>,
+C<return>, C<continue>. Everything else is B<not evaluable>: the verdict is
+then C<undef> with a reason, and the Linux simulator records a gap in the
+simulation when such a rule is added (cai-platform F<docs/entwurf-evals.md> §3.3.2).
 
-B<Benannte Sets> stehen je Tabelle im Zustand:
+B<Named sets> live per table in the state:
 
   nft:
     inet filter:
@@ -154,11 +154,11 @@ my %FIELD = (
 
 =func parse
 
-  my ( $rule, $err ) = parse($regeltext);
+  my ( $rule, $err ) = parse($rule_text);
   # { matches => [ { field, neg, val } | { field, vmap } ], verdict => { accept => 1 } | undef }
 
-Zerlegt eine Regel in Ausdrücke und Urteil; ist sie nicht auswertbar, ist
-C<$rule> C<undef> und C<$err> nennt den Grund.
+Splits a rule into expressions and verdict; if it cannot be evaluated,
+C<$rule> is C<undef> and C<$err> names the reason.
 
 =cut
 
@@ -291,9 +291,9 @@ sub _check_val {
 
 =func parse_error
 
-  my $err = parse_error($regeltext);   # undef: auswertbar
+  my $err = parse_error($rule_text);   # undef: evaluable
 
-Grund, warum eine Regel nicht ausgewertet werden kann, sonst C<undef>.
+The reason a rule cannot be evaluated, otherwise C<undef>.
 
 =cut
 
@@ -301,14 +301,14 @@ sub parse_error { my ( undef, $e ) = parse( $_[0] ); return $e }
 
 =func syntax_error
 
-  my $err = syntax_error($regeltext);   # undef: Syntax von nft (auch wenn nicht auswertbar)
+  my $err = syntax_error($rule_text);   # undef: nft syntax (even if not evaluable)
 
-Fehlertext wie von nft, wenn eine Regel mit einem Wort beginnt, das es in
-nft an dieser Stelle nicht gibt (z. B. eine Zahl ohne C<position>), oder einen
-Wert hat, den nft nicht kennt (ICMP-Typ wie C<neighbor-solicit> statt
-C<nd-neighbor-solicit>, Dienstname, Adresse, C<ct state>); sonst
-C<undef>. Echte, nur nicht nachgebildete Ausdrücke (C<fib>, C<meta mark> …)
-sind kein Syntaxfehler, sondern eine Lücke der Simulation.
+Error text as from nft when a rule starts with a word that does not exist in
+nft at that position (e.g. a number without C<position>), or has a
+value nft does not know (ICMP type like C<neighbor-solicit> instead of
+C<nd-neighbor-solicit>, service name, address, C<ct state>); otherwise
+C<undef>. Real expressions that are merely not modelled (C<fib>, C<meta mark> …)
+are not a syntax error but a gap in the simulation.
 
 =cut
 
@@ -510,11 +510,11 @@ sub _chain {
 
 =func verdict
 
-  my ( $verdict, $why ) = verdict( $dev, \%paket );
+  my ( $verdict, $why ) = verdict( $dev, \%packet );
 
-C<accept> oder C<drop> und die Stelle, die entschieden hat (Tabelle, Kette,
-Regeltext oder C<policy>). Ist eine Regel auf dem Weg nicht auswertbar, ist
-das Urteil C<undef> und C<$why> nennt sie.
+C<accept> or C<drop> and the place that decided (table, chain,
+rule text or C<policy>). If a rule on the way cannot be evaluated,
+the verdict is C<undef> and C<$why> names it.
 
 =cut
 
@@ -554,12 +554,12 @@ sub verdict {
 
 =func boot_verdict
 
-  my ( $verdict, $why ) = boot_verdict( $dev, \%paket, '/etc/nftables.conf' );
+  my ( $verdict, $why ) = boot_verdict( $dev, \%packet, '/etc/nftables.conf' );
 
-Wie L</verdict>, aber für den Regelsatz B<nach einem Neustart>: leerer
-Regelsatz, dann die Datei geladen wie C<nft -f> (Dienst C<nftables> beim
-Boot). Lädt die Datei nicht, ist das Urteil C<undef> und C<$why> nennt den
-Fehler.
+Like L</verdict>, but for the ruleset B<after a reboot>: empty
+ruleset, then the file loaded like C<nft -f> (service C<nftables> at
+boot). If the file does not load, the verdict is C<undef> and C<$why> names the
+error.
 
 =cut
 

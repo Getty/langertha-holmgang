@@ -11,58 +11,58 @@ use Langertha::Holmgang::Sim::Linux ();
 
 our $VERSION = '0.001';
 
-=head1 SYNOPSIS
+=synopsis
 
-  # aus dem Linux-Simulator: redis-cli, Wirkung von Start/Neustart des Dienstes
+  # from the Linux simulator: redis-cli, effect of a service start/restart
   my ( $out, $ok ) = Langertha::Holmgang::Sim::Linux::Redis::redis_cli( $dev, \@argv, $ctx, $stdin );
   Langertha::Holmgang::Sim::Linux::Redis::service_event( $dev, 'restart', $state );
 
-=head1 DESCRIPTION
+=description
 
-Ein Redis-Server (Debian 12, Redis 7.0) auf einem Gerät vom Typ C<linux>
-(cai-platform F<docs/entwurf-evals.md> §3.3.1). Der Zustand steht unter C<redis> des Geräts,
-die Konfigurationsdatei unter C<files>, der Dienst unter C<services> (Name in
+A Redis server (Debian 12, Redis 7.0) on a device of type C<linux>
+(cai-platform F<docs/entwurf-evals.md> §3.3.1). The state lives under C<redis> of the device,
+the configuration file under C<files>, the service under C<services> (name in
 C<redis.service>):
 
   redis:
     service:  redis-server
     conf:     /etc/redis/redis.conf
-    running:  { maxmemory: "2147483648", maxmemory-policy: noeviction, … }  # laufende Werte (Bytes)
-    keys:     { db0: 182344 }          # Schluessel im Speicher
-    saved:    { db0: 182344 }          # Stand der letzten gelungenen Sicherung (RDB)
-    used_memory: 2147480000            # belegt (Bytes)
+    running:  { maxmemory: "2147483648", maxmemory-policy: noeviction, … }  # running values (bytes)
+    keys:     { db0: 182344 }          # keys in memory
+    saved:    { db0: 182344 }          # as of the last successful save (RDB)
+    used_memory: 2147480000            # in use (bytes)
     clients:  41
-    rdb_ok:   true                     # letzte Sicherung gelungen
-    rdb_changes: 0                     # Aenderungen seit der letzten Sicherung
+    rdb_ok:   true                     # last save succeeded
+    rdb_changes: 0                     # changes since the last save
     bgsave_needs: [ { state: …, regex: … }, { can: { user: redis, write: /var/lib/redis } } ]
-    fork_needs:   [ … ]                # wie needs eines Dienstes; ohne sie gelingt BGSAVE
-    replica:  { host: 10.20.0.31, port: 6379, primary: db-a }   # Replikat von (Geraet primary)
+    fork_needs:   [ … ]                # like a service's needs; without them BGSAVE succeeds
+    replica:  { host: 10.20.0.31, port: 6379, primary: db-a }   # replica of (device primary)
     stats:    { evicted_keys: 0, rejected_connections: 0 }
 
-Fehlt C<running>, gilt die Datei (mit den Vorgaben von Redis 7.0). Ein Start
-oder Neustart des Dienstes liest die Datei neu. Beim Herunterfahren sichert
-Redis (wenn C<save> gesetzt ist); gelingt das nicht (C<bgsave_needs>), verwirft
-der Neustart, was seit der letzten Sicherung dazukam (C<keys> = C<saved>). Nach
-einer gescheiterten Sicherung versucht Redis es selbst erneut (hier: beim
-nächsten Aufruf von C<redis-cli>, sobald die Bedingungen halten). Ist die Datei fehlerhaft
-(unbekannte Direktive, falscher Wert), startet der Dienst nicht.
+Without C<running>, the file applies (with the defaults of Redis 7.0). A start
+or restart of the service rereads the file. On shutdown
+Redis saves (if C<save> is set); if that fails (C<bgsave_needs>), the
+restart discards what was added since the last save (C<keys> = C<saved>). After
+a failed save Redis retries on its own (here: on the
+next call of C<redis-cli>, once the conditions hold). If the file is broken
+(unknown directive, wrong value), the service does not start.
 
 B<redis-cli> (C<-h>, C<-p>, C<-a>, C<--pass>, C<--user>, C<--no-auth-warning>,
-C<-n>, C<--raw>, Befehl als Argumente oder zeilenweise auf stdin): C<PING>,
-C<AUTH>, C<INFO [abschnitt]>, C<CONFIG GET muster>, C<CONFIG SET k v [k v …]>
-(geprüft wie Redis: unbekannt, unveränderlich, Werteliste), C<CONFIG REWRITE>
-(schreibt die laufenden Werte in die Datei), C<CONFIG RESETSTAT>, C<DBSIZE>,
-C<BGSAVE>, C<SAVE>, C<LASTSAVE>, C<SLOWLOG GET [n]|LEN|RESET>, C<DEBUG SLEEP s> (ab
-C<slowlog-log-slower-than> ein Eintrag im Slowlog, höchstens C<slowlog-max-len>), C<ROLE>, C<REPLICAOF|SLAVEOF host port|NO
-ONE>, C<CLIENT LIST>, C<ACL WHOAMI>, C<SHUTDOWN> (stoppt den Dienst),
-C<FLUSHALL>/C<FLUSHDB> (leert, zählt C<flushed>), C<SET>/C<GET>/C<DEL>/C<INCR>/C<EXISTS>
-an einem kleinen Bestand C<data> (Schreiben mit C<MISCONF> bzw. C<OOM> abgewiesen wie
-Redis). Ein Neustart, der Ungesichertes verwirft, zählt C<lost> hoch — Regeln
-prüfen Datenverlust daran statt an der Schlüsselzahl. Ohne laufenden Dienst oder an einer Adresse, an
-die Redis nicht gebunden ist: „Connection refused"; mit C<requirepass> ohne
-Passwort: C<NOAUTH>. Anderes ist eine B<Lücke der Simulation>.
+C<-n>, C<--raw>, command as arguments or line by line on stdin): C<PING>,
+C<AUTH>, C<INFO [section]>, C<CONFIG GET pattern>, C<CONFIG SET k v [k v …]>
+(checked like Redis: unknown, immutable, list of values), C<CONFIG REWRITE>
+(writes the running values to the file), C<CONFIG RESETSTAT>, C<DBSIZE>,
+C<BGSAVE>, C<SAVE>, C<LASTSAVE>, C<SLOWLOG GET [n]|LEN|RESET>, C<DEBUG SLEEP s> (from
+C<slowlog-log-slower-than> on, an entry in the slowlog, at most C<slowlog-max-len>), C<ROLE>, C<REPLICAOF|SLAVEOF host port|NO
+ONE>, C<CLIENT LIST>, C<ACL WHOAMI>, C<SHUTDOWN> (stops the service),
+C<FLUSHALL>/C<FLUSHDB> (empties, counts C<flushed>), C<SET>/C<GET>/C<DEL>/C<INCR>/C<EXISTS>
+on a small store C<data> (writes refused with C<MISCONF> or C<OOM> like
+Redis). A restart that discards unsaved data increments C<lost> — rules
+check data loss on it instead of on the key count. Without a running service or on an address
+Redis is not bound to: "Connection refused"; with C<requirepass> and no
+password: C<NOAUTH>. Anything else is a B<simulation gap>.
 
-Reine Funktionen auf dem Zustand, neutral.
+Pure functions on the state, neutral.
 
 =cut
 
@@ -180,10 +180,10 @@ sub _check_value {
 
 =func parse_conf
 
-  my ( $werte, $zeilennr, $zeile, $grund ) = parse_conf( $text );
+  my ( $values, $lineno, $line, $reason ) = parse_conf( $text );
 
-Liest eine F<redis.conf> über die Vorgaben von Redis 7.0: die Werte (wie
-C<CONFIG GET> sie zeigt) oder C<undef> mit Zeile und Grund des ersten Fehlers.
+Reads a F<redis.conf> over the defaults of Redis 7.0: the values (as
+C<CONFIG GET> shows them) or C<undef> with line and reason of the first error.
 
 =cut
 
@@ -222,9 +222,9 @@ sub _running {
 
 =func conf_error
 
-  my $lines = conf_error( $dev );   # undef oder [ Journalzeilen ]
+  my $lines = conf_error( $dev );   # undef or [ journal lines ]
 
-Fehler der Konfigurationsdatei, wie Redis ihn beim Start meldet.
+Error in the configuration file, as Redis reports it on start.
 
 =cut
 
@@ -240,7 +240,7 @@ sub conf_error {
 
   service_event( $dev, 'start'|'restart'|'stop', $state );
 
-Wirkung auf Redis, wenn sein Dienst startet, neu startet oder stoppt.
+Effect on Redis when its service starts, restarts or stops.
 
 =cut
 

@@ -13,15 +13,15 @@ use YAML::XS ();
 
 our $VERSION = '0.001';
 
-=head1 SYNOPSIS
+=synopsis
 
-  # aus dem Linux-Simulator: helm auf einem Geraet mit kubernetes.helm
+  # from the Linux simulator: helm on a device with kubernetes.helm
   my ( $out, $ok ) = Langertha::Holmgang::Sim::Linux::Helm::helm( $dev, \@argv, $ctx );
 
-=head1 DESCRIPTION
+=description
 
-Helm 3 (v3.15) gegen den Cluster unter C<kubernetes> eines Linux-Geräts
-(cai-platform F<docs/entwurf-evals.md> §3.3.1). Der Zustand steht unter C<kubernetes.helm>:
+Helm 3 (v3.15) against the cluster under C<kubernetes> of a Linux device
+(cai-platform F<docs/entwurf-evals.md> §3.3.1). The state is under C<kubernetes.helm>:
 
   helm:
     repos: { example: https://charts.example.com }
@@ -30,48 +30,48 @@ Helm 3 (v3.15) gegen den Cluster unter C<kubernetes> eines Linux-Geräts
         versions:
           "1.4.0":
             app_version: 1.4.2
-            values: { replicaCount: 2, image: { tag: "" } }      # Vorgaben des Charts
-            resources:                                           # Vorlagen (Zustandsform)
+            values: { replicaCount: 2, image: { tag: "" } }      # the chart's defaults
+            resources:                                           # templates (state shape)
               - kind: deployments
                 name: "{{ .Release.Name }}"
-                if: enabled                                      # nur, wenn der Wert wahr ist
+                if: enabled                                      # only when the value is true
                 obj: { replicas: "{{ .Values.replicaCount }}", … }
     releases:
-      shop:                                                      # Namespace
+      shop:                                                      # namespace
         shop-api:
           chart: example/shop-api
           version: 1.4.0
           revision: 4
           status: deployed            # deployed | failed | pending-upgrade | …
-          values: { … }               # vom Benutzer gesetzte Werte (helm get values)
+          values: { … }               # values set by the user (helm get values)
           updated: "2026-10-23 14:02:11"
           description: Upgrade complete
           history: [ { revision, version, values, status, updated, description }, … ]
-          manifest: [ deployments/shop-api, … ]                  # was der Release besitzt
+          manifest: [ deployments/shop-api, … ]                  # what the release owns
 
-Vorlagen: ein Text, der genau C<{{ AUSDRUCK }}> ist, wird zum Wert selbst
-(Zahl, Liste …); sonst wird eingesetzt. Ausdrücke: C<.Values.a.b>,
+Templates: a text that is exactly C<{{ EXPRESSION }}> becomes the value itself
+(number, list …); otherwise it is substituted. Expressions: C<.Values.a.b>,
 C<.Release.Name>, C<.Release.Namespace>, C<.Chart.Version>,
-C<.Chart.AppVersion>, dazu C<| default AUSDRUCK|"text">. Ein Hash mit
-C<_if: pfad> in einer Liste zählt nur, wenn der Wert wahr ist.
+C<.Chart.AppVersion>, plus C<| default EXPRESSION|"text">. A hash with
+C<_if: path> in a list counts only when the value is true.
 
-B<Werte wie Helm 3>: C<upgrade> ohne C<--reuse-values> nimmt nur die neu
-übergebenen Werte (C<-f>, C<--set>) auf die Vorgaben des Charts — die alten
-fallen weg; ohne neue Werte bleiben die alten. C<--reuse-values> legt die
-neuen auf die alten. Ohne C<--version> nimmt C<upgrade> die neueste
-Chart-Version des Repos. C<helm list> zeigt nur C<deployed> und C<failed>
-(C<-a> alle). Ein Release in C<pending-*> lehnt C<upgrade> ab („another
-operation … is in progress"); C<rollback> und das Löschen des Secrets der
-hängenden Revision (C<sh.helm.release.v1.NAME.vN>) lösen das wie echt.
-C<--wait>/C<--atomic> prüfen die Bereitschaft der gerenderten Deployments.
+B<Values like Helm 3>: C<upgrade> without C<--reuse-values> puts only the newly
+passed values (C<-f>, C<--set>) on top of the chart's defaults — the old ones
+are dropped; without new values the old ones stay. C<--reuse-values> puts the
+new ones on top of the old. Without C<--version>, C<upgrade> takes the newest
+chart version of the repo. C<helm list> shows only C<deployed> and C<failed>
+(C<-a> all). A release in C<pending-*> refuses C<upgrade> ("another
+operation … is in progress"); C<rollback> and deleting the secret of the
+pending revision (C<sh.helm.release.v1.NAME.vN>) resolve it as for real.
+C<--wait>/C<--atomic> check the readiness of the rendered deployments.
 
-B<Befehle>: C<list|ls>, C<status>, C<history|hist>, C<get values|manifest>,
+B<Commands>: C<list|ls>, C<status>, C<history|hist>, C<get values|manifest>,
 C<upgrade [--install]>, C<install>, C<rollback>, C<uninstall>, C<repo
-list|update>, C<search repo>, C<show values|chart>, C<version>. Anderes
-(C<template>, C<lint>, C<pull> …) ist eine Lücke der Simulation; Plugins
-(C<diff>) sind nicht installiert.
+list|update>, C<search repo>, C<show values|chart>, C<version>. Anything else
+(C<template>, C<lint>, C<pull> …) is a gap of the simulation; plugins
+(C<diff>) are not installed.
 
-Reine Funktionen auf dem Zustand, neutral.
+Pure functions on the state, neutral.
 
 =cut
 
@@ -311,8 +311,8 @@ sub _push_revision {
 
   drop_revision( $k, $ns, $release, $revision );
 
-Das Secret C<sh.helm.release.v1.NAME.vN> wurde gelöscht: Die Revision
-verschwindet; war es die neueste, wird die vorige wieder die aktuelle.
+The secret C<sh.helm.release.v1.NAME.vN> was deleted: the revision
+disappears; if it was the newest, the previous one becomes current again.
 
 =cut
 
@@ -334,7 +334,7 @@ sub drop_revision {
 
 =func release_secrets
 
-  my %s = release_secrets( $k, $ns );   # name -> Secret (Typ helm.sh/release.v1)
+  my %s = release_secrets( $k, $ns );   # name -> Secret (type helm.sh/release.v1)
 
 =cut
 

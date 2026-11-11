@@ -9,7 +9,7 @@ with 'Langertha::Holmgang::Role::Simulator';
 
 our $VERSION = '0.001';
 
-=head1 SYNOPSIS
+=synopsis
 
   my $sims = Langertha::Holmgang::Simulators->new;
   my ( $out, $ok, $gap ) = $sims->run_command( $state, 'r1', '/ip firewall filter print' );
@@ -32,120 +32,120 @@ our $VERSION = '0.001';
   my ( $output, $ok ) = Langertha::Holmgang::Sim::RouterOS->run( $dev,
       "/ip firewall filter\nmove 1 0\nprint", { host => 'r1' } );
 
-=head1 DESCRIPTION
+=description
 
-Simulator der RouterOS-Konsole für die Test-Suites (Vertrag in
-L<Langertha::Holmgang::Role::Simulator>). Ein Modell tippt über C<run_command(host,
-command)> echte RouterOS-Befehle; die gängigen Lese- und Änderungsbefehle
-werden B<wirklich auf dem Zustand> ausgeführt. Was der Simulator nicht kann,
-beantwortet er wie ein echtes RouterOS (C<bad command name …>, C<expected end
-of command (line 1 column N)>, C<no such item>, C<input does not match any
-value of action>, C<failure: …>) — nie mit einem Hinweis auf eine Lösung.
-Spaltenangaben sind angenähert. Dateizugriff gibt es nicht (kein C<write>).
+Simulator of the RouterOS console for the test suites (contract in
+L<Langertha::Holmgang::Role::Simulator>). A model types real RouterOS commands
+through C<run_command(host, command)>; the common read and change commands are
+B<really executed on the state>. What the simulator cannot do, it answers like
+a real RouterOS (C<bad command name …>, C<expected end of command (line 1
+column N)>, C<no such item>, C<input does not match any value of action>,
+C<failure: …>) — never with a hint at a solution. Column numbers are
+approximate. There is no file access (no C<write>).
 
-=head2 Zustand eines Geräts
+=head2 State of a device
 
   r1:
     type: routeros
-    identity: r1                       # optional, sonst der Hostname
-    menus:                             # Listen-Menues: geordnete Eintraege, Werte als Text
+    identity: r1                       # optional, else the host name
+    menus:                             # list menus: ordered entries, values as text
       /ip firewall filter:
         - { chain: forward, action: accept, connection-state: "established,related", comment: "LAN raus" }
         - { chain: forward, action: drop, disabled: "yes" }
       /ip address: [ { address: 192.168.88.1/24, interface: bridge, network: 192.168.88.0 } ]
       /ip route:   [ { dst-address: 0.0.0.0/0, gateway: 203.0.113.1, distance: "1" } ]
       /ip dhcp-server lease: [ { address: 192.168.88.20, mac-address: "AA:BB:CC:00:00:01", server: dhcp1, dynamic: "yes" } ]
-    settings:                          # Einstellungs-Menues: ein Hash
+    settings:                          # settings menus: a hash
       /ip dns: { servers: "9.9.9.9", allow-remote-requests: "yes" }
-    reboots: 1                         # nur vom Simulator gesetzt (/system reboot)
-    shutdown: "yes"                    # nur vom Simulator gesetzt (/system shutdown)
+    reboots: 1                         # set only by the simulator (/system reboot)
+    shutdown: "yes"                    # set only by the simulator (/system shutdown)
 
-Flags sind Eigenschaften: C<disabled> (C<X>, fehlt = C<no>), C<dynamic> (C<D>,
-nicht änderbar und nicht löschbar — außer C<lease remove>), C<invalid> (C<I>),
-bei Schnittstellen C<running> (C<R>). Ein bekanntes Menü, das im Zustand fehlt,
-gilt als leer; es entsteht erst beim ersten C<add>. Menüs im Zustand, die der
-Simulator nicht kennt, werden als Listen ohne Prüfung der Eigenschaften
-geführt. C<disabled=no> wird nur geschrieben, wenn der Schlüssel schon da war.
+Flags are properties: C<disabled> (C<X>, missing = C<no>), C<dynamic> (C<D>,
+neither changeable nor removable — except by C<lease remove>), C<invalid>
+(C<I>), on interfaces C<running> (C<R>). A known menu missing from the state
+counts as empty; it is created on the first C<add>. Menus in the state that
+the simulator does not know are kept as lists without checking their
+properties. C<disabled=no> is written only when the key was already there.
 
-=head2 Menüs
+=head2 Menus
 
-Listen: C</ip firewall filter|nat|mangle|raw|address-list>, C</ip address>,
+Lists: C</ip firewall filter|nat|mangle|raw|address-list>, C</ip address>,
 C</ip route>, C</ip pool>, C</ip dhcp-server>, C</ip dhcp-server network>,
 C</ip dhcp-server lease>, C</ip dhcp-client>, C</ip dns static>, C</ip arp>,
-C</interface> (kein add/remove), C</interface ethernet> (kein add/remove),
+C</interface> (no add/remove), C</interface ethernet> (no add/remove),
 C</interface pppoe-client|vlan|bridge|bridge port|list|list member|wireguard|wireguard peers>.
-Einstellungen: C</ip dns>, C</system identity> (schreibt C<identity>).
-Nur lesen: C</system resource>. Je Menü gibt es eine Liste erlaubter
-Eigenschaften (zugleich die Reihenfolge in C<print>); C<action> nur aus der
-Werteliste des Menüs; Pflichtangaben bei C<add> (Firewall: C<chain>).
+Settings: C</ip dns>, C</system identity> (writes C<identity>).
+Read only: C</system resource>. Each menu has a list of allowed properties
+(also the order in C<print>); C<action> only from the menu's value list;
+required properties on C<add> (firewall: C<chain>).
 
-=head2 Befehle
+=head2 Commands
 
-Pfade mit oder ohne C</>, auch C</ip/firewall/filter>; eindeutige Abkürzungen
-von Menüs und Befehlen (C</ip fi fi pr>); eine Zeile nur mit Pfad wechselt das
-Menü für die folgenden Zeilen, C</> ist die Wurzel, C<..> eine Ebene hoch.
-Mehrere Befehle durch Zeilenumbruch oder C<;>; Zeilen mit C<#> sind Kommentare.
-Bricht ein Befehl ab, bleiben die vorigen ausgeführt, die folgenden nicht;
-jeder einzelne Befehl ändert entweder vollständig oder gar nicht.
+Paths with or without C</>, also C</ip/firewall/filter>; unique abbreviations
+of menus and commands (C</ip fi fi pr>); a line with only a path changes the
+menu for the following lines, C</> is the root, C<..> one level up. Several
+commands separated by newline or C<;>; lines with C<#> are comments. When a
+command aborts, the earlier ones stay executed and the later ones do not run;
+each single command changes either completely or not at all.
 
 =over
 
-=item Listen
+=item Lists
 
-C<print> (nummeriert ab 0 in der aktuellen Reihenfolge, Kopf C<Flags: …>,
-Kommentar als C<;;; text>, dann C<k=v>), C<print detail>, C<print terse>,
+C<print> (numbered from 0 in the current order, header C<Flags: …>, comment
+as C<;;; text>, then C<k=v>), C<print detail>, C<print terse>,
 C<print count-only>, C<print where …>; C<add k=v … [place-before=N]>,
 C<set N[,M] k=v !k k="">, C<remove>, C<disable>, C<enable>,
-C<comment N comment="x">, C<move N [destination=]M> (Eintrag N rückt vor den
-Eintrag, der jetzt Nummer M hat; ohne Ziel ans Ende; nur Firewall, DNS static,
-Bridge-Ports), C<find>, C<make-static> (Leases), C<reset-counters>
-(Firewall), C<export>. Nummern: C<0>, C<0,2>, C<[find …]>, bei Menüs mit
-C<name> auch der Name. Nummern zählen immer über die ganze Liste (auch nach
-C<print where>).
+C<comment N comment="x">, C<move N [destination=]M> (entry N moves in front of
+the entry that now has number M; without a destination to the end; only
+firewall, DNS static, bridge ports), C<find>, C<make-static> (leases),
+C<reset-counters> (firewall), C<export>. Numbers: C<0>, C<0,2>, C<[find …]>,
+for menus with C<name> also the name. Numbers always count over the whole list
+(also after C<print where>).
 
-=item find und where
+=item find and where
 
 C<[find]>, C<[find k=v k2=v2]>, C<[find where k=v and k2!=v2 or k~"re"]>,
 C<[find dynamic=yes]>, C<[find !disabled]>, C<[/ip firewall nat find …]>;
-C<not>, C<!>, C<and>/C<&&>, C<or>/C<||> (ohne Klammern; und vor oder).
+C<not>, C<!>, C<and>/C<&&>, C<or>/C<||> (no parentheses; and before or).
 
-=item Einstellungen
+=item Settings
 
-C<print> (C<  servers: 9.9.9.9>, Schlüssel rechtsbündig), C<set k=v>,
+C<print> (C<  servers: 9.9.9.9>, keys right-aligned), C<set k=v>,
 C<export>.
 
 =item export
 
-C<export> (auch C<compact>, C<verbose>, C<terse>, C<hide-sensitive>) in jedem
-Menü, für den Teilbaum; an der Wurzel alles. Blöcke wie RouterOS: Pfadzeile,
-dann C<add …> bzw. C<set …>, Eigenschaften alphabetisch, Werte mit
-Leerzeichen in Anführungszeichen; dynamische Einträge fehlen; C</interface>
-wird nicht exportiert. C<export file=x> gibt nichts aus (keine Dateien).
+C<export> (also C<compact>, C<verbose>, C<terse>, C<hide-sensitive>) in every
+menu, for the subtree; at the root everything. Blocks like RouterOS: path
+line, then C<add …> or C<set …>, properties in alphabetical order, values with
+spaces in quotes; dynamic entries are left out; C</interface> is not
+exported. C<export file=x> prints nothing (no files).
 
-=item System und Diagnose
+=item System and diagnostics
 
-C</system reboot> zählt C<reboots> hoch, C</system shutdown> setzt
-C<shutdown: yes> (danach antwortet das Gerät nicht mehr); beide beenden den
-Aufruf. C</system identity print|set>, C</system resource print> (feste
-Angaben). C<quit> beendet den Aufruf.
+C</system reboot> increments C<reboots>, C</system shutdown> sets
+C<shutdown: yes> (after that the device no longer answers); both end the
+call. C</system identity print|set>, C</system resource print> (fixed
+values). C<quit> ends the call.
 
-C<ping ADRESSE [count=N]> (Vorgabe 3, höchstens 10) und C<traceroute ADRESSE>
-werden B<nicht> wirklich simuliert, sondern aus dem Zustand abgeleitet:
-Antworten kommen, wenn die Adresse eine eigene ist, in einem verbundenen Netz
-aus C</ip address> liegt oder eine aktive Route aus C</ip route> zu ihr führt
-(Tabelle C<main>, Gateway in einem verbundenen Netz oder eine Schnittstelle;
-längstes Präfix, dann kleinste C<distance>); sonst C<no route to host>,
-bei C<blackhole> C<timeout>. Namen werden nur über C</ip dns static> aufgelöst.
-Beobachtungen des Falls (C<observe>) gehen vor und erreichen den Simulator nicht.
+C<ping ADDRESS [count=N]> (default 3, at most 10) and C<traceroute ADDRESS>
+are B<not> really simulated but derived from the state: replies come when the
+address is one of the device's own, lies in a connected network from
+C</ip address>, or an active route from C</ip route> leads to it (table
+C<main>, gateway in a connected network or an interface; longest prefix, then
+lowest C<distance>); otherwise C<no route to host>, for C<blackhole>
+C<timeout>. Names are resolved only through C</ip dns static>. The case's
+observations (C<observe>) take precedence and never reach the simulator.
 
 =back
 
-=head2 Grenzen
+=head2 Limits
 
-Keine Skriptsprache (C<:put>, C<:foreach>, Variablen), kein C<edit>, kein
-C<get>, keine internen IDs (C<*1>), keine dynamischen Routen aus verbundenen
-Netzen in C</ip route print>, keine Tabellenansicht, kein Zeilenumbruch langer
-Zeilen, keine Logs, kein C</tool sniffer>.
+No scripting language (C<:put>, C<:foreach>, variables), no C<edit>, no
+C<get>, no internal IDs (C<*1>), no dynamic routes from connected networks in
+C</ip route print>, no table view, no wrapping of long lines, no logs, no
+C</tool sniffer>.
 
 =cut
 
@@ -297,10 +297,10 @@ my $VERSION_ROS = '7.16.2';
 
   my ( $output, $ok ) = Langertha::Holmgang::Sim::RouterOS->run( $dev, $command, { host => 'r1' } );
 
-Führt die Befehlszeilen in C<$command> nacheinander auf dem Gerätezustand
-C<$dev> aus (C<$dev> wird geändert). Jeder Aufruf beginnt an der Wurzel
-(eine neue Sitzung). C<$ok> ist falsch, sobald ein Befehl scheitert; die
-Ausgabe endet dann mit der Fehlermeldung.
+Runs the command lines in C<$command> one after another on the device state
+C<$dev> (C<$dev> is changed). Every call starts at the root (a new
+session). C<$ok> is false as soon as a command fails; the output then ends
+with the error message.
 
 =cut
 
@@ -367,7 +367,7 @@ sub run_command {
 
   my @paths = Langertha::Holmgang::Sim::RouterOS::menus();
 
-Die bekannten Menüs (sortiert), für Doku und Prüfung von Fällen.
+The known menus (sorted), for documentation and for checking cases.
 
 =cut
 

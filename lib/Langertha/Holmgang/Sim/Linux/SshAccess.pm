@@ -9,55 +9,55 @@ use Langertha::Holmgang::Sim::Linux::Nft ();
 
 our $VERSION = '0.001';
 
-=head1 SYNOPSIS
+=synopsis
 
   use Langertha::Holmgang::Sim::Linux::SshAccess ();
 
   my ( $ok, $client, @log ) = Langertha::Holmgang::Sim::Linux::SshAccess::check( $dev, {
       user => 'anna', from => '10.1.0.77', key => 'ssh-ed25519 AAAAC3Nz…',
-      iif  => 'eth1', daddr => '10.1.0.20',          # fuer die Firewall (optional)
-      port => 22, auth => 'publickey',                 # Vorgaben
+      iif  => 'eth1', daddr => '10.1.0.20',          # for the firewall (optional)
+      port => 22, auth => 'publickey',                 # defaults
   }, 'srv1' );
-  # ( 1, 'Welcome …' ) oder ( 0, 'anna@srv1: Permission denied (publickey).', 'Authentication refused: …' )
+  # ( 1, 'Welcome …' ) or ( 0, 'anna@srv1: Permission denied (publickey).', 'Authentication refused: …' )
 
-=head1 DESCRIPTION
+=description
 
-Die Anmeldung eines Benutzers am OpenSSH-Server eines simulierten
-Linux-Geräts (cai-platform F<docs/entwurf-evals.md> §3.3.1), aufgesetzt auf
-L<Langertha::Holmgang::Sim::Linux::Sshd>. Geprüft wird in der Reihenfolge, in der
-sshd sie sieht:
+A user's login to the OpenSSH server of a simulated
+Linux device (cai-platform F<docs/entwurf-evals.md> §3.3.1), built on
+L<Langertha::Holmgang::Sim::Linux::Sshd>. Checked in the order in which
+sshd sees it:
 
 =over
 
-=item 1. Dienst C<ssh> läuft, C<Port> der B<geladenen> Konfiguration passt
-(sonst „Connection refused"); die nftables-Firewall lässt die Verbindung durch
-(L<Langertha::Holmgang::Sim::Linux::Nft>, sonst „Connection timed out").
+=item 1. Service C<ssh> is running, C<Port> of the B<loaded> configuration matches
+(otherwise "Connection refused"); the nftables firewall lets the connection through
+(L<Langertha::Holmgang::Sim::Linux::Nft>, otherwise "Connection timed out").
 
-=item 2. Die Konfiguration B<für diese Verbindung>: global (erster Wert gewinnt)
-und darüber die zutreffenden C<Match>-Abschnitte (C<User>, C<Group>,
-C<Address>, C<LocalPort>, C<all>; Muster mit C<*>, C<?>, C<!> und CIDR), in
-einem zutreffenden Abschnitt wieder der erste Wert.
+=item 2. The configuration B<for this connection>: global (first value wins)
+and on top the matching C<Match> sections (C<User>, C<Group>,
+C<Address>, C<LocalPort>, C<all>; patterns with C<*>, C<?>, C<!> and CIDR), within
+a matching section again the first value.
 
-=item 3. Konto (vorhanden, nicht abgelaufen, Shell gültig), C<PermitRootLogin>
-(C<no>; C<prohibit-password> verbietet root das Passwort; C<forced-commands-only>
-lässt nur Schlüssel mit C<command=> zu),
+=item 3. Account (present, not expired, valid shell), C<PermitRootLogin>
+(C<no>; C<prohibit-password> denies root the password; C<forced-commands-only>
+admits only keys with C<command=>),
 C<DenyUsers>/C<AllowUsers>/C<DenyGroups>/C<AllowGroups>.
 
-=item 4. Schlüssel: C<PubkeyAuthentication>, die Dateien aus
-C<AuthorizedKeysFile> (C<%h>, C<%u>, C<%%>, relativ zum Heimatverzeichnis),
-mit C<StrictModes> (Vorgabe C<yes>) die Rechte: die Datei und jedes
-Verzeichnis bis zum Heimatverzeichnis gehört dem Benutzer oder root und ist für
-Gruppe und andere nicht schreibbar; Optionen C<from="…"> der Schlüsselzeile.
-Passwort (C<auth: password>): C<PasswordAuthentication> und ein Passwort am
-Konto, nicht gesperrt.
+=item 4. Key: C<PubkeyAuthentication>, the files from
+C<AuthorizedKeysFile> (C<%h>, C<%u>, C<%%>, relative to the home directory),
+with C<StrictModes> (default C<yes>) the permissions: the file and every
+directory up to the home directory belong to the user or root and are not
+writable by group and others; options C<from="…"> of the key line.
+Password (C<auth: password>): C<PasswordAuthentication> and a password on the
+account, not locked.
 
 =back
 
-Was sshd geladen hat, steht in C<services.ssh._loaded> (Texte der
-Konfigurationsdateien zum Zeitpunkt von Start, Neustart oder reload); fehlt es,
-gelten die Dateien des Anfangszustands (L</remember>). Eine Änderung an
-F</etc/ssh/sshd_config> wirkt also erst nach C<reload>/C<restart> — wie bei
-sshd. Benutzer im Zustand:
+What sshd has loaded is in C<services.ssh._loaded> (texts of the
+configuration files at the time of start, restart or reload); if it is missing,
+the files of the initial state apply (L</remember>). A change to
+F</etc/ssh/sshd_config> thus takes effect only after C<reload>/C<restart> — as with
+sshd. Users in the state:
 
   users:
     anna: { uid: 1001, groups: [anna, devs], home: /home/anna, shell: /bin/bash, password: true }
@@ -65,9 +65,9 @@ sshd. Benutzer im Zustand:
   files: { /home/anna/.ssh/authorized_keys: { owner: anna, mode: "0600", content: "ssh-ed25519 AAAA… anna@laptop\n" } }
   ssh_tries: [ { user: anna, from: 10.1.0.77, key: "ssh-ed25519 AAAA…", iif: eth1, daddr: 10.1.0.20 } ]
 
-C<ssh_tries> sind Anmeldeversuche anderer (z. B. der Kollegin aus der
-Störungsmeldung); das Journal von C<ssh> zeigt zu jedem die Zeilen, die sshd
-schreiben würde (L</journal>).
+C<ssh_tries> are login attempts by others (e.g. the colleague from the
+incident report); the journal of C<ssh> shows for each the lines sshd
+would write (L</journal>).
 
 =cut
 
@@ -92,9 +92,9 @@ sub _text {
 
   remember($dev);
 
-Hält fest, welche sshd-Konfiguration geladen ist (Texte unter F</etc/ssh>), wenn
-das noch nicht geschehen ist — vor dem ersten Befehl eines Falls und nach jedem
-erfolgreichen Laden des Dienstes (L</loaded>).
+Records which sshd configuration is loaded (texts under F</etc/ssh>), if
+that has not happened yet — before the first command of a case and after every
+successful load of the service (L</loaded>).
 
 =cut
 
@@ -108,7 +108,7 @@ sub remember {
 
 =func loaded
 
-  loaded($dev);   # nach start/restart/reload von ssh
+  loaded($dev);   # after start/restart/reload of ssh
 
 =cut
 
@@ -207,8 +207,8 @@ sub _criteria_match {
 
   my $eff = config_for( $dev, { user, from, groups => [...], port } );
 
-Die Einstellungen der geladenen Konfiguration für diese Verbindung (Schlüssel
-klein, Listen als Liste).
+The settings of the loaded configuration for this connection (keys
+lower case, lists as lists).
 
 =cut
 
@@ -222,9 +222,9 @@ sub config_for {
 
   my $set = match_overrides( $dev, { user, from, groups, port }, 1 );
 
-Nur die Werte, die zutreffende C<Match>-Abschnitte setzen; mit wahrem dritten
-Argument aus den Dateien (wie C<sshd -T -C>), sonst aus der geladenen
-Konfiguration.
+Only the values that matching C<Match> sections set; with a true third
+argument from the files (like C<sshd -T -C>), otherwise from the loaded
+configuration.
 
 =cut
 
@@ -316,10 +316,10 @@ sub _from_ok {
 
 =func check
 
-  my ( $ok, $client, @log ) = check( $dev, \%versuch, $host );
+  my ( $ok, $client, @log ) = check( $dev, \%attempt, $host );
 
-C<$ok> 1/0, C<$client> die Meldung des ssh-Clients, C<@log> die Zeilen von sshd
-(ohne Zeitstempel).
+C<$ok> 1/0, C<$client> the ssh client's message, C<@log> the lines of sshd
+(without timestamp).
 
 =cut
 
@@ -415,10 +415,10 @@ sub check {
 
 =func journal
 
-  my @zeilen = journal( $dev, $host );
+  my @lines = journal( $dev, $host );
 
-Zeilen von sshd zu den Anmeldeversuchen C<ssh_tries> (mit Zeitstempel), gegen
-den jetzigen Stand geprüft.
+Lines of sshd for the login attempts C<ssh_tries> (with timestamp), checked
+against the current state.
 
 =cut
 

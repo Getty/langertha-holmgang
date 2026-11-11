@@ -1,5 +1,5 @@
 package Langertha::Holmgang::Sim::Linux::Storage;
-# ABSTRACT: Platten und Dateisysteme auf einem simulierten Linux-Server — LVM, mount, fstab, Swap, mdadm
+# ABSTRACT: Disks and file systems on a simulated Linux server — LVM, mount, fstab, swap, mdadm
 
 use strict;
 use warnings;
@@ -9,58 +9,58 @@ use JSON::MaybeXS ();
 
 our $VERSION = '0.001';
 
-=head1 SYNOPSIS
+=synopsis
 
-  # aus dem Linux-Simulator: lsblk, blkid, findmnt, mount, umount, pvs, lvextend, resize2fs, …
-  Langertha::Holmgang::Sim::Linux::Storage::prepare( $dev );       # beim Laden des Falls
+  # from the Linux simulator: lsblk, blkid, findmnt, mount, umount, pvs, lvextend, resize2fs, …
+  Langertha::Holmgang::Sim::Linux::Storage::prepare( $dev );       # when the case loads
 
-=head1 DESCRIPTION
+=description
 
-Blockgeräte, LVM, Dateisysteme und Einhängepunkte eines Geräts vom Typ C<linux>
-(cai-platform F<docs/entwurf-evals.md> §3.3.1). Der Zustand steht unter C<storage>, die
-eingehängten Dateisysteme wie bisher unter C<mounts> (C<df>):
+Block devices, LVM, file systems and mount points of a device of type C<linux>
+(cai-platform F<docs/entwurf-evals.md> §3.3.1). The state lives under C<storage>, the
+mounted file systems as before under C<mounts> (C<df>):
 
   storage:
-    disks:                                   # Platten und Partitionen (parent)
+    disks:                                   # disks and partitions (parent)
       /dev/vda:  { size: 40G }
       /dev/vda1: { size: 39G, parent: /dev/vda, fstype: ext4, uuid: 0b6f…, label: root }
-      /dev/vdb:  { size: 100G }              # leer
-    vgs:                                     # LVM: Größe und Frei aus den PVs und LVs
+      /dev/vdb:  { size: 100G }              # empty
+    vgs:                                     # LVM: size and free from the PVs and LVs
       vg0: { pvs: [/dev/vda2], lvs: { var: { size: 20G, fstype: ext4, uuid: … }, root: { … } } }
-    md:                                      # Software-RAID
+    md:                                      # software RAID
       /dev/md0: { level: raid1, raid_disks: 2, size: 39G, members: { /dev/sda1: active, /dev/sdb1: faulty }, fstype: ext4, uuid: … }
-    swaps: [ { name: /dev/vda3, size: 2G } ] # aktiver Swap
+    swaps: [ { name: /dev/vda3, size: 2G } ] # active swap
   mounts:
     /var: { dev: /dev/mapper/vg0-var, size: 20G, used: 19G, fstype: ext4, opts: "rw,relatime", reserved_pct: 5 }
 
-Ein Dateisystem gehört zu einem Gerät (Platte, Partition, LV, md) und trägt dort
-C<fstype>, C<uuid>, C<label>, C<fssize> (Vorgabe: Größe des Geräts),
-C<reserved_pct>, C<errors>. Eingehängt stehen Größe und Belegung in C<mounts>;
-C<umount> legt Belegung und Dateien unter dem Einhängepunkt am Gerät ab
-(C<offline>), C<mount> holt sie zurück — so verschwinden die Dateien beim
-Aushängen und erscheinen beim Einhängen wieder, auch unter einem anderen
-Einhängepunkt.
+A file system belongs to a device (disk, partition, LV, md) and carries there
+C<fstype>, C<uuid>, C<label>, C<fssize> (default: size of the device),
+C<reserved_pct>, C<errors>. When mounted, size and usage are in C<mounts>;
+C<umount> stores usage and the files under the mount point on the device
+(C<offline>), C<mount> brings them back — so the files vanish on
+unmount and reappear on mount, also under a different
+mount point.
 
-B<Befehle>: C<lsblk [-f]>, C<blkid [gerät]>, C<findmnt [ziel] [--verify] [-s]>,
-C<mount> (Liste), C<mount -a>, C<mount [-t typ] [-o opt] quelle ziel>, C<mount ziel>
-(aus fstab), C<mount -o remount,…>, C<umount>, C<pvs>, C<vgs>, C<lvs>,
+B<Commands>: C<lsblk [-f]>, C<blkid [device]>, C<findmnt [target] [--verify] [-s]>,
+C<mount> (list), C<mount -a>, C<mount [-t type] [-o opt] source target>, C<mount target>
+(from fstab), C<mount -o remount,…>, C<umount>, C<pvs>, C<vgs>, C<lvs>,
 C<pvdisplay|vgdisplay|lvdisplay>, C<pvcreate>, C<vgextend>, C<lvcreate -L|-l -n [-s]>,
 C<lvextend|lvresize -L [+]n|-l +n%FREE [-r]>, C<resize2fs>, C<xfs_growfs>,
 C<mkfs[.ext4|.xfs] [-F]>, C<mkswap>, C<swapon [-a|--show]>, C<swapoff>,
 C<fallocate -l>, C<dd if=/dev/zero of= bs= count=>, C<tune2fs -l|-m>,
 C<e2fsck|fsck [-f] [-y]>, C<mdadm --detail|--add|--remove|--fail>,
-C<cat /proc/mdstat>, C<sfdisk -d> und C<sfdisk gerät> (Tabelle von der Eingabe),
-C<sgdisk -R ziel quelle>, C<growpart platte n>, C<partprobe>, C<free [-h]>.
+C<cat /proc/mdstat>, C<sfdisk -d> and C<sfdisk device> (table from the input),
+C<sgdisk -R target source>, C<growpart disk n>, C<partprobe>, C<free [-h]>.
 
-B<Wie Linux>: C<lvextend> ohne C<-r> vergrößert nur das LV — C<df> sieht das
-erst nach C<resize2fs> bzw. C<xfs_growfs>; C<resize2fs> auf XFS und
-C<xfs_growfs> auf ext4 scheitern; ein Dateisystem lässt sich nicht verkleinern;
-C<mkfs> verweigert eingehängte Geräte und fragt bei vorhandenem Dateisystem
-(ohne C<-F> scheitert es); C<pvcreate> verweigert Geräte mit Dateisystem oder
-Partitionen; C<umount> scheitert („target is busy"), solange ein laufender Dienst
-mit C<uses> darunter arbeitet; C<e2fsck> verweigert eingehängte Dateisysteme;
-C<swapon> ohne C<mkswap> scheitert, warnt bei Rechten außer 0600; C<mount -a>
-meldet eine geänderte fstab, solange systemd sie nicht neu gelesen hat.
+B<Like Linux>: C<lvextend> without C<-r> grows only the LV — C<df> sees it
+only after C<resize2fs> or C<xfs_growfs>; C<resize2fs> on XFS and
+C<xfs_growfs> on ext4 fail; a file system cannot be shrunk;
+C<mkfs> refuses mounted devices and asks when a file system is present
+(without C<-F> it fails); C<pvcreate> refuses devices with a file system or
+partitions; C<umount> fails ("target is busy") while a running service
+with C<uses> works below it; C<e2fsck> refuses mounted file systems;
+C<swapon> without C<mkswap> fails, warns on permissions other than 0600; C<mount -a>
+reports a changed fstab as long as systemd has not reread it.
 
 =cut
 
@@ -90,9 +90,9 @@ sub _all {
 
 =func canon
 
-  my $pfad = canon( $dev, "UUID=…" );   # kanonischer Gerätepfad oder undef
+  my $path = canon( $dev, "UUID=…" );   # canonical device path or undef
 
-Löst Gerätenamen auf: Pfad, /dev/vg/lv, vg/lv, UUID=, LABEL=, /dev/disk/by-uuid/….
+Resolves device names: path, /dev/vg/lv, vg/lv, UUID=, LABEL=, /dev/disk/by-uuid/….
 
 =cut
 
@@ -146,8 +146,8 @@ sub _g   { my ($b) = @_; my $x = $b / 1024**3; return $x == int $x ? "${x}g" : s
 
 =func prepare
 
-Beim Laden des Falls: ergänzt eingehängte Dateisysteme um C<fstype> vom Gerät
-und merkt sich die fstab, die systemd geladen hat.
+When the case loads: adds C<fstype> from the device to mounted file systems
+and remembers the fstab systemd has loaded.
 
 =cut
 
@@ -252,7 +252,7 @@ sub _fstab_hint {
 
 =func mount
 
-C<mount> (s. oben).
+C<mount> (see above).
 
 =cut
 
@@ -315,7 +315,7 @@ sub mount {
 
 =func umount
 
-C<umount ziel|gerät> (C<-l> wie ohne).
+C<umount target|device> (C<-l> same as without).
 
 =cut
 
@@ -338,7 +338,7 @@ sub umount {
 
 =func findmnt
 
-C<findmnt [ziel] [--verify] [-s]>.
+C<findmnt [target] [--verify] [-s]>.
 
 =cut
 
@@ -388,7 +388,7 @@ sub findmnt {
 
 =func lsblk
 
-C<lsblk [-f] [gerät]>.
+C<lsblk [-f] [device]>.
 
 =cut
 
@@ -438,7 +438,7 @@ sub lsblk {
 
 =func blkid
 
-C<blkid [gerät …]>.
+C<blkid [device …]>.
 
 =cut
 
@@ -463,8 +463,8 @@ sub blkid {
 =func lvm
 
 C<pvs>, C<vgs>, C<lvs>, C<pvdisplay>, C<vgdisplay>, C<lvdisplay>, C<pvcreate>,
-C<vgextend>, C<lvcreate>, C<lvextend>, C<lvresize> (das Programm als vierter
-Wert).
+C<vgextend>, C<lvcreate>, C<lvextend>, C<lvresize> (the program as the fourth
+value).
 
 =cut
 
@@ -628,7 +628,7 @@ sub _grow {
 
 =func resize2fs
 
-C<resize2fs gerät [größe]> (nur ext2/3/4).
+C<resize2fs device [size]> (ext2/3/4 only).
 
 =cut
 
@@ -657,7 +657,7 @@ sub resize2fs {
 
 =func xfs_growfs
 
-C<xfs_growfs einhängepunkt|gerät> (nur eingehängtes XFS).
+C<xfs_growfs mountpoint|device> (mounted XFS only).
 
 =cut
 
@@ -680,7 +680,7 @@ sub xfs_growfs {
 
 =func mkfs
 
-C<mkfs[.ext4|.xfs] [-F|-f] [-L label] gerät>, C<mkfs -t typ>.
+C<mkfs[.ext4|.xfs] [-F|-f] [-L label] device>, C<mkfs -t type>.
 
 =cut
 
@@ -719,7 +719,7 @@ sub mkfs {
 
 =func tune2fs
 
-C<tune2fs -l gerät>, C<tune2fs -m prozent gerät>.
+C<tune2fs -l device>, C<tune2fs -m percent device>.
 
 =cut
 
@@ -754,7 +754,7 @@ sub tune2fs {
 
 =func fsck
 
-C<e2fsck|fsck|fsck.ext4 [-f] [-y|-p|-n] gerät>.
+C<e2fsck|fsck|fsck.ext4 [-f] [-y|-p|-n] device>.
 
 =cut
 
@@ -787,8 +787,8 @@ sub _root_free {
 
 =func swap
 
-C<mkswap>, C<swapon>, C<swapoff>, C<fallocate>, C<dd>, C<free> (das Programm als
-vierter Wert).
+C<mkswap>, C<swapon>, C<swapoff>, C<fallocate>, C<dd>, C<free> (the program as the
+fourth value).
 
 =cut
 
@@ -893,7 +893,7 @@ sub swap {
 
 =func part
 
-C<sfdisk>, C<sgdisk>, C<growpart>, C<partprobe> (das Programm als vierter Wert).
+C<sfdisk>, C<sgdisk>, C<growpart>, C<partprobe> (the program as the fourth value).
 
 =cut
 
@@ -1025,14 +1025,14 @@ sub _mdstat {
 
 =func mdadm
 
-C<mdadm --detail md>, C<mdadm [--manage] md --add|--remove|--fail gerät …>,
-C<cat /proc/mdstat> (über C<mdstat>).
+C<mdadm --detail md>, C<mdadm [--manage] md --add|--remove|--fail device …>,
+C<cat /proc/mdstat> (via C<mdstat>).
 
 =cut
 
 =func mdstat
 
-Inhalt von F</proc/mdstat>.
+Content of F</proc/mdstat>.
 
 =cut
 
