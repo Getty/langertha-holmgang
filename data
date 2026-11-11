@@ -1,0 +1,27 @@
+---
+claimed_at: 2026-11-11T08:52:46Z
+claimed_by: holmgang-main
+class: standard
+completed: 2026-11-11T08:52:46Z
+created: 2026-11-11T07:49:47Z
+id: 58
+priority: high
+started: 2026-11-11T08:28:18Z
+status: done
+tags:
+- abnahme
+title: Abnahmekopie auf cai-platform origin/main heben
+updated: 2026-11-11T08:52:46Z
+---
+
+Aus k23: Abnahme 1/2 prüfen gegen af7561a5; origin/main hat mehr Format-2-Suites (u.a. die fünf Kategorie-Suites) und Änderungen an Sim.pm, Backup, Kueche, Linux, Runner. Nach auszug + den drei Antwortwelten neue Kopie außerhalb des Repos, Baseline neu erzeugen, Abnahme 1 und 2 fahren, Simulator-Änderungen übernehmen. Voraussetzung für die Umstellung der cai-Benchmarks.
+
+Copy ~/holmgang-abnahme/cai-platform-993637ab (git archive origin/main 993637ab). cai loader: 36 suites, 708 cases, lint green; pii-de and bullshit/ (no suite.yaml) not listed. Baseline baseline-993637ab generating with an unchanged copy of cai_driver.pl. Hunks: World sim death already handled by k32 (different wording, by design); FakeTarget _lead moot (mock per case); Runner token/_nul DB-only; Suite auszug done (k52), topic title n/a; Batch verdicts runs_error/runs_aborted -> porting into Evaluation.
+
+Baseline-993637ab made (driver unchanged, no error/gap). Acceptance on 993637ab: load 36 suites/708 cases = cai; mock runs 72/72 suite x mode identical; denken vectors ok. Ported: verdict unfinished (never ok) + repetitions_error (reported, NOT deciding ok: keeps ADR 0009 k42 maintainer decision; flagged in ADR 0008 k58 amendment). id scan: device-type names exempt; suite id removed from ADR 0005 prose. Others justified in ADR 0006 k58 amendment.
+
+Final: acceptance rerun on current tree (incl. sim-worker's Backup/Kueche edits) PASS: load 36/708, mock runs 72/72, id scan, denken vectors. prove -lr t PASS (3 acceptance suites skip without env). current -> cai-platform-993637ab (was cai-platform-af7561a5). Sim.pm/Linux.pm untouched in tree at run time; rerun acceptance if the sim-worker lands more. Ready for review; not moved (as instructed).
+
+sim-worker: Sim-Diffs af7561a5..origin/main portiert. Backup (_sel ohne Filter, Snapshots ohne paths: keine Perl-Fehler, kein Autoviv von paths bei --path) und Kueche (von_liste_nehmen legt liste nicht an) portiert mit Tests in t/sim/backup.t, t/sim/kueche.t. Sim.pm perl_error + Linux-Hunks (platform#228) NICHT portiert: der k32-Waechter in World deckt die Behauptung ab (kein Perl-Text/Host-Pfad ans Modell, Luecke); Unterschied: Modell sieht 'Fehler: interner Fehler beim Ausführen des Aufrufs.' statt leerer Ausgabe - Entscheidung World-Lane. Sim.pm-Registrierung: bereits in k53-k55. t/world_sim_fault.t: Fehlerinjektion angepasst (_sel stirbt nicht mehr). prove -lr t gruen.
+
+Committed locally, not pushed: b800905 (restic/kueche sparse states), 2e1be8a (verdicts unfinished/repetitions_error), a96f747 (acceptance copy 993637ab). Intermediate commits verified in throwaway worktrees; full prove -lr t/ on HEAD PASS (97 files, 3273 tests, acceptance suites skipped without env).
