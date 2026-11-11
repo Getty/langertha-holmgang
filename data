@@ -1,0 +1,21 @@
+---
+claimed_at: 2026-11-11T06:26:20Z
+claimed_by: holmgang-main
+class: standard
+completed: 2026-11-11T06:26:20Z
+created: 2026-11-05T13:01:06Z
+id: 31
+priority: low
+started: 2026-11-11T05:56:22Z
+status: done
+tags:
+- toolschema
+title: 'ToolSchema: const je Aufruf prüfen'
+updated: 2026-11-11T06:26:28Z
+---
+
+Aus k2: ToolSchema akzeptiert 'const' beim Laden, prüft es aber nicht je Aufruf (wie cai schema_errors). Entscheiden, ob const je Aufruf geprüft wird; falls ja, Format-2-Abnahmekopie gegenprüfen (ADR 0004).
+
+2026-11-11 06:08 holmgang-worker: DECISION (my choice): const IS checked per call. Reason: the schema goes to the model as is, so a const it declares must mean what it says; accepting it at load and never checking it is a silent hole; it costs one condition and compares like enum (same_scalar: number and boolean as text). Deliberate difference from cai-platform (Eval::World::schema_errors accepts const, never checks it). Error text to the model: '$.x: erlaubt ist <value>' (bool shown as true/false), German like the rest. check_schema also refuses a const that is not a scalar (null, list, hash) — one that no argument could ever satisfy — as '<field>.const: not a scalar'. Acceptance: the pinned copy ~/holmgang-abnahme/current (af7561a5) has 0 const keys in 815 YAML files (the 2 text hits are prose), so no case changes behaviour or needs an edit; t/acceptance_load.t, t/acceptance_mock_runs.t (baseline-af7561a5) and t/no_private_suite_ids.t all PASS with HOLMGANG_ACCEPTANCE_SUITES/BASELINE set (Files=3, Tests=99). t/tool_schema.t: the old claim 'const is not checked per call' replaced by per-call checks (string, number-as-text, boolean) and the two load refusals; red before, green now. Needs an ADR 0005 amendment (text in the worker report).
+
+Committed as 13a6fb7
