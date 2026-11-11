@@ -709,12 +709,14 @@ C<file>: rename on import (above).
 
 =head1 EXAMPLE SUITES
 
-Five small, invented suites to learn format 2 from ship in the
-distribution's share directory (ADR 0010): C<demo-linux> (a Linux device),
-C<demo-lamp> (a world without devices, its tool described by handlers),
-C<demo-haystack> (generated input), C<demo-sehen> (an image on a user
-message, handed in through the answer world C<sehen>) and C<demo-roost> (a
-typed answer world plugin, an invented dragon roost). In a checkout they are under
+Six small, invented suites to learn from ship in the distribution's share
+directory (ADR 0010): C<demo-linux> (a Linux device), C<demo-lamp> (a world
+without devices, its tool described by handlers), C<demo-haystack> (generated
+input), C<demo-sehen> (an image on a user message, handed in through the
+answer world C<sehen>), C<demo-roost> (a typed answer world plugin, an
+invented dragon roost) -- all five in format 2 -- and C<demo-beacons>, a
+F<suite.pl> in the case DSL whose three cases a C<generate> block builds from
+a seed (an invented chain of hill beacons). In a checkout they are under
 F<share/suites>; after installation under
 
   perl -MFile::ShareDir=dist_dir -E 'say dist_dir("Langertha-Holmgang")."/suites"'

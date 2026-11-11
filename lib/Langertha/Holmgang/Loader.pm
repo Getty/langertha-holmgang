@@ -880,14 +880,15 @@ does not hold does not load. Fix the case or the simulator, never lint.
 
 =head2 Example suites
 
-The distribution ships four invented suites to learn from (ADR 0010), each
-with its origin and license in the head of F<suite.yaml>:
+The distribution ships six invented suites to learn from (ADR 0010), each
+with its origin and license in the head of F<suite.yaml> (F<suite.pl>):
 
   demo-linux      a linux device; run_command and write_file (two cases)
   demo-lamp       a world without devices: one tool described by handlers
   demo-haystack   a message made by generate (Langertha::Holmgang::Haystack)
   demo-sehen      an image on a user message; the answer world sehen
   demo-roost      a typed answer world plugin: the invented dragon roost (two cases)
+  demo-beacons    the case DSL (suite.pl): three cases from a seeded generate block
 
 In a checkout they are under F<share/suites>; installed, under the
 distribution's share directory:

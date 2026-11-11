@@ -19,27 +19,28 @@ witnesses, agreed weapons, and a verdict everyone accepted.
 
 ## Status
 
-**Usable:** suites in format 2 (`suite.yaml` plus `cases/*.yaml`), the loader
-with its lint, the simulators (`linux` with many services, `routeros`, `ios`,
-the answer world `kueche`, handler worlds without a simulator), grading at the
-end state with seven statuses, the runner over any Langertha engine, the JSON
-report, the evaluation per topic, and the `holmgang` command line (`lint`,
-`run`, `report`).
-
-**Coming:** cases and suites written in a Perl DSL (ADR 0007) —
-`Langertha::Holmgang` exports nothing yet. Also not there yet: several
-variants per target, parallel requests and resume, and a YAML export.
+**Usable:** suites in format 2 (`suite.yaml` plus `cases/*.yaml`) and in the
+Perl case DSL of `Langertha::Holmgang` (`suite.pl`, ADR 0007) with seeded
+generators and a YAML export to format 2, the loader with its lint, the
+simulators (`linux` with many services, `routeros`, `ios`, the answer worlds
+`kueche`, `sehen` and `roost`, handler worlds without a simulator), grading at
+the end state with seven statuses, the runner over any Langertha engine with
+several variants per target, parallel requests and resume, the JSON report,
+the evaluation per topic, and the `holmgang` command line (`lint`, `run`,
+`report`, `export-yaml`).
 
 Vision, vocabulary and scope: [CONTEXT.md](CONTEXT.md). Decisions:
 [docs/adr/](docs/adr/).
 
 ## Quick start
 
-The distribution ships five small, invented example suites under
+The distribution ships six small, invented example suites under
 `share/suites` (ADR 0010): `demo-linux` (a Linux device), `demo-lamp` (a world
 without devices, its tool described by handlers), `demo-haystack` (generated
-input), `demo-sehen` (an image on a user message, the answer world `sehen`) and
-`demo-roost` (a typed answer world plugin, an invented dragon roost). Installed, they are in the distribution's share directory:
+input), `demo-sehen` (an image on a user message, the answer world `sehen`),
+`demo-roost` (a typed answer world plugin, an invented dragon roost) and
+`demo-beacons` (a `suite.pl` in the case DSL, its cases built by a seeded
+`generate` block). Installed, they are in the distribution's share directory:
 
 ```bash
 SUITES="$(perl -MFile::ShareDir=dist_dir -E 'say dist_dir("Langertha-Holmgang")')/suites"

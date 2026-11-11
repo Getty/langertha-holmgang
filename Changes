@@ -37,8 +37,8 @@ Revision history for Langertha-Holmgang
     report evaluates report files with thresholds from --suite. Exit 0 ok,
     1 refused, verdict not ok or no case answered by the target, 2 usage or
     setup error. Errors on stderr carry no Perl location
-  - Five invented example suites under share/suites: demo-linux, demo-lamp,
-    demo-haystack, demo-sehen and demo-roost, found with
+  - Six invented example suites under share/suites: demo-linux, demo-lamp,
+    demo-haystack, demo-sehen, demo-roost and demo-beacons, found with
     File::ShareDir::dist_dir('Langertha-Holmgang').'/suites'
   - Documentation: an overview in Langertha::Holmgang, the suite format 2
     reference in ::Loader, rules and statuses in ::Grader, the simulator
@@ -77,3 +77,4 @@ Revision history for Langertha-Holmgang
   - New answer world schichtfehler (Langertha::Holmgang::Sim::Schichtfehler): sources, recorded page fetches and browser console, reported findings matched to causes by file and line overlap; answers only from the state (k55)
   - holmgang export-yaml / Loader->export write a DSL suite as suite format 2 (canonical YAML, images copied); a DSL suite's digest is now its export's digest; DSL cases run in file-name order of their export (k19)
   - --seed ID=N on lint, run and export-yaml overrides a DSL suite's generate seeds (k51)
+  - New example suite demo-beacons: the case DSL, cases from a seeded generate block (k50)
