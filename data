@@ -1,0 +1,21 @@
+---
+claimed_at: 2026-11-11T06:25:49Z
+claimed_by: holmgang-main
+class: standard
+completed: 2026-11-11T06:25:49Z
+created: 2026-11-05T13:01:07Z
+id: 33
+priority: medium
+started: 2026-11-11T05:56:46Z
+status: done
+tags:
+- loader
+title: 'Loader: Umgang mit Nicht-Format-2-Suiten (pii-*)'
+updated: 2026-11-11T06:25:57Z
+---
+
+Aus k2: Suiten mit anderem Format (z.B. die pii-Suite) erscheinen in Loader->list mit Fehler 'only format 2'; cai überspringt sie still. Für k13 festlegen: überspringen oder Fehlereinträge filtern.
+
+2026-11-11 worker: ENTSCHEIDUNG (meine): überspringen, aber nicht per cai-Präfix pii-, sondern: suite.yaml mit nicht-numerischem format (z.B. pii-1) = anderes Korpus -> fehlt in list; numerisches format != 2, kein format, kaputter Kopf -> bleibt mit error. load weist alle ab. Grund: Rauschen vermeiden wie cai, Engine kennt CitiAI-Korpusnamen nicht, Versionsfehler der eigenen Linie bleiben sichtbar. Geändert: Loader.pm (_foreign, list POD), t/loader.t (neuer Block mit erfundenem format: corpus-1, format 1/3/fehlend/kaputtes YAML; Test schlägt ohne Fix fehl - geprüft). ADR 0005 Nachtrag k33. Abnahmekopie af7561a5: list 31 Suiten, 0 Fehler, pii-de nicht gelistet; acceptance_load PASS.
+
+Committed as 1044cea
