@@ -268,6 +268,28 @@ refused( $CASE, qr/threshold\.runs/, qr/unknown key/, 'threshold: unknown key',
   }
 }
 
+# --- list: a corpus of another kind is left out, a numeric format is an error (k33) ---
+# The foreign corpus is invented: a head with a named format and nothing else of format 2.
+{
+  my $root = Path::Tiny->tempdir;
+  suite_dir( root => $root, id => 'good' );
+  suite_dir( root => $root, id => 'other-corpus', head => "format: corpus-1\nid: other-corpus\nversion: 1\ntitle: Not a suite\n", cases => {} );
+  suite_dir( root => $root, id => 'old', head => $HEAD =~ s/^format: 2$/format: 1/mr );
+  suite_dir( root => $root, id => 'future', head => $HEAD =~ s/^format: 2$/format: 3/mr );
+  suite_dir( root => $root, id => 'nofmt', head => $HEAD =~ s/^format: 2\n//mr );
+  suite_dir( root => $root, id => 'badyaml', head => "format: [\n" );
+  my $list = loader()->list("$root");
+  is_deeply( [ map { $_->{id} } @$list ], [qw( badyaml future good nofmt old )], 'list: a named format is left out, the rest listed' );
+  my %by = map { $_->{id} => $_ } @$list;
+  is( $by{good}{error}, undef, '... the format 2 suite loads' );
+  like( $by{old}{error}, qr/format 1/, '... format 1 is listed with its refusal' );
+  like( $by{future}{error}, qr/only format 2/, '... an unknown numeric format is listed with its refusal' );
+  like( $by{nofmt}{error}, qr/only format 2/, '... no format at all is listed with its refusal' );
+  like( $by{badyaml}{error}, qr/not valid YAML/, '... an unreadable head is listed with its refusal' );
+  my ( $err ) = Langertha::Holmgang::Error->caught( eval { loader()->load("$root/other-corpus"); 1 } ? undef : $@ );
+  ok( $err && $err->field eq 'format', 'load still refuses the foreign corpus' );
+}
+
 # --- lint: the mock runs come from the runner (k9) ------------------------------
 {
   my @seen;

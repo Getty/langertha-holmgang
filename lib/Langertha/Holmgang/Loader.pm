@@ -179,6 +179,16 @@ sub _roots {
   return grep { length } map { split /:/ } grep { defined } @roots;
 }
 
+# A suite.yaml whose format is a name rather than a number (cai-platform's
+# pii-1 corpus) is another kind of corpus, not a broken suite (k33).
+sub _foreign {
+  my ( $self, $dir ) = @_;
+  my ( $head ) = eval { $self->_read_yaml( $dir.'/suite.yaml', 'suite.yaml' ) };
+  return 0 unless $head;
+  my $format = $head->{format};
+  return defined $format && !ref $format && $format !~ /\A[0-9]+\z/ ? 1 : 0;
+}
+
 sub list {
   my ( $self, @roots ) = @_;
   my ( %where, @ids );
@@ -196,6 +206,7 @@ sub list {
       push @out, { id => $id, error => 'suite id in more than one search directory: '.join( ' ', @{ $where{$id} } ) };
       next;
     }
+    next if $self->_foreign( $where{$id}[0].'/'.$id );
     my $s = eval { $self->load( $where{$id}[0].'/'.$id ) };
     unless ( $s ) {
       my $err = $@;
@@ -226,7 +237,11 @@ subdirectory with a F<suite.yaml>), sorted by id, as a short overview:
 C<id>, C<version>, C<title>, C<description>, C<topic>, C<cases> and C<tools>
 (counts), C<digest>, C<error>. A suite that does not load is listed with
 C<error> (the refusal as text) instead of stopping the list; an id found in
-more than one search directory is listed once, with an error.
+more than one search directory is listed once, with an error. A directory
+whose F<suite.yaml> names its C<format> with something other than a number
+(cai-platform's C<pii-1> corpus, say) is another kind of corpus and is left
+out; a numeric format other than 2 (C<1>, C<3>) or none at all is a suite
+that does not load and is listed with its error. L</load> refuses either.
 
 =cut
 

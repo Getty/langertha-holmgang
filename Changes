@@ -53,3 +53,5 @@ Revision history for Langertha-Holmgang
     the entry does not fit (k39)
   - Suite->checksum is now Suite->digest, and Loader->list carries digest,
     the same name as the report's suite.digest (k30)
+  - Loader->list leaves out suites whose format is a name rather than a
+    number (another kind of corpus) (k33)
