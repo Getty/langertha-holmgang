@@ -1,0 +1,22 @@
+---
+claimed_at: 2026-11-11T06:24:49Z
+claimed_by: holmgang-main
+class: standard
+completed: 2026-11-11T06:24:49Z
+created: 2026-11-05T17:05:50Z
+id: 39
+priority: low
+started: 2026-11-11T05:56:14Z
+status: done
+tags:
+- world
+- leak
+title: 'World: unbekannter Filter im when-Pfad stirbt außerhalb eval'
+updated: 2026-11-11T06:24:57Z
+---
+
+Aus k35: ein unbekannter {x|filter} in einem when-Pfad (Handler/Beobachtung) wird außerhalb eines eval ausgewertet und stirbt zur Laufzeit aus World->call heraus statt als Werkzeugergebnis. Nur erreichbar, wenn Lint umgangen wurde (Lint lehnt solche Fälle seit k35 ab). Prüfen, ob k32s _guarded das schon abdeckt; sonst die Auswertung schützen.
+
+2026-11-11 05:59 holmgang-worker: k32's _guarded does NOT cover it — it wraps only simulator calls; _fits (when of handlers and observations) evaluated condition() unguarded, so filter_value's die left World->call and killed run_case. Reproduced first in t/unknown_filter.t part (3), lint bypassed: World->call died for a handler when path and for an observation when path, runner died (7 failing asserts). Fix in World::_fits: each when is evaluated in eval; one that cannot be evaluated does not hold, so the entry does not fit. MY CHOICE (reason: a predicate that cannot be evaluated cannot hold; the handler path then ends in the same generic refusal 'Fehler: dieser Aufruf ist in diesem Szenario nicht vorgesehen.' the apply path gives, no die text reaches the model; an observation simply does not answer and the simulator does — only reachable past lint). POD of World description notes it. t/unknown_filter.t, t/world.t green.
+
+Committed as 6702851
