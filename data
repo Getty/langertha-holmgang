@@ -1,0 +1,24 @@
+---
+claimed_at: 2026-11-11T08:10:03Z
+claimed_by: holmgang-main
+class: standard
+completed: 2026-11-11T08:08:55Z
+created: 2026-11-11T07:38:59Z
+id: 51
+priority: low
+started: 2026-11-11T07:43:32Z
+status: done
+tags:
+- dsl
+- cli
+title: CLI-Option für Seed-Override der Generatoren
+updated: 2026-11-11T08:10:03Z
+---
+
+Aus k18: Loader->new(seeds => { ID => N }) überschreibt den Seed aller generate-Blöcke einer Suite; die CLI (holmgang lint/run) hat dafür noch keine Option (ADR 0009).
+
+Implemented: --seed ID=N (repeatable) on lint, run, export-yaml; usage error (exit 2) for bad syntax, out of 0..4294967295, twice, or an id that is no DSL suite of the command. CLI builds a second loader with the same parts + seeds. ADR 0009 amendment k19/k51; tests t/cli/seed.t. Shares CLI.pm hunks with k19 (cmd_export_yaml uses _seeded_loader).
+
+Verified: prove -lr t green (94 files, 3225 tests; only the env-gated acceptance/denken_vectors suites skip there); acceptance run green (acceptance_load, acceptance_mock_runs, no_private_suite_ids: 99 tests, PASS). Tree commit-ready, not committed.
+
+committed 8e7b54a (with k19)
