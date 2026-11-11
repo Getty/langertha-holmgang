@@ -1,0 +1,24 @@
+---
+claimed_at: 2026-11-11T08:27:25Z
+claimed_by: holmgang-main
+class: standard
+completed: 2026-11-11T08:27:16Z
+created: 2026-11-11T08:01:48Z
+id: 59
+priority: low
+started: 2026-11-11T08:10:51Z
+status: done
+tags:
+- structure
+- dsl
+title: 'Structure: Code-Referenz im Fallzustand mit Feldpfad ablehnen'
+updated: 2026-11-11T08:27:25Z
+---
+
+Aus k19: Structure lässt eine Code-Referenz im state eines Falls durch (DSL); die JSON-Kopie der World stirbt dann ohne Feldpfad. Beim Laden mit Feldpfad ablehnen, Test dazu.
+
+Worker: Structure::_plain refuses non-data refs in state (code, objects, scalar/glob refs) with field path, e.g. 'suite.pl: case c1: state.cfg.hooks[1].run'. Regression t/dsl/state_plain.t (reproduced: without the check the load dies in World::clone without a field). ADR 0005/0007 amendments k59.
+
+Worker: prove -lr t green, acceptance green. Ready for review; not moved per instruction.
+
+committed 17b3d2c
