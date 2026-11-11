@@ -40,8 +40,10 @@ L</check_schema> is the shape check of the loader: anything else is a loud
 L<Langertha::Holmgang::Error>. L</schema_errors> checks the arguments of one
 call; its texts go to the model (after C<Fehler: Argumente passen nicht zum
 Schema:>) and are therefore German, as the suites expect them. Integers and
-numbers may arrive as text (C<"3">), as many models send them. C<const> is
-accepted at load but not checked per call, as in cai-platform.
+numbers may arrive as text (C<"3">), as many models send them. C<enum> and
+C<const> compare like the expectations do. Unlike cai-platform, which accepts
+C<const> but never checks it, C<const> holds per call: the schema the model
+sees means what it says.
 
 =cut
 
@@ -52,8 +54,9 @@ sub _refuse { Langertha::Holmgang::Error->throw(@_) }
   check_schema( $schema, $field );
 
 Refuses an unknown key, an unknown C<type>, an invalid C<pattern>, a
-C<properties> that is not a hash and a C<required> or C<enum> that is not a
-list — recursively, with the field path. Returns the schema.
+C<properties> that is not a hash, a C<required> or C<enum> that is not a
+list and a C<const> that is not a scalar (text, number or boolean) —
+recursively, with the field path. Returns the schema.
 
 =cut
 
@@ -78,6 +81,8 @@ sub check_schema {
   check_schema( $s->{items}, $field.'.items' ) if exists $s->{items};
   _refuse( $field.'.required', 'not a list' ) if exists $s->{required} && ref $s->{required} ne 'ARRAY';
   _refuse( $field.'.enum', 'not a list' )     if exists $s->{enum}     && ref $s->{enum} ne 'ARRAY';
+  _refuse( $field.'.const', 'not a scalar' )
+    if exists $s->{const} && ( !defined $s->{const} || ref $s->{const} && !JSON::MaybeXS::is_bool( $s->{const} ) );
   return $s;
 }
 
@@ -109,6 +114,10 @@ sub schema_errors {
   }
   if ( $s->{enum} && !grep { same_scalar( $d, $_ ) } @{ $s->{enum} } ) {
     push @e, $at.': erlaubt sind '.join( ', ', @{ $s->{enum} } );
+  }
+  if ( exists $s->{const} && !same_scalar( $d, $s->{const} ) ) {
+    my $c = $s->{const};
+    push @e, $at.': erlaubt ist '.( JSON::MaybeXS::is_bool($c) ? ( $c ? 'true' : 'false' ) : $c );
   }
   if ( defined $d && !ref $d ) {
     push @e, $at.': zu kurz' if defined $s->{minLength} && length $d < $s->{minLength};

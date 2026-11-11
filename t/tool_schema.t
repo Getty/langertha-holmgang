@@ -2,8 +2,9 @@
 # Langertha::Holmgang::ToolSchema. Claims: the load check refuses what lies
 # outside the JSON Schema subset, with the field path, recursively; per call
 # every violation is reported with its path, integers and numbers may come as
-# text, enum compares like the expectations do, and the texts are the German
-# ones the model gets.
+# text, enum and const compare like the expectations do (const per call since
+# k31; a const that is no scalar is refused at load), and the texts are the
+# German ones the model gets.
 use strict;
 use warnings;
 use utf8;
@@ -29,6 +30,8 @@ my $S = { type => 'object', required => [qw( name count )], properties => {
   list  => { type => 'array', minItems => 1, maxItems => 2, items => { type => 'string' } },
   none  => { type => 'null' },
   fixed => { const => 'x' },
+  three => { type => 'integer', const => 3 },
+  yes   => { const => JSON::MaybeXS::true() },
 } };
 
 is( check_schema( $S, 'p' ), $S, 'a schema in the subset passes and comes back' );
@@ -39,6 +42,8 @@ refused( { properties => [] }, 'p.properties', qr/not a hash/, 'properties not a
 refused( { items => { format => 'x' } }, 'p.items.format', qr/unknown key/, 'items checked too' );
 refused( { required => 'a' }, 'p.required', qr/not a list/, 'required not a list' );
 refused( { enum => 'a' }, 'p.enum', qr/not a list/, 'enum not a list' );
+refused( { const => [ 'a' ] }, 'p.const', qr/not a scalar/, 'const a list' );
+refused( { properties => { a => { const => undef } } }, 'p.properties.a.const', qr/not a scalar/, 'const null, nested' );
 
 is_deeply( [ schema_errors( { name => 'abc', count => 3 }, $S ) ], [], 'fitting arguments' );
 is_deeply( [ schema_errors( { name => 'abc', count => '3', ratio => '0.5' }, $S ) ], [], 'integer and number as text' );
@@ -55,7 +60,11 @@ is_deeply( [ schema_errors( { name => 'ab', count => 1, list => [] }, $S ) ], ['
 is_deeply( [ schema_errors( { name => 'ab', count => 1, list => [ 'a', 'b', 'c' ] }, $S ) ], ['$.list: zu viele Einträge'], 'maxItems' );
 is_deeply( [ schema_errors( { name => 'ab', count => 1, list => [ 'a', {} ] }, $S ) ], ['$.list[1]: erwartet string'], 'items with index' );
 is_deeply( [ schema_errors( { name => 'ab', count => 1, none => 0 }, $S ) ], ['$.none: erwartet null'], 'null' );
-is_deeply( [ schema_errors( { name => 'ab', count => 1, fixed => 'y' }, $S ) ], [], 'const is not checked per call (as in cai-platform)' );
+is_deeply( [ schema_errors( { name => 'ab', count => 1, fixed => 'y' }, $S ) ], ['$.fixed: erlaubt ist x'], 'const is checked per call (k31)' );
+is_deeply( [ schema_errors( { name => 'ab', count => 1, fixed => 'x', three => '3', yes => 'true' }, $S ) ], [],
+  '... and compares like enum: number as text, boolean as text' );
+is_deeply( [ schema_errors( { name => 'ab', count => 1, three => 4 }, $S ) ], ['$.three: erlaubt ist 3'], '... a number' );
+is_deeply( [ schema_errors( { name => 'ab', count => 1, yes => JSON::MaybeXS::false() }, $S ) ], ['$.yes: erlaubt ist true'], '... a boolean' );
 is_deeply( [ schema_errors( { anything => 1 }, undef ) ], [], 'no schema: nothing to check' );
 
 done_testing;

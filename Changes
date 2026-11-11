@@ -57,3 +57,5 @@ Revision history for Langertha-Holmgang
     number (another kind of corpus) (k33)
   - Case->report_meta builds the case meta Report->add_run takes;
     Case->tier returns undef in list context too (k36)
+  - Tool parameters: const is checked per call, a non-scalar const is
+    refused at load (k31)
