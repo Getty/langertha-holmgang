@@ -121,7 +121,13 @@ mock-text      default  demo-linux  0/2     0.0%    100.0%     -       -        
 
 To write your own suite, copy one of the examples outside the checkout and
 change it; the format is in `perldoc Langertha::Holmgang::Loader` (section
-SUITE FORMAT 2).
+SUITE FORMAT 2), the DSL in `perldoc Langertha::Holmgang`. A DSL suite can be
+written out as format 2, and its generators reseeded without editing the file:
+
+```bash
+perl -Ilib bin/holmgang export-yaml share/suites/demo-beacons --out /tmp/exported
+perl -Ilib bin/holmgang lint share/suites/demo-beacons --seed demo-beacons=7
+```
 
 A real target is a Langertha engine name plus its options; the key comes from
 the engine's environment variable, never from the command line:
@@ -129,7 +135,7 @@ the engine's environment variable, never from the command line:
 ```bash
 perl -Ilib bin/holmgang run --suite share/suites/demo-linux --target vLLM \
   --url http://10.0.0.5:8000/v1 --model some-model \
-  --variant 'chat_template_kwargs={"enable_thinking":false}' \
+  --variant enable_thinking=off \
   --repeat 3 --report /tmp/reports/vllm.json
 ```
 

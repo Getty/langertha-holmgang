@@ -103,6 +103,10 @@ The L<Langertha::Holmgang::Case> objects in load order.
 
 =cut
 
+# private: the files of a DSL suite's YAML export ({ files => [ [ name, bytes ] ],
+# images => { name => path } }), set by Loader::assemble, written by Loader::export
+has _export => ( is => 'ro', init_arg => '_export' );
+
 sub case {
   my ( $self, $id ) = @_;
   my ( $c ) = grep { $_->id eq ( $id // '' ) } @{ $self->cases };

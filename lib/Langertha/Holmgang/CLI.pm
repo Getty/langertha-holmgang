@@ -33,7 +33,8 @@ our $VERSION = '0.001';
 
 The commands behind F<bin/holmgang> (ADR 0009): C<lint> loads suites as the
 loader does, C<run> plays them against a target and writes a report, C<report>
-evaluates report files per topic. Every command returns its exit code instead
+evaluates report files per topic, C<export-yaml> writes DSL suites as suite
+format 2. Every command returns its exit code instead
 of exiting: C<0> all well, C<1> a suite refused, a verdict not ok, or a run in
 which the target answered no case, C<2> a usage or setup error. The options
 are described in L<holmgang>.
@@ -149,9 +150,9 @@ sub _pairs {
 sub run {
   my ( $self, @argv ) = @_;
   my $cmd = shift @argv;
-  return $self->_usage_error('a command is needed: lint, run or report') unless defined $cmd;
+  return $self->_usage_error('a command is needed: lint, run, report or export-yaml') unless defined $cmd;
   return $self->help if $cmd =~ /\A(?:help|--help|-h)\z/;
-  my $method = { lint => 'cmd_lint', run => 'cmd_run', report => 'cmd_report' }->{$cmd}
+  my $method = { lint => 'cmd_lint', run => 'cmd_run', report => 'cmd_report', 'export-yaml' => 'cmd_export_yaml' }->{$cmd}
     or return $self->_usage_error( 'unknown command: '.$cmd );
   return $self->$method(@argv);
 }
@@ -168,12 +169,13 @@ returns the exit code. C<help>, C<--help> and C<-h> print the usage.
 sub help {
   my ( $self ) = @_;
   $self->_say(
-    'usage: holmgang lint <suite-dir>...',
+    'usage: holmgang lint <suite-dir>... [--seed ID=N]...',
     '       holmgang run --suite <dir>... --target <engine|mock-solution|mock-text>',
     '                    [--model M] [--url U] [--option K=V]... [--label L]',
     '                    [--variant [NAME:]K=V]... [--repeat N] [--concurrency N]',
-    '                    [--resume earlier.json] [--report out.json]',
+    '                    [--resume earlier.json] [--report out.json] [--seed ID=N]...',
     '       holmgang report <report.json>... [--by topic] [--format text|markdown|json] [--suite <dir>]...',
+    '       holmgang export-yaml <suite-dir>... --out <dir> [--seed ID=N]...',
     '',
     'Exit codes: 0 ok, 1 a suite refused, a verdict not ok or no case answered, 2 usage or setup error.',
     'Keys come from the engine\'s environment variable (e.g. LANGERTHA_OPENAI_API_KEY), never from the command line.',
@@ -201,9 +203,31 @@ sub _suite_dirs {
   return map { "$_" } sort { $a->basename cmp $b->basename } grep { $_->is_dir && _is_suite($_) } $p->children;
 }
 
+# --seed ID=N (k51): the loader's seed override for the DSL suites among
+# @dirs. ( $loader ) -- this CLI's own without --seed -- or ( undef, $error )
+sub _seeded_loader {
+  my ( $self, $list, $dirs ) = @_;
+  return ( $self->loader ) unless @{ $list || [] };
+  my %dsl = map { ( path($_)->basename => 1 ) } grep { -f path($_)->child('suite.pl') } @$dirs;
+  my %seeds;
+  for my $p ( @$list ) {
+    my ( $id, $n ) = $p =~ /\A([^=]+)=([0-9]+)\z/
+      or return ( undef, '--seed expects SUITE-ID=N, got: '.$p );
+    return ( undef, '--seed '.$id.': the seed is an integer from 0 to 4294967295' )
+      if length $n > 10 || $n > 4294967295;
+    return ( undef, '--seed '.$id.': given twice' ) if exists $seeds{$id};
+    return ( undef, '--seed '.$id.': no suite in the case DSL (suite.pl) with this id in this command' )
+      unless $dsl{$id};
+    $seeds{$id} = 0 + $n;
+  }
+  my $l = $self->loader;
+  return ( ref($l)->new( ( map { ( $_ => $l->$_ ) } qw( simulators haystack structure lint ) ),
+    seeds => { %{ $l->seeds }, %seeds } ) );
+}
+
 sub cmd_lint {
   my ( $self, @argv ) = @_;
-  my ( $o, $bad ) = $self->_options( \@argv );
+  my ( $o, $bad ) = $self->_options( \@argv, 'seed=s@' );
   return $self->_usage_error($bad) if $bad;
   return $self->_usage_error('lint needs at least one suite directory') unless @argv;
   my @dirs;
@@ -212,9 +236,11 @@ sub cmd_lint {
     return $self->_usage_error( 'no suite at or below '.$arg ) unless @d;
     push @dirs, @d;
   }
+  my ( $loader, $lbad ) = $self->_seeded_loader( $o->{seed}, \@dirs );
+  return $self->_usage_error($lbad) unless $loader;
   my ( $ok, $refused ) = ( 0, 0 );
   for my $dir ( @dirs ) {
-    my $suite = eval { $self->loader->load($dir) };
+    my $suite = eval { $loader->load($dir) };
     if ( $suite ) {
       $ok++;
       my @cases = @{ $suite->cases };
@@ -237,18 +263,84 @@ C<holmgang lint>: loads every suite (a suite directory, or each suite in a
 search directory) through L</loader> -- structure, lint and both mock runs.
 Prints C<ok> with every case id, or C<FAIL> with the refusal (it names the
 case file and field; loading stops at the first refused case). Returns 1 when
-a suite was refused, 2 for a path that holds no suite.
+a suite was refused, 2 for a path that holds no suite. C<--seed ID=N>
+(repeatable) replaces the seed of every C<generate> block of the DSL suite
+C<ID> (L<Langertha::Holmgang::Loader/seeds>); an id that is no DSL suite of
+the command is a usage error.
+
+=cut
+
+#### export-yaml
+
+sub cmd_export_yaml {
+  my ( $self, @argv ) = @_;
+  my ( $o, $bad ) = $self->_options( \@argv, 'out=s', 'seed=s@' );
+  return $self->_usage_error($bad) if $bad;
+  return $self->_usage_error('export-yaml needs --out, the directory the suites are written into')
+    unless defined $o->{out} && length $o->{out};
+  return $self->_usage_error('export-yaml needs at least one suite directory') unless @argv;
+  my @dirs;
+  for my $arg ( @argv ) {
+    my @d = $self->_suite_dirs($arg);
+    return $self->_usage_error( 'no suite at or below '.$arg ) unless @d;
+    push @dirs, @d;
+  }
+  my @dsl = grep { -f path($_)->child('suite.pl') } @dirs;
+  return $self->_usage_error( 'no suite in the case DSL (suite.pl) among: '.join( ' ', @argv ) ) unless @dsl;
+  for my $dir ( @dsl ) {
+    my $to = path( $o->{out}, path($dir)->basename );
+    return $self->_usage_error( 'exists already, nothing is overwritten: '.$to ) if -e $to || -l $to;
+  }
+  my ( $loader, $lbad ) = $self->_seeded_loader( $o->{seed}, \@dirs );
+  return $self->_usage_error($lbad) unless $loader;
+  my ( $ok, $refused ) = ( 0, 0 );
+  for my $dir ( @dirs ) {
+    my $id = path($dir)->basename;
+    unless ( -f path($dir)->child('suite.pl') ) {
+      $self->_say( 'skip '.$id.' (format 2 already)' );
+      next;
+    }
+    my $out = eval { $loader->export( $dir, $o->{out} ) };
+    if ( defined $out ) {
+      $ok++;
+      my $n = () = path( $out, 'cases' )->children(qr/\.yaml\z/);
+      $self->_say( 'ok   '.$id.' ('.$n.' case'.( $n == 1 ? '' : 's' ).') -> '.$out );
+    }
+    else {
+      $refused++;
+      $self->_say( 'FAIL '.$id, '  '.$self->_text($@) );
+    }
+  }
+  $self->_say( scalar(@dsl).' DSL suite'.( @dsl == 1 ? '' : 's' ).': '.$ok.' exported, '.$refused.' refused' );
+  return $refused ? 1 : 0;
+}
+
+=method cmd_export_yaml
+
+  my $code = $cli->cmd_export_yaml( @dirs, '--out', $root );
+
+C<holmgang export-yaml>: writes every suite in the case DSL (a suite
+directory with F<suite.pl>, or each one in a search directory) as suite
+format 2 into C<--out>/I<id> (L<Langertha::Holmgang::Loader/export>): it is
+loaded first, lint included, and the export must load back with the same
+digest. A format 2 suite among them is skipped (C<skip>). Prints C<ok> with
+the case count and the written directory, or C<FAIL> with the refusal.
+C<--seed ID=N> as for C<lint>. Returns 1 when a suite was refused; 2 for a
+usage error -- no C<--out>, no DSL suite, or a suite directory that already
+exists under C<--out> (nothing is overwritten; checked before anything is
+written).
 
 =cut
 
 #### run
 
 sub _load_suites {
-  my ( $self, $dirs ) = @_;
+  my ( $self, $dirs, $loader ) = @_;
+  $loader //= $self->loader;
   my @suites;
   for my $arg ( @{ $dirs || [] } ) {
     return ( undef, 'not a suite directory (no suite.yaml or suite.pl): '.$arg ) unless _is_suite( path($arg) );
-    my $s = eval { $self->loader->load($arg) };
+    my $s = eval { $loader->load($arg) };
     return ( undef, 'suite '.$arg.' does not load: '.$self->_text($@) ) unless $s;
     push @suites, $s;
   }
@@ -346,7 +438,7 @@ sub cmd_run {
   my ( $self, @argv ) = @_;
   my ( $o, $bad ) = $self->_options( \@argv,
     'suite=s@', 'target=s', 'model=s', 'url=s', 'option=s@', 'label=s', 'variant=s@', 'repeat=i',
-    'concurrency=i', 'resume=s', 'report=s' );
+    'concurrency=i', 'resume=s', 'report=s', 'seed=s@' );
   return $self->_usage_error($bad) if $bad;
   return $self->_usage_error( 'unexpected argument: '.$argv[0] ) if @argv;
   return $self->_usage_error('run needs at least one --suite') unless @{ $o->{suite} || [] };
@@ -358,7 +450,9 @@ sub cmd_run {
   return $self->_usage_error($vbad) if $vbad;
   my ( $engine_for, $target ) = $self->_target($o);
   return $self->_usage_error($target) unless $engine_for;
-  my ( $suites, $sbad ) = $self->_load_suites( $o->{suite} );
+  my ( $loader, $lbad ) = $self->_seeded_loader( $o->{seed}, [ grep { _is_suite( path($_) ) } @{ $o->{suite} } ] );
+  return $self->_usage_error($lbad) unless $loader;
+  my ( $suites, $sbad ) = $self->_load_suites( $o->{suite}, $loader );
   return $self->_usage_error($sbad) if $sbad;
   my $resume;
   if ( defined $o->{resume} ) {
@@ -486,7 +580,7 @@ sub _tally {
 
   my $code = $cli->cmd_run( '--suite', $dir, '--target', 'mock-solution', '--report', $file );
 
-C<holmgang run>: loads the suites, builds the target (an engine name with
+C<holmgang run>: loads the suites (C<--seed ID=N> as for C<lint>), builds the target (an engine name with
 C<--model>, C<--url>, C<--option>; or C<mock-solution> / C<mock-text>) and its
 variants (C<--variant>), and plays them through L<Langertha::Holmgang::Batch>:
 every case C<--repeat> times (default the suite's C<repeat>, else 1) under

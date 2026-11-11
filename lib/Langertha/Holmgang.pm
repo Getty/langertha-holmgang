@@ -455,11 +455,11 @@ in the B<case DSL> of this module (F<suite.pl>, L</THE CASE DSL>) with the
 loader and its lint, the simulators, the grader, the runner over any
 Langertha engine, several variants per target, parallel requests and resume
 (L<Langertha::Holmgang::Batch>), the JSON report, the evaluation per topic,
-and the F<holmgang> command line (C<lint>, C<run>, C<report>).
+the YAML export of a DSL suite (L<Langertha::Holmgang::Loader/export>), and
+the F<holmgang> command line (C<lint>, C<run>, C<report>, C<export-yaml>).
 
-B<Coming:> the YAML export of a DSL suite. The distribution ships B<no real
-benchmark cases>: published cases end up in the training data of the next
-models.
+The distribution ships B<no real benchmark cases>: published cases end up in
+the training data of the next models.
 
 =head1 THE CASE DSL
 
@@ -527,8 +527,20 @@ control. Outside the loader -- in a test or a script -- C<suite> returns the
 L<Langertha::Holmgang::Suite> as well, and paths are relative to the calling
 file.
 
-Cases are ordered by id, as format 2 orders them by file name; an id given
-twice dies.
+Cases are ordered by the name of their export file, F<E<lt>idE<gt>.yaml> --
+the order format 2 loads case files in, so C<a-b> comes before C<a>; an id
+given twice dies.
+
+=head2 The YAML export
+
+  holmgang export-yaml /srv/dsl-suites/example-sums --out /srv/exported
+
+writes the suite as suite format 2 -- F<suite.yaml>, F<cases/E<lt>idE<gt>.yaml>
+and the images -- so its cases can be read and compared without Perl
+(L<Langertha::Holmgang::Loader/export>). Texts read by C<file> are inline,
+C<haystack> specs stay C<generate> specs, generated cases are plain cases. The
+export loads into the same suite, and a DSL suite's digest I<is> the digest of
+its export: a run of the one is a run of the other.
 
 =head2 Two kinds of keywords
 
@@ -587,8 +599,9 @@ L<Langertha::Holmgang::Random> seeded with C<N>: the same seed gives the same
 cases on every perl and platform. The block declares ordinary C<case>s;
 nothing about the seed reaches the structure. Never use C<rand> or C<srand>
 in it, and never let the order of C<keys %hash> pick a case. The loader can
-replace the seed per suite id (L<Langertha::Holmgang::Loader/seeds>), so a
-private measurement seed never has to be written into a public file.
+replace the seed per suite id (L<Langertha::Holmgang::Loader/seeds>; on the
+command line C<--seed ID=N>), so a private measurement seed never has to be
+written into a public file.
 
 =back
 

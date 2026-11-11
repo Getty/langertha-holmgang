@@ -37,9 +37,13 @@ exit Langertha::Holmgang::CLI->new->run(@ARGV);
 
   holmgang report /data/reports/*.json --by topic --format markdown --suite /srv/suites/demo-fan
 
+  # a suite in the case DSL as format 2, and with a private seed for its generators
+  holmgang export-yaml /srv/dsl-suites/example-sums --out /srv/exported
+  holmgang run --suite /srv/dsl-suites/example-sums --target mock-solution --seed example-sums=90210
+
 =description
 
-The command line of L<Langertha::Holmgang> (ADR 0009). Three commands:
+The command line of L<Langertha::Holmgang> (ADR 0009). Four commands:
 
 B<lint> loads each suite exactly as a run would -- format 2 shape checks, lint
 and its two mock runs -- and prints C<ok> with every case, or C<FAIL> with the
@@ -61,8 +65,16 @@ B<report> reads report files, joins them, and prints the evaluation per topic:
 the comparison of targets, the verdicts per suite and, where cases have a
 length tier, the tier curves.
 
+B<export-yaml> writes each suite in the case DSL (F<suite.pl>) among its
+arguments -- suite directories or directories of suites -- as suite format 2
+into C<--out>/I<id>: F<suite.yaml>, F<cases/*.yaml> and the images. The suite
+is loaded first, lint included, and the export must load back with the same
+digest; a format 2 suite is skipped. A suite directory that already exists
+under C<--out> is a usage error before anything is written: nothing is
+overwritten.
+
 B<Exit codes:> C<0> everything loaded or ran and every verdict is ok; C<1> a
-suite was refused (lint), a verdict is not ok (run, report), or the target
+suite was refused (lint, export-yaml), a verdict is not ok (run, report), or the target
 answered no case of the run -- every result C<error>, C<context_exceeded> or
 C<no_vision> (run; said on standard error with the count per status and the
 first error text, the report is written all the same); C<2> a usage or setup
@@ -160,6 +172,19 @@ C<run>: repetitions per suite, 1 to 100; default the suite's C<repeat>, else 1.
 =opt --report FILE
 
 C<run>: write the JSON report there.
+
+=opt --seed ID=N
+
+C<lint>, C<run>, C<export-yaml>, repeatable: replace the seed of every
+C<generate> block of the DSL suite C<ID> with C<N> (0 to 4294967295), so a
+private measurement seed never has to be written into the suite file. An id
+that is no suite in the case DSL among the command's suites is a usage error.
+Another seed is another suite, with another digest.
+
+=opt --out DIR
+
+C<export-yaml>, required: the directory the suites are written into, one
+subdirectory per suite id; created when missing.
 
 =opt --by topic
 

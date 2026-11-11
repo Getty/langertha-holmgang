@@ -5,9 +5,11 @@ use Moose;
 use namespace::autoclean;
 use utf8;
 
+use B ();
 use Digest::SHA ();
 use Encode ();
 use Path::Tiny qw( path );
+use Scalar::Util qw( blessed );
 use YAML::XS ();
 use Langertha::Holmgang::Error;
 use Langertha::Holmgang::Grader;
@@ -253,28 +255,35 @@ sub assemble {
     $st->suite_head( $head, defined $o{dirname} ? ( dirname => $o{dirname} ) : () );
   } );
 
-  # the digest, taken as from the YAML export of the suite: the export's
-  # bytes are k19's; until then the canonical dump of _export_bytes
-  my $sha = Digest::SHA->new(256);
-  $sha->add( "suite.yaml\0", _export_bytes( { format => 2, %$head } ), "\0" );
+  # the digest, taken as load takes it from the suite's YAML export (k19):
+  # the same names, the same bytes
+  my $sha   = Digest::SHA->new(256);
+  my $yaml  = $self->_export_yaml( { format => 2, %$head }, 'suite.yaml', $label );
+  my @files = ( [ 'suite.yaml', $yaml ] );
+  $sha->add( "suite.yaml\0", $yaml, "\0" );
 
   my %seen;
-  my @cases;
-  for my $data ( sort { ( $a->{id} // '' ) cmp( $b->{id} // '' ) } @{ $o{cases} || [] } ) {
+  my ( @cases, %images );
+  # ordered as the export's file names are, which is format 2's load order
+  for my $data ( sort { ( $a->{id} // '' ).'.yaml' cmp( $b->{id} // '' ).'.yaml' } @{ $o{cases} || [] } ) {
     my $id = $data->{id} // '';
     $self->_refuse( $label.': case '.$id, 'case id twice' ) if $seen{$id}++;
     $self->_refuse( $label.': case '.$id, 'invalid id' ) unless $st->valid_id($id);
     my $f     = 'cases/'.$id.'.yaml';    # as the export names the file
     my $field = $label.': case '.$id;
-    $sha->add( $f."\0", _export_bytes($data), "\0" );
+    my $case  = $st->case( $data, field => $field, tools => $suite{tools}, defaults => $suite{defaults}, dir => $o{dir} );
+    my $bytes = $self->_export_yaml( $data, $f, $field );
+    push @files, [ $f, $bytes ];
+    $sha->add( $f."\0", $bytes, "\0" );
     $self->_relabel( $field, $f, sub { $self->_digest_generated( $sha, $data, $f ) } );
-    my $case = $st->case( $data, field => $field, tools => $suite{tools}, defaults => $suite{defaults}, dir => $o{dir} );
     $self->_digest_images( $sha, $case, $f );
     $self->lint->lint( $case, $field );
+    $images{ $_->{file} } //= $_->{path} for values %{ $case->image_files };
     push @cases, $case;
   }
   $self->_refuse( $label, 'no cases' ) unless @cases;
-  return Langertha::Holmgang::Suite->new( %suite, cases => \@cases, digest => $sha->hexdigest );
+  return Langertha::Holmgang::Suite->new( %suite, cases => \@cases, digest => $sha->hexdigest,
+    _export => { files => \@files, images => \%images } );
 }
 
 =method assemble
@@ -290,17 +299,209 @@ sub assemble {
 Builds a suite from format 2 data that came from somewhere other than YAML
 files -- the case DSL calls it when a C<suite> block closes. The head goes
 through L<Langertha::Holmgang::Structure/suite_head>, each case, ordered by
-id, through L<Langertha::Holmgang::Structure/case> and L</lint>, exactly as in
+the name of its export file (F<E<lt>idE<gt>.yaml>, format 2's load order),
+through L<Langertha::Holmgang::Structure/case> and L</lint>, exactly as in
 L</load>; a refusal names C<file> and the case
 (C<suite.pl: case sum-01: rules[0].equals>).
 
-The digest is taken as L</load> takes it from the suite's YAML export: the
-head as F<suite.yaml>, each case as F<cases/E<lt>idE<gt>.yaml>, with the
-generated texts and images. Until the YAML export (k19) fixes those bytes, they
-are a canonical dump of the data (keys sorted, L<YAML::XS>), so the digest is
-stable for the same data but changes once with k19.
+The digest is the digest L</load> takes of the suite's YAML export
+(L</export>): the head as F<suite.yaml>, each case as
+F<cases/E<lt>idE<gt>.yaml>, in the export's bytes, with the generated texts and
+images. A suite and its export are the same suite, with the same digest.
 
 =cut
+
+sub export {
+  my ( $self, $dir, $root ) = @_;
+  $dir =~ s{/+\z}{};
+  $self->_refuse( 'suite', 'no suite.pl: only a suite in the case DSL is exported, format 2 is YAML already' )
+    unless -f $dir.'/suite.pl';
+  my $suite = $self->load($dir);
+  my $exp   = $suite->_export or $self->_refuse( 'suite.pl', 'the suite was not built by the case DSL' );
+  my $out   = path( $root, $suite->id );
+  $self->_refuse( 'export', 'exists already: '.$out ) if -e $out || -l $out;
+  path($root)->mkpath;
+  my $tmp = Path::Tiny->tempdir( TEMPLATE => '.'.$suite->id.'-export-XXXXXX', DIR => "$root" );
+  for my $file ( @{ $exp->{files} } ) {
+    my $p = $tmp->child( $file->[0] );
+    $p->parent->mkpath;
+    $p->spew_raw( $file->[1] );
+  }
+  for my $name ( sort keys %{ $exp->{images} } ) {
+    my $p = $tmp->child($name);
+    $p->parent->mkpath;
+    path( $exp->{images}{$name} )->copy($p);
+  }
+  rename "$tmp", "$out" or $self->_refuse( 'export', 'cannot move the export to '.$out.': '.$! );
+  my $back = eval { $self->load("$out") };
+  my $why  = $back ? ( $back->digest eq $suite->digest ? undef : 'another digest' ) : "$@" =~ s/\s+\z//r;
+  if ( defined $why ) {
+    path($out)->remove_tree;
+    $self->_refuse( 'export', 'the export does not load back as the same suite ('.$why.'); nothing written' );
+  }
+  return "$out";
+}
+
+=method export
+
+  my $out = $loader->export( '/srv/dsl-suites/example-sums', '/srv/exported' );
+  # '/srv/exported/example-sums', with suite.yaml, cases/*.yaml and the images
+
+Writes a suite in the case DSL (a directory with F<suite.pl>) as suite format
+2 into C<$root>/I<id> -- F<suite.yaml>, one F<cases/E<lt>idE<gt>.yaml> per case,
+and every image a case shows, copied under the same relative path -- and
+returns that directory. The suite is loaded first (lint included), with the
+L</seeds> of this loader. What a C<file> read and what C<generate> blocks
+built is written out as format 2 has it: texts inline, C<haystack> specs as
+C<generate> specs, generated cases as plain cases. The export then loads back
+through L</load>; anything but the same digest removes it again and is a
+refusal (field C<export>). A suite directory that already exists under
+C<$root> is a refusal, nothing is overwritten. A directory with F<suite.yaml>
+is refused (field C<suite>): format 2 is YAML already.
+
+The bytes are canonical, so the export of the same suite is the same file by
+file, on every run and hash seed: keys sorted, C<format>, C<id>, C<name>,
+C<title>, C<tool>, C<role>, C<version>, C<description> first; block style,
+two spaces; a text with line breaks as a literal block (C<|>), other texts plain
+where YAML reads them back as the same text, else double-quoted; a Perl
+number (a value used only as a number) plain, a text that looks like a number
+quoted; C<undef> as C<~>; a Perl boolean or L<JSON::PP::Boolean> as
+C<true>/C<false>. Every file is read back with L<YAML::XS> before it is used;
+a value that does not survive (a code reference, say) is a refusal naming the
+field.
+
+=cut
+
+#### the canonical YAML of the export (k19)
+
+my %FIRST = do { my $i = 0; map { ( $_ => $i++ ) } qw( format id name title tool role version description ) };
+
+my %RESERVED = map { ( $_ => 1 ) } qw( y n yes no on off true false null );
+
+# a scalar YAML must escape: C0, DEL, C1, the Unicode line breaks, BOM, surrogates
+my $ESCAPE = qr/[\x00-\x08\x0b-\x1f\x7f-\x9f\x{2028}\x{2029}\x{feff}\x{d800}-\x{dfff}]/;
+
+sub _export_yaml {
+  my ( $self, $data, $file, $field ) = @_;
+  my $text  = eval { _y_node( $data, 0 ) };
+  $self->_refuse( $field, 'no format 2 image: '.( $@ =~ s/\s+\z//r ) ) unless defined $text;
+  my $bytes = Encode::encode( 'UTF-8', $text =~ s/\A\n//r );
+  my $back  = eval { YAML::XS::Load($bytes) };
+  my $where = defined $back ? _y_differs( $data, $back, '' ) : 'not valid YAML: '.( $@ =~ s/\s+\z//r );
+  $self->_refuse( $field, 'the export of '.$file.' does not read back: '.$where ) if defined $where;
+  return $bytes;
+}
+
+sub _y_bool {
+  my ( $s ) = @_;
+  return 1 if blessed $s && $s->isa('JSON::PP::Boolean');
+  return 0 if ref $s || !defined &builtin::is_bool;
+  no warnings;
+  return builtin::is_bool($s) ? 1 : 0;
+}
+
+sub _y_number {
+  my ( $s ) = @_;
+  my $f = B::svref_2object( \$s )->FLAGS;
+  return ( $f & ( B::SVp_IOK() | B::SVp_NOK() ) ) && !( $f & B::SVp_POK() )
+    && $s =~ /\A-?[0-9]+(?:\.[0-9]+)?(?:[eE][-+]?[0-9]+)?\z/ ? 1 : 0;
+}
+
+# the text after "key:" or "-", ending with a line break
+sub _y_node {
+  my ( $d, $ind ) = @_;
+  if ( ref $d eq 'HASH' ) {
+    return " {}\n" unless %$d;
+    return "\n".join '', map { ( ' ' x $ind )._y_key($_).':'._y_node( $d->{$_}, $ind + 2 ) }
+      sort { ( $FIRST{$a} // 99 ) <=> ( $FIRST{$b} // 99 ) or $a cmp $b } keys %$d;
+  }
+  if ( ref $d eq 'ARRAY' ) {
+    return " []\n" unless @$d;
+    return "\n".join '', map {
+      my $t = _y_node( $_, $ind + 2 );
+      $t =~ s/\A\n {$ind}  / / if ref $_ eq 'HASH' && %$_ || ref $_ eq 'ARRAY' && @$_;
+      ( ' ' x $ind ).'-'.$t;
+    } @$d;
+  }
+  return ' '._y_scalar( $d, $ind )."\n";
+}
+
+sub _y_key {
+  my ( $k ) = @_;
+  return _y_plain($k) // _y_quoted($k);
+}
+
+sub _y_scalar {
+  my ( $s, $ind ) = @_;
+  return '~' unless defined $s;
+  return $s ? 'true' : 'false' if _y_bool($s);
+  die 'a '.ref($s)." reference\n" if ref $s;
+  return "$s" if _y_number($s);
+  return _y_literal( $s, $ind ) // _y_plain($s) // _y_quoted($s);
+}
+
+sub _y_plain {
+  my ( $s ) = @_;
+  return undef unless $s =~ m{\A[\p{L}/][\p{L}\p{N} _./+,?'()=:-]*\z} && $s !~ /(?: |:)\z|: /;
+  return undef if $RESERVED{ lc $s } || Scalar::Util::looks_like_number($s);
+  return $s;
+}
+
+sub _y_quoted {
+  my ( $s ) = @_;
+  $s =~ s/([\\"])/\\$1/g;
+  $s =~ s/\n/\\n/g;
+  $s =~ s/\t/\\t/g;
+  $s =~ s/($ESCAPE)/ord($1) > 0xff ? sprintf( '\\u%04x', ord $1 ) : sprintf( '\\x%02x', ord $1 )/ge;
+  return '"'.$s.'"';
+}
+
+# a text with line breaks as a literal block -- only when it reads back as
+# exactly this text (no character to escape, first line not indented)
+sub _y_literal {
+  my ( $s, $ind ) = @_;
+  return undef unless $s =~ /\n/ && $s !~ $ESCAPE && $s !~ /\A\n*[ \t]/;
+  my $chomp = $s =~ /\n\n\z/ ? '+' : $s =~ /\n\z/ ? '' : '-';
+  my @lines = split /\n/, $s, -1;
+  pop @lines if $chomp ne '-';    # the empty piece after the last line break
+  my $render = sub {
+    my ( $n ) = @_;
+    return '|'.$chomp."\n".join "\n", map { length ? ( ' ' x $n ).$_ : '' } @lines;
+  };
+  my $back = eval { YAML::XS::Load( Encode::encode( 'UTF-8', 'k: '.$render->(2)."\n" ) ) };
+  return undef unless ref $back eq 'HASH' && defined $back->{k} && $back->{k} eq $s;
+  return $render->($ind);
+}
+
+# where $back differs from $data, or undef; a boolean is its truth value
+sub _y_differs {
+  my ( $d, $b, $at ) = @_;
+  my $where = length $at ? $at : 'the top';
+  if ( ref $d eq 'HASH' ) {
+    return $where.': not a hash' unless ref $b eq 'HASH';
+    my %k = map { ( $_ => 1 ) } keys %$d, keys %$b;
+    for my $k ( sort keys %k ) {
+      my $sub = length $at ? $at.'.'.$k : $k;
+      return $sub.': missing' unless exists $d->{$k} && exists $b->{$k};
+      my $w = _y_differs( $d->{$k}, $b->{$k}, $sub );
+      return $w if defined $w;
+    }
+    return undef;
+  }
+  if ( ref $d eq 'ARRAY' ) {
+    return $where.': not a list' unless ref $b eq 'ARRAY' && @$b == @$d;
+    for my $i ( 0 .. $#$d ) {
+      my $w = _y_differs( $d->[$i], $b->[$i], $at.'['.$i.']' );
+      return $w if defined $w;
+    }
+    return undef;
+  }
+  return defined $b ? $where.': not undef' : undef unless defined $d;
+  return $where.': undef' unless defined $b;
+  return $where.': not a text' if ref $b;
+  my ( $x, $y ) = map { _y_bool($_) ? ( $_ ? 1 : '' ) : "$_" } $d, $b;
+  return $x eq $y ? undef : $where.': reads back as another value';
+}
 
 # runs $code; a refusal from it gets the field path of this front end: a field
 # starting with $from (or 'suite.yaml', or anything for the head) starts with
@@ -316,13 +517,6 @@ sub _relabel {
     $self->_refuse( $field, $e->reason );
   }
   return @out;
-}
-
-# temporary canonical bytes of a part of the YAML export (until k19)
-sub _export_bytes {
-  my ( $data ) = @_;
-  local $YAML::XS::Boolean = 'JSON::PP';
-  return YAML::XS::Dump($data);
 }
 
 # a suite directory holds suite.yaml (format 2) or suite.pl (the DSL)
