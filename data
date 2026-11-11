@@ -1,0 +1,25 @@
+---
+claimed_at: 2026-11-11T08:10:19Z
+claimed_by: holmgang-main
+class: standard
+completed: 2026-11-11T08:09:21Z
+created: 2026-11-04T19:34:17Z
+depends_on:
+- 18
+id: 23
+priority: medium
+started: 2026-11-11T07:43:48Z
+status: done
+tags:
+- dsl
+- format
+title: 'Kategorien abgleichen: Injection, Langkontext, Vertragscheck, Schichtfehler,
+  Bullshit, Übersetzung, Denken'
+updated: 2026-11-11T08:10:19Z
+---
+
+Prüfen, dass DSL und Format alle Kategorien aus CONTEXT.md tragen: Längenstufen, Kontext aus Gesetzestext, parallele Ja/Nein-Aufrufe, Fixtures, Schwierigkeitsstufen, Quellen mit Lizenz. Fehlendes als Notiz für neue Karten.
+
+Abgleich (read-only, holmgang-worker): Ladeprobe mit Holmgang-HEAD gegen eine Kopie von cai-platform origin/main share/evals (außerhalb des Repos): 33 Format-2-Suites laden mit Lint grün, darunter injection-werkzeug, werkzeugwahl, langkontext, langkontext-stufen, bullshit-werkzeug; 4 laden nicht: denken, schichtfehler, uebersetzung (Antwortwelt fehlt im Simulators-Register), vertragscheck (Nachrichtenteil auszug fehlt). pii-de wie beabsichtigt abgewiesen. Die fünf Kategorie-Suites kamen in cai-platform erst nach af7561a5 (unserer Abnahmekopie). Getragen heute: Längenstufen (stufe-Tag, DSL tier, haystack, tier_curves), parallele Ja/Nein-Aufrufe (Runner, mehrere tool_calls je Runde, getestet in t/runner.t; Handler-Werkzeuge), Schwierigkeit (difficulty in Struktur und DSL), Quellen mit Lizenz (source an Suite und Fall, license), untrusted (Nachricht, Zustand, Bild; DSL message untrusted), Generatoren mit Seed (generate + Random + Loader seeds; CLI-Option k51). Lücken: (1) auszug/quellen-Fixtures für Gesetzestext, (2–4) Antwortwelten denken, uebersetzung, schichtfehler, (5) ctx-<N>k-Tags von vertragscheck/schichtfehler landen auf keiner Längenstufe, (6) difficulty fehlt im Bericht und in der Auswertung, (7) Abnahmekopie auf origin/main heben. Kartenvorschläge im Bericht an den Hauptagenten.
+
+analysis only, no files; follow-up cards k52-k58 filed
