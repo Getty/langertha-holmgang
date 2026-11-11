@@ -47,3 +47,5 @@ Revision history for Langertha-Holmgang
     exports nothing so far
   - Simulator documentation (Sim::Linux and its parts, RouterOS, IOS,
     Kueche, Shell, Shell::Filter) is now in English
+  - Haystack refusals are Langertha::Holmgang::Error; Structure no longer
+    re-wraps them (k29)

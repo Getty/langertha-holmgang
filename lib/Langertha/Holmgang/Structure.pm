@@ -6,7 +6,6 @@ use namespace::autoclean;
 use utf8;
 
 use JSON::MaybeXS ();
-use Scalar::Util qw( blessed );
 use Langertha::Holmgang::Case;
 use Langertha::Holmgang::Error;
 use Langertha::Holmgang::Expectation ();
@@ -373,24 +372,6 @@ sub _source {
 
 #### Generated content
 
-# Haystack croaks "<field>: <reason>"; the field starts with the one we passed
-sub _resolve {
-  my ( $self, $v, $field ) = @_;
-  my $text = eval { $self->haystack->resolve( $v, $field ) };
-  return $text unless $@;
-  my $err = $@;
-  die $err if blessed $err;
-  $err =~ s/$Langertha::Holmgang::Target::LOCATION\.?\n?\z//;
-  $err =~ s/\s+\z//;
-  if ( index( $err, $field ) == 0 ) {
-    my $rest = substr( $err, length $field );
-    if ( $rest =~ /\A((?:[.\[][^:]*)?): (.*)\z/s ) {
-      $self->_refuse( $field.$1, $2 );
-    }
-  }
-  $self->_refuse( $field, $err );
-}
-
 sub generated {
   my ( $self, $data, $f ) = @_;
   my @out;
@@ -398,7 +379,7 @@ sub generated {
   my $put = sub {
     my ( $h, $k, $field ) = @_;
     return unless ref $h->{$k} eq 'HASH' || ref $h->{$k} eq 'ARRAY';
-    push @out, [ $field, $self->_resolve( $h->{$k}, $field ) ];
+    push @out, [ $field, $self->haystack->resolve( $h->{$k}, $field ) ];
   };
   if ( ref $data->{messages} eq 'ARRAY' ) {
     my $i = 0;
@@ -453,7 +434,7 @@ sub case {
     my $role = $m->{role} // '';
     $self->_refuse( $mf.'.role', 'user or assistant (the system prompt goes under system:)' )
       unless $role eq 'user' || $role eq 'assistant';
-    my $content = ref $m->{content} ? $self->_resolve( $m->{content}, $mf.'.content' ) : $m->{content};
+    my $content = ref $m->{content} ? $self->haystack->resolve( $m->{content}, $mf.'.content' ) : $m->{content};
     push @prompt, { role => $role, content => $self->_text( $content, $mf.'.content' ) };
     $i++;
   }
@@ -566,7 +547,7 @@ sub _state {
     for my $p ( sort keys %$files ) {
       my $e = $files->{$p};
       next unless ref $e eq 'HASH' && ref $e->{content};
-      $e->{content} = $self->_resolve( $e->{content}, $field.'.'.$dev.'.files.'.$p.'.content' );
+      $e->{content} = $self->haystack->resolve( $e->{content}, $field.'.'.$dev.'.files.'.$p.'.content' );
     }
   }
   eval { $self->simulators->prepare($s); 1 } or do {

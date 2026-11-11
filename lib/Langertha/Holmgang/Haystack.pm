@@ -4,8 +4,8 @@ package Langertha::Holmgang::Haystack;
 use Moose;
 use namespace::autoclean;
 use utf8;
-use Carp qw( croak );
 use JSON::MaybeXS ();
+use Langertha::Holmgang::Error;
 use Scalar::Util qw( blessed );
 use Time::Local ();
 
@@ -145,10 +145,9 @@ has _json => (
 sub _build__json { JSON::MaybeXS->new( canonical => 1, convert_blessed => 1, utf8 => 1 ) }
 
 # A refusal names the field first, then the reason.
-# TODO: throw Langertha::Holmgang::Error once k2 has it.
 sub _refuse {
   my ( $self, $field, $reason ) = @_;
-  croak $field.': '.$reason;
+  Langertha::Holmgang::Error->throw( $field, $reason );
 }
 
 sub kinds { @KINDS }
@@ -737,8 +736,8 @@ sub generate {
 
 Returns the text for the spec (see L</THE SPEC>): a character string ending
 in a newline. C<$field> (default C<generate>) is the field path a refusal
-starts with. Croaks with C<< <field>: <reason> >> when the spec does not
-hold — unknown key, size outside 1000..200000, an insert without C<exclude>,
+starts with. Throws a L<Langertha::Holmgang::Error> (as a string
+C<< <field>: <reason> >>) when the spec does not hold — unknown key, size outside 1000..200000, an insert without C<exclude>,
 a pattern that matches no insert, one that matches the filler (its
 timestamps, say), a C<{pid:...}> of a service that does not exist. Cached
 per instance.
@@ -879,9 +878,9 @@ sub resolve {
 
 Resolves a content as the loader finds it: a hash C<< { generate => \%spec } >>
 becomes the generated text (L</generate>), a list of parts (text or such a
-hash) the joined text. Any other value comes back unchanged. Croaks with
-C<< <field>: <reason> >>; the field of a spec is C<< <field>.generate >>, of a
-part C<< <field>[<i>] >>.
+hash) the joined text. Any other value comes back unchanged. Throws a
+L<Langertha::Holmgang::Error> (as a string C<< <field>: <reason> >>); the field
+of a spec is C<< <field>.generate >>, of a part C<< <field>[<i>] >>.
 
 =cut
 

@@ -141,6 +141,6 @@ space dropped, and ` …` (U+2026) appended. "First" is the first result in suit
 then case order, then repetition order — the first result the run produced, since the
 first case of the first repetition comes first in both orders; a result without error
 text is passed over, and with none the note has no `; first:` part. World's handler
-changes and Structure's generated-content errors cut a trailing die location with the
-same `$LOCATION` rule (Structure loaded Target through World already, so no new
-dependency and no cycle: Target loads no Holmgang module).
+changes cut a trailing die location with the same `$LOCATION` rule (no cycle: Target
+loads no Holmgang module); since k29 the haystack throws a `Langertha::Holmgang::Error`
+with no location, so Structure does not use the rule.

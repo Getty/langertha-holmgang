@@ -18,6 +18,7 @@ use Encode qw( encode );
 use File::Spec ();
 use FindBin ();
 
+use Langertha::Holmgang::Error;
 use Langertha::Holmgang::Haystack;
 
 binmode Test::More->builder->$_, ':encoding(UTF-8)' for qw( output failure_output todo_output );
@@ -215,6 +216,10 @@ subtest 'resolve: parts and cache' => sub {
   refused { $H->resolve( [ [] ], 'm.content' ) } qr/\Am\.content\[0\]: part/, 'part not text';
   refused { $H->resolve( [ 'a', { generate => { kind => 'journal', tokens => 5 } } ], 'm.content' ) }
     qr/\Am\.content\[1\]\.generate\.tokens: /, 'field path of a part';
+  my $err = Langertha::Holmgang::Error->caught( exception { $H->resolve( [ 'a', [] ], 'm.content' ) } );
+  ok( $err, 'a refusal is a Langertha::Holmgang::Error (k29)' );
+  is( $err && $err->field, 'm.content[1]', '... its field is the full path' );
+  is( $err && $err->reason, 'part: text or generate: { ... }', '... its reason carries no source location' );
   my $first = $gen->($spec);
   is( $gen->($spec), $first, 'cached result is the same text' );
   ok( exists $H->_cache->{ $H->_json->encode($spec) }, 'the spec is cached' );
