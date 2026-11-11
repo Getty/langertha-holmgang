@@ -43,8 +43,7 @@ Revision history for Langertha-Holmgang
   - Documentation: an overview in Langertha::Holmgang, the suite format 2
     reference in ::Loader, rules and statuses in ::Grader, the simulator
     contract in ::Role::Simulator, and a README with a quick start
-  - Not yet: cases and suites written in a Perl DSL; Langertha::Holmgang
-    exports nothing so far
+  - Not yet: the YAML export of a suite written in the DSL
   - Simulator documentation (Sim::Linux and its parts, RouterOS, IOS,
     Kueche, Shell, Shell::Filter) is now in English
   - Haystack refusals are Langertha::Holmgang::Error; Structure no longer
@@ -72,3 +71,5 @@ Revision history for Langertha-Holmgang
   - holmgang run: several variants per target (--variant NAME:K=V), --concurrency, --resume, checkpoints of the report while running, cancel on SIGINT/SIGTERM (k15)
   - New answer world roost (Langertha::Holmgang::Sim::Roost), an invented dragon roost, and the example suite demo-roost with two cases on it (k43)
   - New Langertha::Holmgang::Random: a seeded random source in pure Perl for generators, the same on every perl and platform (k18)
+  - Cases and suites in a Perl DSL (use Langertha::Holmgang, ADR 0007): a suite.pl in a suite directory loads, lints and runs like a format 2 suite; it covers images, tolerance, tiers, weights and tags; generate seed => N gives the same cases for the same seed, and the loader can override the seed per suite (k18)
+  - holmgang lint and holmgang run take a directory with suite.pl (k18)

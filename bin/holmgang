@@ -44,7 +44,8 @@ The command line of L<Langertha::Holmgang> (ADR 0009). Three commands:
 B<lint> loads each suite exactly as a run would -- format 2 shape checks, lint
 and its two mock runs -- and prints C<ok> with every case, or C<FAIL> with the
 refusal, which names the case file and the field. An argument is a suite
-directory (it holds F<suite.yaml>) or a directory of suites.
+directory (it holds F<suite.yaml>, or F<suite.pl> in the case DSL) or a
+directory of suites.
 
 B<run> plays every case of the suites against one target, under each of its
 variants, repetition after repetition, with at most C<--concurrency> requests

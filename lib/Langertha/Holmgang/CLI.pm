@@ -189,13 +189,16 @@ Prints the usage; returns 0.
 
 #### lint
 
-# the suite directories an argument names: itself, or its subdirectories with a suite.yaml
+# a suite directory: suite.yaml (format 2) or suite.pl (the DSL)
+sub _is_suite { my ( $p ) = @_; return -f $p->child('suite.yaml') || -f $p->child('suite.pl') }
+
+# the suite directories an argument names: itself, or its subdirectories with a suite
 sub _suite_dirs {
   my ( $self, $arg ) = @_;
   my $p = path($arg);
   return unless $p->is_dir;
-  return ( "$p" ) if -f $p->child('suite.yaml');
-  return map { "$_" } sort { $a->basename cmp $b->basename } grep { $_->is_dir && -f $_->child('suite.yaml') } $p->children;
+  return ( "$p" ) if _is_suite($p);
+  return map { "$_" } sort { $a->basename cmp $b->basename } grep { $_->is_dir && _is_suite($_) } $p->children;
 }
 
 sub cmd_lint {
@@ -244,7 +247,7 @@ sub _load_suites {
   my ( $self, $dirs ) = @_;
   my @suites;
   for my $arg ( @{ $dirs || [] } ) {
-    return ( undef, 'not a suite directory (no suite.yaml): '.$arg ) unless -f path($arg)->child('suite.yaml');
+    return ( undef, 'not a suite directory (no suite.yaml or suite.pl): '.$arg ) unless _is_suite( path($arg) );
     my $s = eval { $self->loader->load($arg) };
     return ( undef, 'suite '.$arg.' does not load: '.$self->_text($@) ) unless $s;
     push @suites, $s;

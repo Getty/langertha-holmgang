@@ -116,6 +116,23 @@ reference solution passes twice identically, text only fails).
 
 =cut
 
+has seeds => (
+  is      => 'ro',
+  default => sub { {} },
+);
+
+=attr seeds
+
+  my $loader = Langertha::Holmgang::Loader->new( seeds => { 'example-sums' => 90210 } );
+
+Seeds by suite id that replace the seed every C<generate> block of that DSL
+suite names (L<Langertha::Holmgang/generate>), so a private measurement seed
+never has to be written into a public suite file (ADR 0007). A suite with
+several C<generate> blocks gets the same override in each. Format 2 suites
+and suites not named here are not affected. Default: none.
+
+=cut
+
 sub _refuse {
   my ( $self, $field, $reason ) = @_;
   Langertha::Holmgang::Error->throw( $field, $reason );
@@ -138,6 +155,9 @@ sub load {
   my ( $self, $dir ) = @_;
   $dir =~ s{/+\z}{};
   my $dirname = path($dir)->basename;
+  my ( $yaml, $pl ) = map { -f $dir.'/'.$_ } qw( suite.yaml suite.pl );
+  $self->_refuse( 'suite', 'suite.yaml and suite.pl in one directory: a suite has one of them' ) if $yaml && $pl;
+  return $self->_load_dsl( $dir, $dirname ) if $pl;
   my $st = $self->structure;
   my ( $head, $head_bytes ) = $self->_read_yaml( $dir.'/suite.yaml', 'suite.yaml' );
   my %suite = $st->suite_head( $head, dirname => $dirname, format => 1 );
@@ -155,28 +175,41 @@ sub load {
     my $f = 'cases/'.$file;
     my ( $data, $bytes ) = $self->_read_yaml( $dir.'/cases/'.$file, $f );
     $sha->add( $f."\0", $bytes, "\0" );
-    for my $g ( $st->generated( $data, $f ) ) {
-      my ( $field, $text ) = @$g;
-      $sha->add( $field."\0", Digest::SHA::sha256_hex( Encode::encode( 'UTF-8', $text ) ), "\0" );
-    }
+    $self->_digest_generated( $sha, $data, $f );
     my $case = $st->case( $data, file => $file, tools => $suite{tools}, defaults => $suite{defaults}, dir => $dir );
-    # images (k27): file, SHA-256 and size per image, in message order; a case
-    # without images adds nothing, so its digest is what it was before
-    my $i = 0;
-    for my $m ( @{ $case->messages } ) {
-      my $j = 0;
-      for my $img ( ref $m->{images} eq 'ARRAY' ? @{ $m->{images} } : () ) {
-        my $info = $case->image_files->{ $img->{file} };
-        $sha->add( $f.': messages['.$i.'].images['.$j.']'."\0",
-          join( ' ', @{$info}{qw( file sha256 width height )} ), "\0" );
-        $j++;
-      }
-      $i++;
-    }
+    $self->_digest_images( $sha, $case, $f );
     $self->lint->lint( $case, $f );
     push @cases, $case;
   }
   return Langertha::Holmgang::Suite->new( %suite, cases => \@cases, digest => $sha->hexdigest );
+}
+
+# the generated texts of a case file, by field, as cai-platform's digest takes them
+sub _digest_generated {
+  my ( $self, $sha, $data, $f ) = @_;
+  for my $g ( $self->structure->generated( $data, $f ) ) {
+    my ( $field, $text ) = @$g;
+    $sha->add( $field."\0", Digest::SHA::sha256_hex( Encode::encode( 'UTF-8', $text ) ), "\0" );
+  }
+  return;
+}
+
+# images (k27): file, SHA-256 and size per image, in message order; a case
+# without images adds nothing, so its digest is what it was before
+sub _digest_images {
+  my ( $self, $sha, $case, $f ) = @_;
+  my $i = 0;
+  for my $m ( @{ $case->messages } ) {
+    my $j = 0;
+    for my $img ( ref $m->{images} eq 'ARRAY' ? @{ $m->{images} } : () ) {
+      my $info = $case->image_files->{ $img->{file} };
+      $sha->add( $f.': messages['.$i.'].images['.$j.']'."\0",
+        join( ' ', @{$info}{qw( file sha256 width height )} ), "\0" );
+      $j++;
+    }
+    $i++;
+  }
+  return;
 }
 
 =method load
@@ -187,7 +220,116 @@ Reads, checks and lints one suite. The directory name is the suite's id.
 Returns a L<Langertha::Holmgang::Suite>; throws a
 L<Langertha::Holmgang::Error> on the first thing that does not hold.
 
+A directory with F<suite.pl> instead of F<suite.yaml> holds a suite in the
+case DSL (L<Langertha::Holmgang>, ADR 0007): the file is run as Perl, in a
+package of its own, and must declare exactly one C<suite> whose id is the
+directory name. It goes through the same structure checks and lint as
+format 2 (L</assemble>). A directory with both files is refused (field
+C<suite>). Running F<suite.pl> runs code with the trust of an installed
+module: load it only from search directories you control.
+
 =cut
+
+sub _load_dsl {
+  my ( $self, $dir, $dirname ) = @_;
+  my $code = eval { path( $dir, 'suite.pl' )->slurp_raw };
+  $self->_refuse( 'suite.pl', 'not readable: '.( $@ =~ s/\s+\z//r ) ) unless defined $code;
+  require Langertha::Holmgang;
+  return Langertha::Holmgang::_load_file(
+    loader  => $self,
+    dir     => $dir,
+    dirname => $dirname,
+    path    => path( $dir, 'suite.pl' )->absolute->stringify,
+    code    => $code,
+  );
+}
+
+sub assemble {
+  my ( $self, %o ) = @_;
+  my $st    = $self->structure;
+  my $label = $o{file} // 'suite.pl';
+  my $head  = $o{head};
+  my %suite = $self->_relabel( $label, undef, sub {
+    $st->suite_head( $head, defined $o{dirname} ? ( dirname => $o{dirname} ) : () );
+  } );
+
+  # the digest, taken as from the YAML export of the suite: the export's
+  # bytes are k19's; until then the canonical dump of _export_bytes
+  my $sha = Digest::SHA->new(256);
+  $sha->add( "suite.yaml\0", _export_bytes( { format => 2, %$head } ), "\0" );
+
+  my %seen;
+  my @cases;
+  for my $data ( sort { ( $a->{id} // '' ) cmp( $b->{id} // '' ) } @{ $o{cases} || [] } ) {
+    my $id = $data->{id} // '';
+    $self->_refuse( $label.': case '.$id, 'case id twice' ) if $seen{$id}++;
+    $self->_refuse( $label.': case '.$id, 'invalid id' ) unless $st->valid_id($id);
+    my $f     = 'cases/'.$id.'.yaml';    # as the export names the file
+    my $field = $label.': case '.$id;
+    $sha->add( $f."\0", _export_bytes($data), "\0" );
+    $self->_relabel( $field, $f, sub { $self->_digest_generated( $sha, $data, $f ) } );
+    my $case = $st->case( $data, field => $field, tools => $suite{tools}, defaults => $suite{defaults}, dir => $o{dir} );
+    $self->_digest_images( $sha, $case, $f );
+    $self->lint->lint( $case, $field );
+    push @cases, $case;
+  }
+  $self->_refuse( $label, 'no cases' ) unless @cases;
+  return Langertha::Holmgang::Suite->new( %suite, cases => \@cases, digest => $sha->hexdigest );
+}
+
+=method assemble
+
+  my $suite = $loader->assemble(
+    head    => \%suite_head,    # format 2 keys of suite.yaml, without format
+    cases   => \@case_hashes,   # format 2 keys of a case file each
+    file    => 'suite.pl',      # starts every field path
+    dir     => $suite_dir,      # images and texts are relative to it
+    dirname => 'example-sums',  # optional: the id must equal it
+  );
+
+Builds a suite from format 2 data that came from somewhere other than YAML
+files -- the case DSL calls it when a C<suite> block closes. The head goes
+through L<Langertha::Holmgang::Structure/suite_head>, each case, ordered by
+id, through L<Langertha::Holmgang::Structure/case> and L</lint>, exactly as in
+L</load>; a refusal names C<file> and the case
+(C<suite.pl: case sum-01: rules[0].equals>).
+
+The digest is taken as L</load> takes it from the suite's YAML export: the
+head as F<suite.yaml>, each case as F<cases/E<lt>idE<gt>.yaml>, with the
+generated texts and images. Until the YAML export (k19) fixes those bytes, they
+are a canonical dump of the data (keys sorted, L<YAML::XS>), so the digest is
+stable for the same data but changes once with k19.
+
+=cut
+
+# runs $code; a refusal from it gets the field path of this front end: a field
+# starting with $from (or 'suite.yaml', or anything for the head) starts with
+# $label instead
+sub _relabel {
+  my ( $self, $label, $from, $code ) = @_;
+  my @out = eval { $code->() };
+  if ( my $err = $@ ) {
+    my $e = Langertha::Holmgang::Error->caught($err) or die $err;
+    my $field = $e->field;
+    if ( defined $from ) { $field =~ s/\A\Q$from\E/$label/ or die $err }
+    else                 { $field =~ s/\Asuite\.yaml/$label/ or $field = $label.': '.$field }
+    $self->_refuse( $field, $e->reason );
+  }
+  return @out;
+}
+
+# temporary canonical bytes of a part of the YAML export (until k19)
+sub _export_bytes {
+  my ( $data ) = @_;
+  local $YAML::XS::Boolean = 'JSON::PP';
+  return YAML::XS::Dump($data);
+}
+
+# a suite directory holds suite.yaml (format 2) or suite.pl (the DSL)
+sub _suite_file {
+  my ( $self, $dir ) = @_;
+  return ( -f $dir.'/suite.yaml' || -f $dir.'/suite.pl' ) ? 1 : 0;
+}
 
 sub _roots {
   my ( $self, @roots ) = @_;
@@ -210,7 +352,7 @@ sub list {
   for my $root ( $self->_roots(@roots) ) {
     my $r = path($root);
     next unless $r->is_dir;
-    for my $id ( sort grep { $self->structure->valid_id($_) && -f $root.'/'.$_.'/suite.yaml' } map { $_->basename } $r->children ) {
+    for my $id ( sort grep { $self->structure->valid_id($_) && $self->_suite_file( $root.'/'.$_ ) } map { $_->basename } $r->children ) {
       push @ids, $id unless $where{$id};
       push @{ $where{$id} }, $root;
     }
@@ -248,7 +390,7 @@ sub list {
   my $list = $loader->list( '/srv/suites:/data/suites', $more_root );
 
 All suites under the search directories (separated by C<:>; each
-subdirectory with a F<suite.yaml>), sorted by id, as a short overview:
+subdirectory with a F<suite.yaml> or a F<suite.pl>), sorted by id, as a short overview:
 C<id>, C<version>, C<title>, C<description>, C<topic>, C<cases> and C<tools>
 (counts), C<digest>, C<error>. A suite that does not load is listed with
 C<error> (the refusal as text) instead of stopping the list; an id found in
@@ -263,7 +405,7 @@ that does not load and is listed with its error. L</load> refuses either.
 sub locate {
   my ( $self, $roots, $id ) = @_;
   return undef unless $self->structure->valid_id($id);
-  my @hits = grep { -f $_.'/'.$id.'/suite.yaml' } $self->_roots($roots);
+  my @hits = grep { $self->_suite_file( $_.'/'.$id ) } $self->_roots($roots);
   $self->_refuse( suite => "suite id '".$id."' in more than one search directory: ".join( ' ', @hits ) ) if @hits > 1;
   return @hits ? $hits[0].'/'.$id : undef;
 }
