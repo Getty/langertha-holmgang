@@ -22,6 +22,7 @@ our $VERSION = '0.001';
 # true constants: the vocabulary of format 2
 our @RULE_KINDS = qw( state unchanged_except calls not_called only_tools check packet login );
 our @MATCHERS   = @Langertha::Holmgang::Expectation::MATCHERS;
+our @MODIFIERS  = @Langertha::Holmgang::Expectation::MODIFIERS;
 our @OPS        = @Langertha::Holmgang::World::OPS;
 our @CASE_KEYS  = qw( id title tags difficulty system messages state observe rules solution
   alternatives wrong_solutions temperature max_tokens max_turns source weight );
@@ -205,8 +206,15 @@ sub _element {
 # expectations on a value (Expectation::condition); with $bare without path
 sub _matchers {
   my ( $self, $c, $field, $bare ) = @_;
-  $self->_keys_ok( $c, $field, ( $bare ? () : 'path' ), @MATCHERS );
+  $self->_keys_ok( $c, $field, ( $bare ? () : 'path' ), @MATCHERS, @MODIFIERS );
   $self->_path( $c->{path}, $field.'.path' ) unless $bare;
+  if ( exists $c->{tolerance} ) {    # k49: qualifies a numeric equals
+    $self->_refuse( $field.'.tolerance', 'needs equals' ) unless exists $c->{equals};
+    my $num = qr/\A-?(?:\d+\.?\d*|\.\d+)\z/;
+    my ( $e, $t ) = @$c{qw( equals tolerance )};
+    $self->_refuse( $field.'.equals', 'number expected beside tolerance' ) if !defined $e || ref $e || $e !~ $num;
+    $self->_refuse( $field.'.tolerance', 'number of 0 or more expected' ) if !defined $t || ref $t || $t !~ $num || $t < 0;
+  }
   my @m = grep { exists $c->{$_} } @MATCHERS;
   $self->_refuse( $field, 'no expectation ('.join( ', ', @MATCHERS ).')' ) unless @m;
   for my $k ( @m ) {

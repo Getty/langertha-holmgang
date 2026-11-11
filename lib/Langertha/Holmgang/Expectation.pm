@@ -8,13 +8,17 @@ use utf8;
 use Carp qw( croak );
 use Exporter qw( import );
 use JSON::MaybeXS ();
+use Scalar::Util qw( looks_like_number );
 
 our $VERSION = '0.001';
 
-our @EXPORT_OK = qw( condition check_value element_match path get flat same_scalar interp_text filter_value );
+our @EXPORT_OK = qw( condition check_value element_match path get flat same_scalar near interp_text filter_value );
 
 # the expectations, in the order they are checked; a true constant
 our @MATCHERS = qw( exists absent equals in regex contains excludes length any none before );
+
+# keys that qualify a matcher and are no expectation of their own; a true constant
+our @MODIFIERS = qw( tolerance );
 
 my $JSON = JSON::MaybeXS->new( utf8 => 0, canonical => 1, allow_nonref => 1 );
 
@@ -34,6 +38,13 @@ C<state>, the C<when> conditions of handlers and observations, the C<expect>
 of a C<check> rule and the field patterns of C<any>/C<none>/C<where> all go
 through here. Keys that are not matchers (C<path>, C<title>, C<state> …) are
 ignored, so a rule hash can be handed in as written.
+
+C<tolerance> (k49) qualifies C<equals>: with C<< equals: 42, tolerance: 0.5 >>
+the value must be a number no further than 0.5 from 42, bounds included —
+for values read off an image. It is no expectation of its own; the shape
+check (L<Langertha::Holmgang::Structure>) refuses it without a numeric
+C<equals>. The comparison allows for binary rounding
+(C<|41.8 - 42| E<lt>= 0.2> holds).
 
 Paths are dotted text or a list of segments (for keys with dots); C<{name}>
 in a segment is replaced by the argument C<name>. Lists are addressed by
@@ -166,6 +177,24 @@ sub same_scalar {
   return "$x" eq "$y" ? 1 : 0;
 }
 
+=func near
+
+  near( $value, $want, $tolerance );
+
+True when C<$value> is a finite number (or numeric text) no further than
+C<$tolerance> from C<$want>, bounds included, allowing for binary rounding
+(a relative 1e-9). A boolean, a reference or other text is not near anything.
+
+=cut
+
+sub near {
+  my ( $x, $want, $tol ) = @_;
+  return 0 if !defined $x || ref $x || !looks_like_number($x) || $x =~ /\A\s|\s\z/;
+  return 0 unless $x == $x && abs($x) != 9**9**9;    # NaN, Inf
+  my $slack = 1e-9 * ( abs($want) > 1 ? abs($want) : 1 );
+  return abs( $x - $want ) <= $tol + $slack ? 1 : 0;
+}
+
 sub _show {
   my ( $v ) = @_;
   my $s = $JSON->encode($v);
@@ -250,7 +279,11 @@ sub check_value {
     my ( $want ) = @_;
     return !ref $want && ref $v eq 'HASH' && exists $v->{content} && !ref $v->{content} ? $v->{content} : $v;
   };
-  if ( exists $c->{equals} ) {
+  if ( exists $c->{equals} && exists $c->{tolerance} ) {
+    return ( 0, 'is '._show($v).', not within '.$c->{tolerance}.' of '.$c->{equals} )
+      unless near( $text->( $c->{equals} ), $c->{equals}, $c->{tolerance} );
+  }
+  elsif ( exists $c->{equals} ) {
     return ( 0, 'is '._show($v) ) unless same_scalar( $text->( $c->{equals} ), $c->{equals} );
   }
   if ( exists $c->{in} ) {

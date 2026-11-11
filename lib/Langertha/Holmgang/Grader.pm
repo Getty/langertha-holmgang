@@ -368,6 +368,7 @@ on the value there, all of which must hold
   exists: true | false         the path is there / is not
   absent: true | false         the value is missing or null / is not
   equals: V                    the same plain value (numbers numerically, booleans as true/false)
+    tolerance: T               beside a numeric equals: a number at most T from V, bounds included
   in: [V, ...]                 one of these
   regex: "..."                 the text (or a file's content) matches
   contains: [V, ...]           a list holding all of these
