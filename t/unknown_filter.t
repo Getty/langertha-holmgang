@@ -7,7 +7,10 @@
 # and reason; the known filters split, int and lc load; a {name|Upper} that is no filter
 # pattern stays text and loads. (2) Should such a case run anyway (lint bypassed), the
 # model never sees the filter's error text: the tool result in the outgoing request is
-# the world's generic refusal, without the filter's name, a file or a line.
+# the world's generic refusal, without the filter's name, a file or a line. (3) The
+# same for an unknown filter in a when path (k39): World->call never dies; a handler
+# whose when cannot be evaluated does not fit (the generic refusal, state unchanged),
+# an observation whose when cannot be evaluated does not answer (the simulator does).
 use strict;
 use warnings;
 use utf8;
@@ -21,6 +24,9 @@ use Langertha::Virtual::Rules qw( answer tool );
 use Langertha::Holmgang::Loader;
 use Langertha::Holmgang::Runner;
 use Langertha::Holmgang::Target;
+use Langertha::Holmgang::World;
+
+use constant World => 'Langertha::Holmgang::World';
 
 binmode Test::More->builder->$_, ':encoding(UTF-8)' for qw( output failure_output todo_output );
 
@@ -123,5 +129,38 @@ unlike( $seen, qr/filter|upper|Expectation|World|\.pm|line \d/i, 'the model sees
 is( $seen, 'Fehler: dieser Aufruf ist in diesem Szenario nicht vorgesehen.', '... only the generic refusal' );
 is( $r->{calls}[0]{succeeded}, 0, '... and the call failed' );
 is( $r->{state}{fan}{label}, '', '... leaving the state unchanged' );
+
+# --- (3) an unknown filter in a when path, lint bypassed (k39) ----------------------
+{
+  my $dir = suite_dir( head => head( when => q({ path: 'fan.{label|upper}', exists: true }), apply => q({ set: fan.label, value: x }) ),
+    cases => { 'c1.yaml' => $CASE } );
+  my ( $case ) = @{ Langertha::Holmgang::Loader->new( lint => NoLint->new )->load($dir)->cases };
+
+  my $world = World->new( state => $case->initial_state, tools => $case->tools, observe => $case->observe // [] );
+  my @got;
+  my $died = !eval { @got = $world->call( fan_label => { label => 'quiet' } ); 1 };
+  ok( !$died, 'handler when path: World->call does not die' ) or diag $@;
+  is( $got[0], 'Fehler: dieser Aufruf ist in diesem Szenario nicht vorgesehen.', '... the handler does not fit: generic refusal' );
+  is( $got[2], 0, '... the call failed' );
+  is( $world->state->{fan}{label}, '', '... state unchanged' );
+
+  my $e = Langertha::Engine::Virtual->new( script => [ tool( fan_label => { label => 'quiet' } ), answer('ok') ] );
+  my $r = eval { Langertha::Holmgang::Runner->new( target => Langertha::Holmgang::Target->new( engine => $e ) )->run_case($case) };
+  ok( $r, '... the run goes on' ) or diag $@;
+  my ( $res ) = grep { $_->{role} eq 'tool' } @{ ( $e->requests->[1] // {} )->{body}{messages} || [] };
+  is( $res && $res->{content}, 'Fehler: dieser Aufruf ist in diesem Szenario nicht vorgesehen.', '... the outgoing tool result is the generic refusal' );
+}
+{
+  my $obs = q(observe: [ { match: { host: '^h1$', command: '^echo' }, when: [ { path: 'fan.{host|upper}', exists: true } ], output: OBSERVED } ]);
+  my $dir = suite_dir( head => head( apply => q({ set: fan.label, value: x }) ),
+    cases => { 'c1.yaml' => ( $CASE =~ s/state: \{ fan:/state: { h1: { type: linux }, fan:/r ).$obs."\n" } );
+  my ( $case ) = @{ Langertha::Holmgang::Loader->new( lint => NoLint->new )->load($dir)->cases };
+  my $world = World->new( state => $case->initial_state, tools => $case->tools, observe => $case->observe // [] );
+  my @got;
+  my $died = !eval { @got = $world->call( run_command => { host => 'h1', command => 'echo hallo' } ); 1 };
+  ok( !$died, 'observation when path: World->call does not die' ) or diag $@;
+  isnt( $got[0], 'OBSERVED', '... the observation does not answer' );
+  like( $got[0] // '', qr/hallo/, '... the simulator does' );
+}
 
 done_testing;

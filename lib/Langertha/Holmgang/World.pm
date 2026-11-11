@@ -79,6 +79,10 @@ leaves the state untouched.
 
 =back
 
+A C<when> of an observation or a handler that cannot be evaluated (an unknown
+filter in its path, which lint refuses at load time) does not hold: the entry
+does not fit, and the call never dies.
+
 Tools, handlers and observations are read as format 2 writes them. In paths,
 values and C<where> patterns C<{name}> stands for the argument C<name>; a value
 that is exactly C<{name}> takes the argument as it is (list, number),
@@ -315,12 +319,16 @@ sub _handle {
 }
 
 # match and when of a handler or an observation: the arguments with the named captures,
-# or undef
+# or undef; a when that cannot be evaluated (an unknown filter in its path, only past
+# lint) does not hold -- never a die out of call (k39)
 sub _fits {
   my ( $self, $h, $args ) = @_;
   my $cap = $self->_args_match( $h->{match}, $args ) or return;
   my $with = { %$args, %$cap };
-  return if grep { !( condition( $self->state, $_, $with ) )[0] } @{ $h->{when} || [] };
+  for my $w ( @{ $h->{when} || [] } ) {
+    my $holds = eval { ( condition( $self->state, $w, $with ) )[0] };
+    return unless $holds;
+  }
   return $with;
 }
 

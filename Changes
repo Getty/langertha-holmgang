@@ -49,3 +49,5 @@ Revision history for Langertha-Holmgang
     Kueche, Shell, Shell::Filter) is now in English
   - Haystack refusals are Langertha::Holmgang::Error; Structure no longer
     re-wraps them (k29)
+  - A when path that cannot be evaluated no longer dies out of World->call;
+    the entry does not fit (k39)
