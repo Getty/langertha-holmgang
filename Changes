@@ -55,3 +55,5 @@ Revision history for Langertha-Holmgang
     the same name as the report's suite.digest (k30)
   - Loader->list leaves out suites whose format is a name rather than a
     number (another kind of corpus) (k33)
+  - Case->report_meta builds the case meta Report->add_run takes;
+    Case->tier returns undef in list context too (k36)

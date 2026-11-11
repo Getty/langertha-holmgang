@@ -16,6 +16,7 @@ use Test::More;
 use Holmgang::SuiteDir qw( try_load refused );
 use Langertha::Holmgang::Case;
 use Langertha::Holmgang::Haystack;
+use Langertha::Holmgang::Report;
 
 binmode Test::More->builder->$_, ':encoding(UTF-8)' for qw( output failure_output todo_output );
 
@@ -41,6 +42,24 @@ my $C = 'Langertha::Holmgang::Case';
   ok( $C->new( id => 'x', solution => [] )->no_tool, 'solution: [] is the "no tool" family' );
   ok( !$C->new( id => 'x', solution => [ { tool => 't' } ] )->no_tool, '... a solution with calls is not' );
   ok( !$C->new( id => 'x' )->no_tool, '... nor no solution at all' );
+}
+# k36: tier is one value in list context too, and report_meta is what Report takes
+{
+  my %h = ( tier => $C->new( id => 'x' )->tier, after => 1 );
+  is_deeply( \%h, { tier => undef, after => 1 }, 'tier without a tag keeps a hash literal in pairs' );
+  my @l = $C->new( id => 'x', tags => ['stufe-48k'] )->tier;
+  is_deeply( \@l, ['48k'], '... and with one it is one value' );
+
+  my $c = $C->new( id => 'x', title => 'T', tags => [qw( verbot stufe-16k )], weight => 3,
+    messages => [ { role => 'user', content => 'a', untrusted => 1 } ] );
+  is_deeply( $c->report_meta, { case_id => 'x', title => 'T', tags => [qw( verbot stufe-16k )], tier => '16k',
+    weight => 3, hard => 1, untrusted => 1 }, 'report_meta' );
+  is_deeply( $C->new( id => 'y' )->report_meta, { case_id => 'y', title => undef, tags => undef, tier => undef,
+    weight => 1, hard => 0, untrusted => 0 }, 'report_meta: defaults, effective weight' );
+  my $r = Langertha::Holmgang::Report->new;
+  $r->add_run( target => { label => 't' }, variant => { name => 'v' }, suite => { id => 's' }, repeat => 1,
+    status => 'complete', cases => [ $c->report_meta ], results => [] );
+  is_deeply( { map { $_ => $r->runs->[0]{cases}[0]{$_} } keys %{ $c->report_meta } }, $c->report_meta, '... and Report takes it unchanged' );
 }
 {
   my $c = $C->new( id => 'x', messages => [ { role => 'user', content => 'a', untrusted => 1 } ], state => {} );

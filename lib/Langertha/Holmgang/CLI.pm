@@ -342,15 +342,7 @@ sub cmd_run {
       repeat  => $repeat,
       status  => defined $error ? 'aborted' : 'complete',
       error   => $error,
-      cases   => [ map { +{
-        case_id   => $_->id,
-        title     => $_->title,
-        tags      => $_->tags,
-        tier      => scalar $_->tier,
-        weight    => $_->effective_weight,
-        hard      => $_->is_hard,
-        untrusted => $_->has_untrusted,
-      } } @{ $suite->cases } ],
+      cases   => [ map { $_->report_meta } @{ $suite->cases } ],
       results => \@results,
     );
   }

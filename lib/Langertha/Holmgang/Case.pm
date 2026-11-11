@@ -268,13 +268,14 @@ The tags as a list.
 sub tier {
   my ( $self ) = @_;
   for ( $self->tag_list ) { return $1 if /\Astufe-(\d+k)\z/ }
-  return;
+  return undef;
 }
 
 =method tier
 
 The length tier from the tag C<stufe-E<lt>tierE<gt>> (C<16k>, C<48k>, C<96k>,
-C<160k>), or C<undef>.
+C<160k>), or C<undef> — one value in list context too, so
+C<< { tier => $case->tier } >> keeps its pairs.
 
 =cut
 
@@ -323,6 +324,29 @@ sub no_tool {
 =method no_tool
 
 True in the "no tool" family: C<solution: []>, where doing nothing is right.
+
+=cut
+
+sub report_meta {
+  my ( $self ) = @_;
+  return {
+    case_id   => $self->id,
+    title     => $self->title,
+    tags      => $self->tags,
+    tier      => $self->tier,
+    weight    => $self->effective_weight,
+    hard      => $self->is_hard,
+    untrusted => $self->has_untrusted,
+  };
+}
+
+=method report_meta
+
+  $report->add_run( ..., cases => [ map { $_->report_meta } @{ $suite->cases } ] );
+
+The case meta L<Langertha::Holmgang::Report/add_run> takes, as a new hash:
+C<case_id>, C<title>, C<tags>, C<tier>, C<weight> (the effective one), C<hard>,
+C<untrusted>.
 
 =cut
 

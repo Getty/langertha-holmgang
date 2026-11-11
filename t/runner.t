@@ -382,8 +382,7 @@ sub bodies { [ map { $_->{body} } @{ $_[0]->requests } ] }
     suite   => { id => $suite->id, version => $suite->version, topic => $suite->topic, digest => $suite->digest },
     repeat  => 2,
     status  => 'complete',
-    cases   => [ map { +{ case_id => $_->id, title => $_->title, tags => $_->tags, tier => scalar $_->tier,
-      weight => $_->effective_weight, hard => $_->is_hard, untrusted => $_->has_untrusted } } @{ $suite->cases } ],
+    cases   => [ map { $_->report_meta } @{ $suite->cases } ],
     results => \@results,
   );
   $report->finish;
