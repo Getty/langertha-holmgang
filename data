@@ -1,0 +1,25 @@
+---
+claimed_at: 2026-11-11T06:04:40Z
+claimed_by: holmgang-main
+class: standard
+completed: 2026-11-11T06:04:32Z
+created: 2026-11-05T17:44:07Z
+id: 40
+priority: low
+started: 2026-11-11T05:57:17Z
+status: done
+tags:
+- doku
+- sim
+title: 'Sim-POD auf Englisch: Sim::Linux, RouterOS, IOS, Kueche, Sim::Linux::*, Shell,
+  Shell::Filter'
+updated: 2026-11-11T06:04:40Z
+---
+
+Aus k24: die POD dieser Simulatormodule ist deutsch, der Rest der Distribution englisch. Lane: holmgang-sim-worker.
+
+holmgang-sim-worker: started. 28 files, ~3500 POD lines, German in most. Plan: translate POD + German # ABSTRACT lines, =head1 SYNOPSIS/DESCRIPTION -> =synopsis/=description per dist convention; code untouched (verified by POD-stripped diff).
+
+holmgang-sim-worker: POD of all 28 files translated to English (Sim/IOS, RouterOS, Kueche, Linux, Linux/* x22, Shell, Shell/Filter); German ABSTRACTs of Dns/Backup/Postfix/Storage translated; =head1 SYNOPSIS/DESCRIPTION -> =synopsis/=description. Verified: code with POD+ABSTRACT stripped byte-identical to HEAD in all 28; podchecker clean on all (custom directives normalised, =encoding added; HEAD likewise); prove -lr t/ PASS (76 files, 2480 tests). Deliberately German: Kueche tool/world keys, units, sample data and its refusal quote; Nft synopsis 'nicht auswertbar: …' (literal return string); data values in examples (RouterOS 'LAN raus', IOS BUERO/GAST, Docker kunden-2026). Ready for review; not committed.
+
+Committed as cf75e19
