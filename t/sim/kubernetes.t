@@ -187,6 +187,14 @@ subtest 'Flags, die echtes kubectl kennt' => sub {
     unlike( $o, qr/unknown flag/, '... keine falsche Fehlermeldung' );
     ( $o, $ok, $gap ) = k(q{kubectl get deploy api -n shop -o jsonpath='{.spec.template.spec.containers[0].image}'});
     ok( $ok && !$gap && $o eq 'registry.example.com/shop/api:1.4.2', '-o jsonpath: nachgebildet' ) or diag $o;
+    # -o json wie kubectl (Go): "key": value, vier Leerzeichen
+    ( $o, $ok ) = k('kubectl get deploy api -n shop -o json');
+    ok( $ok, '-o json' ) or diag $o;
+    like( $o, qr/^    "kind": "Deployment",$/m, '-o json: "key": value mit vier Leerzeichen' ) or diag $o;
+    unlike( $o, qr/" :/, '... kein Leerzeichen vor dem Doppelpunkt' );
+    like( k('kubectl get deploy -n shop -o json | grep -o \'"app": "[^"]*"\''), qr/"app": "api"/, '... grep auf "app": "…" trifft' );
+    ( $o, $ok ) = k('kubectl get deploy -n shop -o json');
+    like( $o, qr/^    "items": \[$/m, '-o json als Liste' ) or diag $o;
     is_deeply( $state, clone($start), 'nichts geaendert' );
 };
 

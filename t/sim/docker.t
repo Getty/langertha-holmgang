@@ -108,6 +108,10 @@ ok( !$ok, 'ohne Verzeichnis und ohne -p: keine Datei' );
 like( $o, qr/no configuration file provided: not found/, '... mit der Meldung von Compose' );
 like( sh('docker compose -p shop ps'), qr/shop-api-1/, '-p shop findet das Projekt ohne Datei (Labels)' );
 like( sh('docker inspect -f "{{.State.Health.Status}}" shop-db-1'), qr/\Ahealthy\z/, 'inspect --format' );
+# ohne --format wie Docker (Go): "Key": value, vier Leerzeichen
+$o = sh('docker inspect shop-db-1');
+like( $o, qr/\A\[\n    \{\n        "/, 'inspect: Liste, vier Leerzeichen' ) or diag $o;
+unlike( $o, qr/" :/, '... kein Leerzeichen vor dem Doppelpunkt' );
 like( sh('curl -s http://127.0.0.1:8080/health'), qr/\Aok\z/, 'curl an den veroeffentlichten Port' );
 like( sh('docker compose -f /srv/shop/compose.yaml exec api wget -qO- http://localhost:8080/health'), qr/ok/, 'exec wget im Container' );
 like( sh('docker compose -f /srv/shop/compose.yaml exec api curl http://db:5432/'), qr/executable file not found/, 'curl fehlt im Image' );

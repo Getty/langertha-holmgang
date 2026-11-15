@@ -7,6 +7,7 @@ use utf8;
 
 use Digest::SHA ();
 use Encode ();
+use JSON::PP ();
 use JSON::MaybeXS ();
 use MIME::Base64 ();
 use YAML::XS ();
@@ -125,6 +126,10 @@ Pure functions on the state, neutral.
 our @GAPS;
 
 my $J = JSON::MaybeXS->new( canonical => 1, utf8 => 0, pretty => 1 );
+
+# Ausgabe von -o json wie kubectl (Go encoding/json): "key": value, vier
+# Leerzeichen. $J bleibt fuer Hashes und Vergleiche (Namen der Pods haengen daran).
+my $OUT_JSON = JSON::PP->new->canonical->indent->indent_length(4)->space_after;
 
 our %KIND = (
     pod => 'pods', pods => 'pods', po => 'pods',
@@ -444,7 +449,7 @@ sub _v_get {
                 my @n = grep { !defined $name || $_ eq $name } sort keys %$objs;
                 return ( qq{Error from server (NotFound): $SINGULAR{$kind} "$name" not found}, 0 ) if defined $name && !@n;
                 my $data = @n == 1 && defined $name ? $objs->{ $n[0] } : { apiVersion => 'v1', kind => 'List', items => [ @{$objs}{@n} ] };
-                return ( $1 eq 'json' ? $J->encode($data) =~ s/\s+\z//r : do { local $YAML::XS::Boolean = 'JSON::PP'; YAML::XS::Dump($data) =~ s/\A---\n//r =~ s/\s+\z//r }, 1 );
+                return ( $1 eq 'json' ? $OUT_JSON->encode($data) =~ s/\s+\z//r : do { local $YAML::XS::Boolean = 'JSON::PP'; YAML::XS::Dump($data) =~ s/\A---\n//r =~ s/\s+\z//r }, 1 );
             }
             if ( $DERIVED{$kind} ) {
                 ( undef, @r ) = _derived_rows( $k, $kind, $ns );
@@ -589,7 +594,7 @@ sub _structured {
     my ( $o, $kind, $objs ) = @_;
     my @items = map { _api_obj( $kind, $_, $objs->{$_}, $o->{ns} ) } sort keys %$objs;
     my $data = @items == 1 ? $items[0] : { apiVersion => 'v1', kind => 'List', items => \@items };
-    return ( $o->{out} =~ /\Ajson/ ? $J->encode($data) =~ s/\s+\z//r : do { local $YAML::XS::Boolean = q{JSON::PP}; YAML::XS::Dump($data) } =~ s/\A---\n//r =~ s/\s+\z//r, 1 );
+    return ( $o->{out} =~ /\Ajson/ ? $OUT_JSON->encode($data) =~ s/\s+\z//r : do { local $YAML::XS::Boolean = q{JSON::PP}; YAML::XS::Dump($data) } =~ s/\A---\n//r =~ s/\s+\z//r, 1 );
 }
 
 # Objekt des Zustands -> Form der API (fuer -o yaml|json); vereinfacht

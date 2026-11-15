@@ -8,6 +8,10 @@ use utf8;
 use Digest::SHA ();
 use Encode ();
 use JSON::MaybeXS ();
+use JSON::PP ();
+
+# Ausgabe von inspect wie Docker (Go json.MarshalIndent): "Key": value, vier Leerzeichen
+my $OUT_JSON = JSON::PP->new->canonical->indent->indent_length(4)->space_after;
 use YAML::XS ();
 
 our $VERSION = '0.001';
@@ -1371,7 +1375,7 @@ sub docker {
                 push @o, { Name => $n, Driver => 'local', Mountpoint => "/var/lib/docker/volumes/$n/_data", Scope => 'local',
                     Labels => { ( $d->{volumes}{$n}{project} ? ( 'com.docker.compose.project' => $d->{volumes}{$n}{project} ) : () ) } };
             }
-            return ( JSON::MaybeXS->new( pretty => 1, canonical => 1 )->encode( \@o ) =~ s/\n\z//r, 1 );
+            return ( $OUT_JSON->encode( \@o ) =~ s/\n\z//r, 1 );
         }
         if ( $v eq 'rm' ) {
             for my $n ( grep { !/\A-/ } @a ) {
@@ -1696,7 +1700,7 @@ sub _inspect {
         }
         push @data, _inspect_data( $d, $n );
     }
-    return ( JSON::MaybeXS->new( pretty => 1, canonical => 1 )->encode( \@data ) =~ s/\n\z//r, 1 ) unless defined $fmt;
+    return ( $OUT_JSON->encode( \@data ) =~ s/\n\z//r, 1 ) unless defined $fmt;
     return ( gofmt( $fmt, \@data ), 1 );
 }
 

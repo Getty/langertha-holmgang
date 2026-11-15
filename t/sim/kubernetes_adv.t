@@ -224,6 +224,7 @@ subtest 'Helm' => sub {
     my $s = clone($start);
     like( run( $s, 'helm list -n shop' ), qr/shop\s+shop\s+2\s+.*deployed\s+shop-1\.0\.0\s+1/, 'list' );
     like( run( $s, 'helm get values shop -n shop' ), qr/USER-SUPPLIED VALUES:\ndebug: true\nreplicaCount: 3/, 'get values' );
+    is( run( $s, 'helm get values shop -n shop -o json' ), '{"debug":true,"replicaCount":3}', 'get values -o json kompakt wie Helm' );
     like( run( $s, 'helm get manifest shop -n shop' ), qr/replicas: 3/, 'manifest der aktuellen Revision' );
     like( run( $s, 'helm get manifest shop -n shop --revision 1' ), qr/replicas: 1\b/, 'manifest einer alten Revision: aus deren Werten' );
     # Release-Secret wie Helm 3: base64 (kubectl) ueber base64 ueber gzip ueber JSON

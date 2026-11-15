@@ -495,7 +495,7 @@ sub _h_get {
     }
     if ( $what eq 'values' ) {
         my $v = $o->{all} ? _merge( ( _chart_version( $k, $r->{chart}, $rev->{version} ) || {} )->{values} || {}, $rev->{values} || {} ) : $rev->{values} || {};
-        return ( $J->pretty->encode($v) =~ s/\s+\z//r, 1 ) if ( $o->{output} // '' ) eq 'json';
+        return ( $J->encode($v), 1 ) if ( $o->{output} // '' ) eq 'json';    # Helm schreibt kompakt
         return ( _dump($v) || 'null', 1 ) if ( $o->{output} // '' ) eq 'yaml';
         return ( ( $o->{all} ? 'COMPUTED VALUES:' : 'USER-SUPPLIED VALUES:' ) . "\n" . ( %$v ? _dump($v) : 'null' ), 1 );
     }
