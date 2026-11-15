@@ -291,8 +291,7 @@ sub gzip {
 sub _sha {
     my ($e) = @_;
     return $e->{sha256} if defined $e->{sha256};
-    require Encode;
-    return Digest::SHA::sha256_hex( Encode::encode( 'UTF-8', $e->{content} // '' ) );
+    return Digest::SHA::sha256_hex( _L( '_digest_bytes', $e, $e->{content} ) );    # ohne Inhalt: Daten des Eintrags
 }
 
 =func sha256sum

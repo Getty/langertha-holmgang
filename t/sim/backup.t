@@ -141,6 +141,19 @@ subtest sha256sum => sub {
     like( $o, qr/etc\.tar\.gz: OK\nkaputt\.tar\.gz: FAILED/, '… je Datei' );
     ( $o, $ok ) = run( $s, 'web1', 'gzip -t /var/backups/kaputt.tar.gz' );
     ok( !$ok, 'gzip -t' );
+    # Archiv ohne Inhalt und ohne sha256 im Zustand: nicht der Hash der leeren Eingabe;
+    # gleiche Mitglieder (Kopie) gleicher Hash, andere Mitglieder ein anderer
+    $s->{web1}{files}{'/var/backups/x1.tar.gz'} = { size => '2M', tar => { 'etc/a' => f("1\n") } };
+    $s->{web1}{files}{'/var/backups/x2.tar.gz'} = { size => '2M', tar => { 'etc/a' => f("2\n") } };
+    run( $s, 'web1', 'cp -p /var/backups/x1.tar.gz /root/x1.tar.gz' );
+    my %h = map { ( split /\s+/, $_ )[ 1, 0 ] } split /\n/, run( $s, 'web1', 'sha256sum /var/backups/x1.tar.gz /var/backups/x2.tar.gz /root/x1.tar.gz' );
+    isnt( $h{'/var/backups/x1.tar.gz'}, 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855', 'Archiv: nicht der Hash von nichts' );
+    isnt( $h{'/var/backups/x1.tar.gz'}, $h{'/var/backups/x2.tar.gz'}, '... andere Mitglieder, anderer Hash' );
+    is( $h{'/root/x1.tar.gz'}, $h{'/var/backups/x1.tar.gz'}, '... die Kopie hat denselben' );
+    ( $o, $ok ) = run( $s, 'web1', 'md5sum /var/backups/x1.tar.gz /root/x1.tar.gz' );
+    ok( $ok, 'md5sum auf ein Archiv: keine Luecke' ) or diag $o;
+    my @m = map { ( split /\s+/ )[0] } split /\n/, $o;
+    ok( @m == 2 && $m[0] eq $m[1] && $m[0] =~ /\A[0-9a-f]{32}\z/, '... gleich fuer die Kopie' ) or diag $o;
 };
 
 subtest restic => sub {

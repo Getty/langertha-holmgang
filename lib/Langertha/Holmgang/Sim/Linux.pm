@@ -3079,7 +3079,24 @@ sub _echo {
     return ( join( ' ', @a ), 1 );
 }
 
-# md5sum datei … bzw. aus der Eingabe; Dateien ohne Inhalt im Zustand (nur Groesse): Luecke
+# Bytes, ueber die eine Pruefsumme rechnet: der Inhalt. Hat der Zustand keinen (Archiv
+# mit tar-Mitgliedern, nur eine Groesse), stehen die Daten des Eintrags ohne Eigentuemer,
+# Rechte und Zeiten dafuer -- fest, gleich fuer eine Kopie, verschieden fuer anderen Inhalt.
+# Nur eine leere Datei hat den Hash der leeren Eingabe.
+my %ENTRY_META = map { $_ => 1 } qw( owner group mode mtime atime ctime open_by uid gid );
+my $DIGEST_JSON = JSON::MaybeXS->new( canonical => 1, utf8 => 1 );
+
+sub _digest_bytes {
+    my ( $e, $text ) = @_;
+    require Encode;
+    return Encode::encode( 'UTF-8', $text ) if defined $text;
+    return '' unless ref $e eq 'HASH';
+    my %d = map { $_ => $e->{$_} } grep { !$ENTRY_META{$_} && !/\A_/ } keys %$e;
+    return '' if !grep { $_ ne 'size' } keys %d and ( $d{size} // 0 ) =~ /\A0*(?:[.,]0*)?[KMGTP]?i?B?\z/i;
+    return "holmgang-sim-entry\0" . $DIGEST_JSON->encode( \%d );
+}
+
+# md5sum datei … bzw. aus der Eingabe; ohne Inhalt im Zustand siehe _digest_bytes
 sub _md5sum {
     my ( $dev, $av, $ctx, $stdin ) = @_;
     require Digest::MD5;
@@ -3093,8 +3110,8 @@ sub _md5sum {
     for my $p (@f) {
         my $e = _file_entry( $dev, _absp($p) );
         if ( !$e ) { push @l, "md5sum: $p: " . ( _is_dir( $dev, _absp($p) ) ? 'Is a directory' : 'No such file or directory' ); $ok = 0; next }
-        if ( !defined $e->{content} && !defined $e->{link} ) { push @GAPS, "md5sum $p"; return ( '', 0 ) }
-        push @l, $md5->( _file_text( $dev, _absp($p) ) // '' ) . "  $p";
+        my $t = defined $e->{content} || defined $e->{link} ? _file_text( $dev, _absp($p) ) // '' : undef;
+        push @l, Digest::MD5::md5_hex( _digest_bytes( $e, $t ) ) . "  $p";
     }
     return ( join( "\n", @l ), $ok );
 }
