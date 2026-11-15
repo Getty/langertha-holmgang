@@ -1,0 +1,16 @@
+---
+class: standard
+completed: 2026-11-15T05:18:43Z
+created: 2026-11-15T05:18:32Z
+id: 65
+priority: low
+started: 2026-11-15T05:18:43Z
+status: done
+tags:
+- sim
+- bug
+title: 'find: -prune (Idiom -path X -prune -o -print)'
+updated: 2026-11-15T05:18:51Z
+---
+
+2026-11-15 05:18 Erledigt: 127bb23. Verifiziert: prove -lr t PASS (99 Dateien).
