@@ -115,6 +115,16 @@ sub sh {
     is( $state->{srv}{timezone}, 'UTC', 'set-timezone aendert den Zustand' );
     like( sh(q{systemd-analyze calendar '07:00'}), qr/Next elapse: Wed 2026-10-21 07:00:00 UTC/, '... und die Ortszeit der Kalender' );
     fresh();
+    # cat-config: Hauptdatei, dann Drop-ins nach Dateiname; /etc verdeckt /usr/lib
+    $state->{srv}{files}{'/etc/systemd/journald.conf'}                 = "[Journal]\nStorage=auto\n";
+    $state->{srv}{files}{'/usr/lib/systemd/journald.conf.d/10-a.conf'} = "[Journal]\nCompress=no\n";
+    $state->{srv}{files}{'/usr/lib/systemd/journald.conf.d/20-b.conf'} = "[Journal]\nSystemMaxUse=9G\n";
+    $state->{srv}{files}{'/etc/systemd/journald.conf.d/20-b.conf'}     = "[Journal]\nSystemMaxUse=1G\n";
+    is( sh('systemd-analyze cat-config systemd/journald.conf'),
+        "# /etc/systemd/journald.conf\n[Journal]\nStorage=auto\n\n# /usr/lib/systemd/journald.conf.d/10-a.conf\n[Journal]\nCompress=no\n\n# /etc/systemd/journald.conf.d/20-b.conf\n[Journal]\nSystemMaxUse=1G",
+        'systemd-analyze cat-config: Datei und Drop-ins' );
+    is( sh('systemd-analyze cat-config --no-pager /etc/systemd/journald.conf'), sh('systemd-analyze cat-config systemd/journald.conf'), '... auch mit absolutem Pfad' );
+    fresh();
     like( sh('file /opt/app/bin/app'), qr/: ELF 64-bit LSB pie executable/, 'file: Programm' );
     is( sh('file /opt/app/run.sh'), '/opt/app/run.sh: POSIX shell script, ASCII text executable', 'file: Skript' );
     is( sh('file /nicht/da'), "/nicht/da: cannot open `/nicht/da' (No such file or directory)", 'file: fehlt' );

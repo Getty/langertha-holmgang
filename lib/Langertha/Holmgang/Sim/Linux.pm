@@ -287,7 +287,8 @@ C<RemainAfterExit=yes>) runs through once at start (C<runs> counts the
 successful runs) and is C<inactive> afterwards. C<systemctl list-timers
 [--all]>, C<list-units [--type=timer]>, C<systemd-analyze calendar EXPRESSION…>
 (normal form, next elapse in local time Europe/Berlin and UTC) and
-C<systemd-analyze verify FILE> (a timer's calendars); other
+C<systemd-analyze verify FILE> (a timer's calendars), C<systemd-analyze
+cat-config PATH> (file and drop-ins from /etc, /run, /usr/local/lib, /usr/lib); other
 subcommands of C<systemd-analyze> are a gap in the simulation.
 B<Files, journal, time> (added after the first measurement round): C<ls> shows
 F<.> and F<..> with C<-a>, hides dot files without C<-a>/C<-A>, shows
@@ -8872,7 +8873,7 @@ sub _systemctl {
     return ( join( "\n", @out ), $ok );
 }
 
-# systemd-analyze calendar AUSDRUCK… | verify DATEI…; anderes ist eine Luecke
+# systemd-analyze calendar AUSDRUCK… | verify DATEI… | cat-config PFAD…; anderes ist eine Luecke
 sub _systemd_analyze {
     my ( $dev, $av ) = @_;
     my @a = grep { !/\A--(?:iterations|base-time)=/ } @$av;
@@ -8913,6 +8914,26 @@ sub _systemd_analyze {
             }
         }
         return ( join( "\n", @out ), $ok );
+    }
+    if ( $sub eq 'cat-config' ) {
+        my @p = grep { !/\A-/ } @a;
+        return ( 'Too few arguments.', 0 ) unless @p;
+        my @out;
+        for my $p (@p) {
+            ( my $rel = $p ) =~ s{\A/(?:etc|run|usr/local/lib|usr/lib|lib)/}{};
+            if ( $rel =~ m{\A/} ) { push @GAPS, join( ' ', 'systemd-analyze', @$av ); return ( '', 0 ) }
+            my @roots = qw( /etc /run /usr/local/lib /usr/lib );
+            my ($main) = grep { defined _file_text( $dev, $_ ) } map {"$_/$rel"} @roots;
+            my %drop;    # Dateiname -> Pfad, das erste Verzeichnis gewinnt
+            for my $r ( reverse @roots ) {
+                my $d = "$r/$rel.d/";
+                $drop{ substr( $_, length $d ) } = $_ for grep { index( $_, $d ) == 0 && substr( $_, length $d ) =~ m{\A[^/]+\.conf\z} } keys %{ $dev->{files} || {} };
+            }
+            my @f = ( ( $main // () ), map { $drop{$_} } sort keys %drop );
+            if ( !@f ) { push @GAPS, join( ' ', 'systemd-analyze', @$av ); return ( '', 0 ) }
+            push @out, map { "# $_\n" . ( _file_text( $dev, $_ ) =~ s/\n+\z//r ) } @f;
+        }
+        return ( join( "\n\n", @out ), 1 );
     }
     push @GAPS, join( ' ', 'systemd-analyze', @$av );
     return ( '', 0 );
