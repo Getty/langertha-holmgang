@@ -1,0 +1,17 @@
+---
+class: standard
+completed: 2026-11-15T05:15:36Z
+created: 2026-11-15T05:15:27Z
+id: 64
+priority: medium
+started: 2026-11-15T05:15:36Z
+status: done
+tags:
+- sim
+- bug
+title: 'Prüfsummen: Archiv/Datei ohne Inhalt im Zustand hasht nicht als leere Eingabe
+  (sha256sum), md5sum ohne Lücke'
+updated: 2026-11-15T05:15:44Z
+---
+
+2026-11-15 05:15 Erledigt: e7d48d9. Verifiziert: prove -lr t PASS; backup-restore/01: die beiden Sicherungen haben verschiedene sha256, md5sum ohne Lücke.
