@@ -128,6 +128,9 @@ subtest 'cp und find' => sub {
     like( $o, qr/-r not specified/, 'Verzeichnis ohne -r' );
     run( $s, 'web1', 'cp -r /srv/www /root/' );
     ok( F( $s, 'web1', '/root/www/neu.html' ), 'cp -r' );
+    is( run( $s, 'web1', 'find /srv/www -path /srv/www/cache -prune -o -print' ), "/srv/www\n/srv/www/index.html\n/srv/www/neu.html", 'find -prune -o -print' );
+    is( run( $s, 'web1', 'find /srv/www -name cache -prune -o -type f -print' ), "/srv/www/index.html\n/srv/www/neu.html", '... -name, nur Dateien' );
+    is( run( $s, 'web1', 'find /srv/www -name cache -prune' ), '/srv/www/cache', '... ohne -o: das beschnittene Verzeichnis' );
     run( $s, 'web1', 'find /srv/www -name "*.tmp" -delete' );
     ok( !F( $s, 'web1', '/srv/www/cache/x.tmp' ), 'find -delete' );
     run( $s, 'web1', 'find /backup -mtime +7 -exec rm -f {} \;' );

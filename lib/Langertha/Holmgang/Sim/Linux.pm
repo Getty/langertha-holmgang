@@ -296,8 +296,8 @@ empty directories (C<total 0>), C<-R> recursively, and systemd's C<*.wants>
 as links of the enabled units; C<find> returns the root, directories and
 files and knows C<-maxdepth>, C<-mindepth>, C<-type f|d|l>, C<-name>,
 C<-iname>, C<-path>, C<-user>, C<-group>, C<-empty>, C<-newer>, C<-newermt>,
-C<-o>, C<-not>/C<!>, C<-exec … {} +|;>, C<-delete>, C<-printf> (parentheses and
-C<-prune> are a gap). The journal reaches back as far as its files
+C<-o>, C<-not>/C<!>, parentheses, C<-prune>, C<-exec … {} +|;>, C<-delete>,
+C<-printf>. The journal reaches back as far as its files
 (one line per file at its time), lines are ordered by time;
 C<journalctl> knows C<-u> (repeatable), C<-n>, C<-g>, C<-S|--since>,
 C<-U|--until>, C<-o short|short-iso|cat>, C<-r>, C<--file>, C<--list-boots>,
@@ -5974,7 +5974,7 @@ sub _find {
     my ( $maxd, $mind, @exec, $has_action );
     # Ausdruck wie find: Tests und Aktionen als Code, Operatoren ! -a -o ( ) als Text
     my @tok;
-    our @FIND_ACT;
+    our ( @FIND_ACT, $FIND_PRUNE );
     my $glob = sub { my ( $g, $i ) = @_; ( my $r = quotemeta $g ) =~ s/\\\*/.*/g; $r =~ s/\\\?/./g; $r =~ s/\\\[/[/g; $r =~ s/\\\]/]/g; $i ? qr/\A$r\z/is : qr/\A$r\z/s };
     my $add = sub { push @tok, $_[0] };
     my $act = sub { my @x = @_; $has_action = 1; push @tok, sub { push @FIND_ACT, [@x]; 1 } };
@@ -6048,7 +6048,7 @@ sub _find {
             return ( "find: Expected a positive decimal integer argument to $x, but got `$v'", 0 ) unless $v =~ /\A\d+\z/;
             ( $x eq '-maxdepth' ? $maxd : $mind ) = $v;
         }
-        elsif ( $x eq '-prune' ) { push @GAPS, join( ' ', 'find', @$av ); return ( '', 0 ) }
+        elsif ( $x eq '-prune' ) { $add->( sub { $FIND_PRUNE = 1 if $_[2] eq 'd'; 1 } ) }    # wahr; nicht hinabsteigen
         elsif ( $x =~ /\A-(?:xdev|mount|depth|noleaf|ignore_readdir_race|follow)\z/ || $x eq '-L' || $x eq '-H' || $x eq '-P' ) { }
         elsif ( $x eq '-print' || $x eq '-print0' ) { $act->('print') }
         elsif ( $x eq '-ls' )     { $act->('ls') }
@@ -6119,15 +6119,19 @@ sub _find {
             }
             push @cand, map { [ $_, $seen{$_} ] } sort keys %seen;
         }
+        my @pruned;    # Eltern stehen vor ihren Kindern (sortiert)
         for my $c (@cand) {
             my ( $p, $depth ) = @$c;
+            next if grep { index( $p, "$_/" ) == 0 } @pruned;
             next if defined $maxd && $depth > $maxd;
             next if defined $mind && $depth < $mind;
             my $fe = _file_entry( $dev, $p );
             my $kind = $fe ? ( defined $fe->{link} ? 'l' : 'f' ) : 'd';
             my $e = $fe // { mode => '0755', %{ ( $dev->{dirs} || {} )->{$p} || {} } };
             local @FIND_ACT = ();
+            local $FIND_PRUNE;
             my $match = $expr->( $p, $e, $kind );
+            push @pruned, $p if $FIND_PRUNE;
             if ($has_action) { push @hit, [ $p, $e, $kind, [@FIND_ACT] ] if @FIND_ACT }
             elsif ($match)  { push @hit, [ $p, $e, $kind, [ ['print'] ] ] }
         }
