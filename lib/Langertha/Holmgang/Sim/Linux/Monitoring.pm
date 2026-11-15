@@ -7,6 +7,7 @@ use utf8;
 
 use Encode ();
 use JSON::MaybeXS ();
+use Text::ParseWords ();
 use YAML::XS ();
 
 our $VERSION = '0.001';
@@ -235,7 +236,8 @@ sub service_check {
 
 The HTTP interface of Prometheus (9090) and Alertmanager (9093) on the
 device, from the running configuration: C</-/healthy>, C</-/ready>,
-C</api/v1/status/config>, C</api/v1/rules>, C<POST /-/reload> (only with
+C</api/v1/status/config>, C</api/v1/status/flags> (from the running start
+options), C</api/v1/rules>, C</api/v1/alerts> (empty: no rule fires), C<POST /-/reload> (only with
 C<--web.enable-lifecycle>, otherwise 403), Alertmanager C</api/v2/status> and
 C<POST /-/reload>. Without a
 running service C<$status> is 0 (connection refused); anything else is a gap
@@ -264,6 +266,8 @@ sub http {
             return ( $ok ? '' : "failed to reload config: $o", $ok ? 200 : 500 );
         }
         return ( $js->( { yaml => $run_cfg->{$main} // '' } ), 200 ) if $path eq '/api/v1/status/config';
+        return ( $js->( _prom_flags($run_cfg) ), 200 ) if $path eq '/api/v1/status/flags';
+        return ( $js->( { alerts => [] } ), 200 ) if $path eq '/api/v1/alerts';    # Regeln stehen auf inactive
         if ( $path eq '/api/v1/rules' ) {
             my @groups;
             for my $f ( sort grep { $_ ne $main && !m{\A/etc/default/} } keys %$run_cfg ) {
@@ -294,6 +298,41 @@ sub http {
         return ( JSON::MaybeXS->new( canonical => 1 )->encode( { config => { original => $run_cfg->{$main} // '' }, cluster => { status => 'disabled' } } ), 200 );
     }
     return;
+}
+
+# Startoptionen, mit denen Prometheus laeuft (ARGS aus /etc/default/*), ueber den
+# Standardwerten von Prometheus 2.x (Debian-Pfade). Werte sind Strings wie in der API.
+my %PROM_FLAG_DEFAULT = (
+    'config.file'                 => '/etc/prometheus/prometheus.yml',
+    'storage.tsdb.path'           => '/var/lib/prometheus/metrics2/',
+    'storage.tsdb.retention.time' => '0s',
+    'storage.tsdb.retention.size' => '0B',
+    'web.listen-address'          => '0.0.0.0:9090',
+    'web.external-url'            => '',
+    'web.enable-lifecycle'        => 'false',
+    'web.enable-admin-api'        => 'false',
+    'log.level'                   => 'info',
+);
+
+sub _prom_flags {
+    my ($run_cfg) = @_;
+    my %f = %PROM_FLAG_DEFAULT;
+    for my $file ( sort grep { m{\A/etc/default/} } keys %$run_cfg ) {
+        for my $line ( split /\n/, $run_cfg->{$file} // '' ) {
+            next unless $line =~ /\A\s*ARGS=(.*)\z/;
+            my $args = $1;    # Kopie: shellwords bekaeme $1 als Alias
+            # die Shell entquotet ARGS="…", systemd teilt $ARGS an Leerraum
+            my @w = split q{ }, join q{ }, Text::ParseWords::shellwords($args);
+            while ( defined( my $w = shift @w ) ) {
+                next unless $w =~ /\A--?(?:no-)?([\w.\-]+)(?:=(.*))?\z/s;
+                my ( $k, $v ) = ( $1, $2 );
+                if ( $w =~ /\A--?no-/ ) { $f{$k} = 'false'; next }
+                $v //= @w && $w[0] !~ /\A-/ && ( $f{$k} // '' ) !~ /\A(?:true|false)\z/ ? shift @w : 'true';
+                $f{$k} = $v;
+            }
+        }
+    }
+    return \%f;
 }
 
 =func promtool

@@ -141,6 +141,17 @@ my $P = sub { $state->{mon}{services}{prometheus} };
     sh(q{sed -i 's/< 0.2/< 0.1/' /etc/prometheus/rules/platte.yml});
     ok( ( sh('wget -qO- --post-data= http://localhost:9090/-/reload') )[1], 'reload per POST mit lifecycle' );
     like( $P->()->{running}{'/etc/prometheus/rules/platte.yml'}, qr/< 0\.1/, '... laedt die Regeln' );
+    # status/flags aus den laufenden Startoptionen, Standardwerte wie Prometheus; alerts ohne feuernde Regel leer
+    my $f = JSON::MaybeXS::decode_json( sh('wget -qO- http://localhost:9090/api/v1/status/flags') );
+    is( $f->{data}{'web.enable-lifecycle'}, 'true', 'status/flags: gesetzte Option' );
+    is( $f->{data}{'storage.tsdb.retention.time'}, '0s', '... Standardwert' );
+    sh(q{sed -i 's/ARGS="--web.enable-lifecycle"/ARGS="--web.enable-lifecycle --storage.tsdb.retention.time=15d"/' /etc/default/prometheus});
+    $f = JSON::MaybeXS::decode_json( sh('wget -qO- http://localhost:9090/api/v1/status/flags') );
+    is( $f->{data}{'storage.tsdb.retention.time'}, '0s', '... die Datei wirkt erst nach Neustart' );
+    sh('systemctl restart prometheus');
+    $f = JSON::MaybeXS::decode_json( sh('wget -qO- http://localhost:9090/api/v1/status/flags') );
+    is( $f->{data}{'storage.tsdb.retention.time'}, '15d', '... nach Neustart' );
+    is_deeply( JSON::MaybeXS::decode_json( sh('wget -qO- http://localhost:9090/api/v1/alerts') ), { status => 'success', data => { alerts => [] } }, 'alerts: keine feuernde Regel' );
     sh('systemctl stop prometheus');
     like( ( sh('wget -qO- http://localhost:9090/-/healthy') )[0], qr/Connection refused/, 'gestoppt: abgelehnt' );
     like( ( sh('wget -qO- http://10.9.9.9:9090/-/healthy') )[2], qr/wget/, 'fremde Maschine: Luecke' );
