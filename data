@@ -1,0 +1,17 @@
+---
+class: standard
+completed: 2026-11-15T05:02:03Z
+created: 2026-11-15T05:01:29Z
+id: 61
+priority: medium
+started: 2026-11-15T05:02:03Z
+status: done
+tags:
+- sim
+- bug
+title: 'Simulatoren: JSON-Ausgabe wie die echten Werkzeuge (kubectl/docker 4 Leerzeichen,
+  helm kompakt)'
+updated: 2026-11-15T05:02:16Z
+---
+
+2026-11-15 05:02 Erledigt: 87d4f31 (Nachricht sagt versehentlich (k) statt (k61); gepusht, nicht umgeschrieben). Verifiziert: prove -lr t 99 Dateien / 3290 Tests PASS. Befund aus dem Bench (cai-platform-Karte 128, 2026-10-24).
