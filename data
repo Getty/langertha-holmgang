@@ -1,0 +1,16 @@
+---
+class: standard
+completed: 2026-11-15T05:11:42Z
+created: 2026-11-15T05:11:29Z
+id: 63
+priority: low
+started: 2026-11-15T05:11:42Z
+status: done
+tags:
+- sim
+- bug
+title: 'Linux-Simulator: systemd-analyze cat-config (Datei und Drop-ins)'
+updated: 2026-11-15T05:11:50Z
+---
+
+2026-11-15 05:11 Erledigt: 36234f5. Verifiziert: prove -lr t PASS (99 Dateien); Fall systemd-timer-logs/10 liefert cat-config ohne Lücke.
