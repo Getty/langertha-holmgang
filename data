@@ -1,0 +1,17 @@
+---
+class: standard
+completed: 2026-11-15T05:08:09Z
+created: 2026-11-15T05:07:55Z
+id: 62
+priority: medium
+started: 2026-11-15T05:08:09Z
+status: done
+tags:
+- sim
+- bug
+title: 'Prometheus-Simulator: /api/v1/status/flags und /api/v1/alerts (Bench: Retention-Fall
+  prüft über flags)'
+updated: 2026-11-15T05:08:17Z
+---
+
+2026-11-15 05:08 Erledigt: 75209a5. Verifiziert: prove -lr t 99 Dateien / 3295 Tests PASS; Fall monitoring-alerting/02 liefert per wget status/flags retention.time 90d. Herkunft: Kern-Bench 2026-11-03, 32 Lücken status/flags.
