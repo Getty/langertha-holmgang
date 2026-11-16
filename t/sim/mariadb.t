@@ -184,4 +184,21 @@ my $M = sub { $state->{db1}{mariadb} };
     is( sh(q{mysql -N -e "SELECT User FROM mysql.user WHERE User IN ('app','gibtsnicht')"}), "app\napp", 'IN in mysql.user' );
 }
 
+# mysqladmin: Optionen mit Wert (-h, -P, -u, -S) sind kein Befehl; Verbindung und Anmeldung
+# wie beim Client; ping meldet bei verweigerter Anmeldung trotzdem Erfolg (Server laeuft).
+{
+    fresh();
+    is( sh(q{mysqladmin ping}), 'mysqld is alive', 'ping als root' );
+    my ( $o, $ok, $gap ) = sh(q{mysqladmin -h 10.20.0.5 -P 3306 -u app -ppw1 ping});
+    ok( !$ok && !$gap, '-h auf andere Adresse bei bind-address 127.0.0.1: kein Erfolg, keine Luecke' );
+    is( $o, "mysqladmin: connect to server at '10.20.0.5' failed\nerror: 'Can't connect to server on '10.20.0.5' (115)'", '… Meldung' );
+    ( $o, $ok ) = sh(q{mysqladmin -u app -pfalsch ping});
+    ok( $ok, 'ping bei verweigerter Anmeldung: Exit 0' );
+    like( $o, qr/error: 'Access denied for user 'app'\@'localhost' \(using password: YES\)'/, '… mit Meldung' );
+    ( $o, $ok ) = sh(q{mysqladmin -u app -ppw1 status});
+    ok( !$ok, 'status bei max_connections ohne SUPER' );
+    like( $o, qr/error: 'Too many connections'/, '… Meldung' );
+    like( sh(q{mysqladmin -S /run/mysqld/mysqld.sock status}), qr/\AUptime: /, '-S mit Wert' );
+}
+
 done_testing;

@@ -954,19 +954,38 @@ sub client {
 
 sub mysqladmin {
     my ( $dev, $av, $ctx, $os_user ) = @_;
-    my @opts = grep {/\A-/} @$av;
-    my @cmd  = grep { !/\A-/ } @$av;
-    my $map  = { variables => 'SHOW GLOBAL VARIABLES', status => undef, processlist => 'SHOW PROCESSLIST', 'flush-privileges' => 'FLUSH PRIVILEGES',
+    my ( @opts, @cmd );
+    my @a = @$av;
+    while (@a) {
+        my $x = shift @a;
+        if    ( $x =~ /\A-[uhP]\z/ || $x =~ /\A--(?:user|host|port)\z/ ) { push @opts, $x, shift(@a) // '' }
+        elsif ( $x eq '-S' || $x eq '--socket' ) { shift @a }    # Socket: immer der des Servers
+        elsif ( $x =~ /\A-S./ || $x =~ /\A--socket=/ ) { }
+        elsif ( $x =~ /\A-/ ) { push @opts, $x }
+        else  { push @cmd, $x }
+    }
+    my ($host) = map { /\A(?:-h|--host=)(.+)\z/ ? $1 : () } @opts;
+    for my $i ( 0 .. $#opts - 1 ) { $host = $opts[ $i + 1 ] if $opts[$i] =~ /\A(?:-h|--host)\z/ }
+    $host //= 'localhost';
+    my $map = { variables => 'SHOW GLOBAL VARIABLES', status => undef, processlist => 'SHOW PROCESSLIST', 'flush-privileges' => 'FLUSH PRIVILEGES',
         'flush-logs' => 'FLUSH LOGS', ping => undef, version => 'SELECT VERSION()' };
     my $c = $cmd[0] // '';
-    return ( "mysqladmin: connect to server at 'localhost' failed\nerror: 'Can't connect to local server through socket '/run/mysqld/mysqld.sock' (2)'", 0 )
+    return ( "mysqladmin: connect to server at '$host' failed\nerror: 'Can't connect to local server through socket '/run/mysqld/mysqld.sock' (2)'", 0 )
         unless $dev->{mariadb} && _active($dev);
+    if ( !exists $map->{$c} ) { push @GAPS, join( ' ', 'mysqladmin', @$av ); return ( '', 0 ) }
+    # Verbindung und Anmeldung wie beim Client (bind-address, Konten, max_connections)
+    my ( $e, $ok ) = client( $dev, [ @opts, '-e', 'SELECT 1' ], $ctx, undef, $os_user, 'mysqladmin' );
+    if ( !$ok ) {
+        return ( $e, 0 ) unless ( $e // '' ) =~ /\AERROR \d+ \(\w+\): (.*)\z/s;
+        my $msg = $1;
+        # ping: Der Server laeuft, auch wenn er die Anmeldung verweigert (Exit 0)
+        return ( "mysqladmin: connect to server at '$host' failed\nerror: '$msg'", $c eq 'ping' && $msg =~ /\AAccess denied/ ? 1 : 0 );
+    }
     return ( 'mysqld is alive', 1 ) if $c eq 'ping';
     if ( $c eq 'status' ) {
         my $st = $dev->{mariadb}{status} || {};
         return ( 'Uptime: 1728000  Threads: ' . ( $st->{Threads_connected} // 1 ) . '  Questions: 88120441  Slow queries: 12  Opens: 2210  Open tables: 2000  Queries per second avg: 51.000', 1 );
     }
-    if ( !exists $map->{$c} ) { push @GAPS, join( ' ', 'mysqladmin', @$av ); return ( '', 0 ) }
     return client( $dev, [ @opts, '-t', '-e', $map->{$c} ], $ctx, undef, $os_user, 'mysqladmin' );
 }
 
