@@ -5398,8 +5398,8 @@ sub _ps {
         my @spec = split /[,\s]+/, $1;
         my @c = map { lc s/=.*//r } @spec;
         $noh = 1 if @spec && !grep { !/=/ } @spec;    # pid= : leere Ueberschrift
-        my %head = ( comm => 'COMMAND', ucomm => 'COMMAND', args => 'COMMAND', command => 'COMMAND', cmd => 'CMD', '%cpu' => '%CPU', '%mem' => '%MEM' );
-        my %w = ( pid => 7, ppid => 7, user => 8, uid => 5, comm => 15 );
+        my %head = ( etimes => 'ELAPSED', comm => 'COMMAND', ucomm => 'COMMAND', args => 'COMMAND', command => 'COMMAND', cmd => 'CMD', '%cpu' => '%CPU', '%mem' => '%MEM' );
+        my %w = ( pid => 7, ppid => 7, etime => 11, etimes => 7, user => 8, uid => 5, comm => 15 );
         my %val = (
             pid => sub { $_[0]{pid} }, ppid => sub { $_[0]{ppid} }, user => sub { $_[0]{user} }, uid => sub { _uid( $dev, $_[0]{user} ) },
             comm => sub { ( split ' ', $_[0]{cmd} )[0] =~ s{.*/}{}r }, ucomm => sub { ( split ' ', $_[0]{cmd} )[0] =~ s{.*/}{}r },
@@ -5412,6 +5412,7 @@ sub _ps {
                 my ( $d, $h, $m ) = ( int( $s / 86400 ), int( $s % 86400 / 3600 ), int( $s % 3600 / 60 ) );
                 return $d ? sprintf( '%d-%02d:%02d:%02d', $d, $h, $m, $s % 60 ) : $h ? sprintf( '%02d:%02d:%02d', $h, $m, $s % 60 ) : sprintf( '%02d:%02d', $m, $s % 60 );
             },
+            etimes => sub { my $t = _proc_since( $dev, $_[0] ); return 346320 unless defined $t; my $s = _dev_now($dev) - $t; $s < 1 ? 1 : $s },
             stat => sub { 'Ss' }, '%cpu' => sub { '0.1' }, '%mem' => sub { '0.5' }, rss => sub { 41000 },
             lstart => sub {
                 my $t = _proc_since( $dev, $_[0] );
@@ -5420,7 +5421,7 @@ sub _ps {
             nlwp => sub { 1 },
         );
         for (@c) { if ( !$val{$_} ) { push @GAPS, join( ' ', 'ps', @{ $av || [] } ); return ( '', 0 ) } }
-        my $f = join ' ', map { $w{$_} ? ( /pid/ ? "%$w{$_}s" : "%-$w{$_}s" ) : '%s' } @c;
+        my $f = join ' ', map { $w{$_} ? ( /pid|etime/ ? "%$w{$_}s" : "%-$w{$_}s" ) : '%s' } @c;
         push @l, sprintf( $f, map { $head{$_} // uc } @c ) =~ s/\s+\z//r unless $noh;
         for my $p (@p) { push @l, sprintf( $f, map { $val{$_}->($p) } @c ) =~ s/\s+\z//r }
     }
@@ -6341,18 +6342,19 @@ sub _filter_files {
 # \n \t … als Escapes, sonst oktal), Versatz oktal; anderes ist eine Luecke
 sub _od {
     my ( $dev, $av, $ctx, $stdin ) = @_;
-    my ( $chars, $noaddr, @files );
+    my ( $chars, $hex, $noaddr, @files );
     my @a = @$av;
     while (@a) {
         my $x = shift @a;
         if    ( $x eq '-c' || $x eq '-tc' ) { $chars = 1 }
         elsif ( $x eq '-t' && ( $a[0] // '' ) eq 'c' ) { shift @a; $chars = 1 }
+        elsif ( $x eq '-tx1' || $x eq '-t' && ( $a[0] // '' ) eq 'x1' ) { shift @a if $x eq '-t'; $hex = 1 }
         elsif ( $x eq '-An' || $x eq '-A' && ( $a[0] // '' ) eq 'n' ) { shift @a if $x eq '-A'; $noaddr = 1 }
         elsif ( $x =~ /\A-(?:An)?c\z|\A-cAn\z/ ) { $chars = 1; $noaddr = 1 if $x =~ /An/ }
         elsif ( $x =~ /\A-/ ) { push @GAPS, join( ' ', 'od', @$av ); return ( '', 0 ) }
         else { push @files, $x }
     }
-    unless ($chars) { push @GAPS, join( ' ', 'od', @$av ); return ( '', 0 ) }
+    unless ( $chars xor $hex ) { push @GAPS, join( ' ', 'od', @$av ); return ( '', 0 ) }
     my $in = '';
     if (@files) {
         for my $f (@files) {
@@ -6368,7 +6370,7 @@ sub _od {
     my ( @l, $prev, $star );
     for ( my $o = 0; $o < length $b; $o += 16 ) {
         my $chunk = substr( $b, $o, 16 );
-        my $row = join '', map { my $c = ord; sprintf '%4s', $esc{$c} // ( $c >= 32 && $c < 127 ? chr $c : sprintf '%03o', $c ) } split //, $chunk;
+        my $row = join '', map { my $c = ord; $hex ? sprintf( ' %02x', $c ) : sprintf '%4s', $esc{$c} // ( $c >= 32 && $c < 127 ? chr $c : sprintf '%03o', $c ) } split //, $chunk;
         if ( defined $prev && $chunk eq $prev ) { push @l, '*' unless $star; $star = 1; next }
         ( $prev, $star ) = ( $chunk, 0 );
         push @l, $noaddr ? $row : sprintf( '%07o', $o ) . $row;

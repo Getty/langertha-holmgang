@@ -389,6 +389,8 @@ subtest 'trap EXIT und od -c' => sub {
     is( scalar sh('od -c /etc/app/app.conf'), "0000000   a   =   1  \\n\n0000004", 'od -c DATEI' );
     is( scalar sh(q{printf 'a\tb' | od -An -c}), "   a  \\t   b", 'od -An -c' );
     is( scalar sh(q{printf 'ä' | od -c}), "0000000 303 244\n0000002", 'od -c: Bytes ausserhalb ASCII oktal' );
+    is( scalar sh(q{printf 'hi\n' | od -An -tx1}), ' 68 69 0a', 'od -An -tx1' );
+    is( scalar sh(q{printf 'abcdefghijklmnopq' | od -t x1}), "0000000 61 62 63 64 65 66 67 68 69 6a 6b 6c 6d 6e 6f 70\n0000020 71\n0000021", 'od -t x1 mit Adressen' );
 };
 
 # Runde 3: env zeigt die Umgebung der Shell

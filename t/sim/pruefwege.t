@@ -156,6 +156,7 @@ subtest 'Shell: flock, PIPESTATUS, done < <( … ) ueber Zeilen, md5sum, ps, lsb
     my $pid = ( $s->('systemctl show app -p MainPID --value') );
     like( scalar $s->("ps -fp $pid"), qr/\AUID +PID +PPID +C STIME TTY +TIME CMD\napp +$pid +1 /, 'ps -fp PID' );
     like( scalar $s->('ps -u app -o pid,user,comm'), qr/\A +PID USER +COMMAND\n +\d+ app +app\z/, 'ps -u BENUTZER -o …' );
+    like( scalar $s->('ps -eo pid,etime,etimes,comm'), qr/\A    PID       ETIME ELAPSED COMMAND\n      1 +[\d:-]+ +\d+ init\n/, 'ps -o etime,etimes rechtsbuendig' );
     is( scalar $s->('lsblk'), "NAME     MAJ:MIN RM  SIZE RO TYPE MOUNTPOINTS\nvda      254:0    0   40G  0 disk\n\x{2514}\x{2500}vda1   254:1    0   40G  0 part /", 'lsblk aus den Einhaengepunkten' );
     is( scalar $s->('lsblk -b -o NAME,SIZE,MOUNTPOINT'), "NAME          SIZE MOUNTPOINT\nvda    42949672960\n\x{2514}\x{2500}vda1 42949672960 /", 'lsblk -b -o (Bytes, Spaltenwahl)' );
     is( scalar $s->('lsblk -lnp -o NAME,TYPE,FSTYPE'), "/dev/vda  disk\n/dev/vda1 part ext4", 'lsblk -lnp -o' );
