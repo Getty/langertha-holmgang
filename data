@@ -1,0 +1,17 @@
+---
+class: standard
+completed: 2026-11-16T04:18:00Z
+created: 2026-11-16T04:17:38Z
+id: 71
+priority: high
+started: 2026-11-16T04:18:00Z
+status: done
+tags:
+- sim
+- bug
+title: 'kill/systemctl kill: Restart= der Unit wie systemd (on-failure nach SIGKILL
+  neu, NRestarts); systemctl kill TERM/KILL/INT'
+updated: 2026-11-16T04:18:00Z
+---
+
+2026-11-16 04:17 Erledigt: 50e0ed9 (gepusht). Verifiziert: t/sim/linux_server.t (neuer Block scheitert auf altem Code), volle Suite PASS, Musterlösung 1049/1049, 0 sim_gaps. Quelle: Kern-Bench 2026-11-03 anwendungsbetrieb/19 ber2.
