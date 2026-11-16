@@ -42,6 +42,10 @@ B<promtool> C<check config|rules FILE…>, B<amtool> C<check-config FILE> —
 output like the real tools. What Alertmanager has loaded is kept per
 receiver under the service's C<_routes> (effective C<repeat_interval>,
 C<group_wait>, C<group_interval>, C<group_by>; subroutes inherit).
+B<amtool config routes> [C<show>] prints the routing tree and C<amtool config
+routes test [--verify.receivers=LIST] LABEL…> the receivers an alert reaches,
+from C<--config.file> or else the running configuration; a config that does
+not load is an C<amtool: error>.
 B<amtool silence add|query|expire> and C<amtool alert query> (with
 C<--alertmanager.url> or F</etc/amtool/config.yml>; comment required; times
 RFC 3339, C<--duration> as a Go duration, device clock in C<tz>, default
@@ -190,6 +194,11 @@ sub check_alertmanager {
     my ( $dev, $path ) = @_;
     my $text = _file_text( $dev, $path );
     return ["open $path: no such file or directory"] unless defined $text;
+    return _am_check_text($text);
+}
+
+sub _am_check_text {
+    my ($text) = @_;
     my ( $d, $ye ) = _yaml($text);
     return [$ye] if $ye;
     return ['no route provided in config'] unless ref $d eq 'HASH' && ref $d->{route} eq 'HASH';
@@ -549,9 +558,96 @@ sub _amtool_silence {
     return ( '', 0 );
 }
 
+# amtool config routes [show] | config routes test [--verify.receivers=LISTE] LABEL…: Baum bzw.
+# Empfaenger aus --config.file oder der laufenden Konfiguration (--alertmanager.url); Matcher je
+# Route sortiert, ein Zweig nach dem ersten Treffer nur mit continue. () = Luecke
+sub _amtool_routes {
+    my ( $dev, $av ) = @_;
+    my ( $file, $verify, @pos );
+    my @a = @$av;
+    while (@a) {
+        my $x = shift @a;
+        if    ( $x =~ /\A--config\.file=(.*)\z/ ) { $file = $1 }
+        elsif ( $x eq '--config.file' ) { $file = shift(@a) // return }
+        elsif ( $x =~ /\A--verify\.receivers=(.*)\z/ ) { $verify = $1 }
+        elsif ( $x eq '--verify.receivers' ) { $verify = shift(@a) // return }
+        elsif ( $x =~ /\A--alertmanager\.url=/ ) { }
+        elsif ( $x eq '--alertmanager.url' ) { shift @a }
+        elsif ( $x =~ /\A-/ ) { return }
+        else  { push @pos, $x }
+    }
+    my $sub = @pos && $pos[0] =~ /\A(?:show|test)\z/ ? shift @pos : 'show';
+    return if $sub eq 'show' && @pos;
+    my $text;
+    if ( defined $file ) {
+        $text = _file_text( $dev, $file );
+        return ( "amtool: error: open $file: no such file or directory", 0 ) unless defined $text;
+    }
+    else {
+        my $svc = _am_svc($dev) or return ( 'amtool: error: required flag --alertmanager.url not provided', 0 );
+        return unless $svc->{active};
+        my $main = $svc->{config_main} // ( ref $svc->{config} ? $svc->{config}[0] : $svc->{config} ) // return;
+        $text = ( ref $svc->{running} eq 'HASH' ? $svc->{running}{$main} : undef ) // _file_text( $dev, $main ) // return;
+    }
+    my $e = _am_check_text($text);
+    return ( "amtool: error: $e->[0]", 0 ) if @$e;
+    my ($d) = _yaml($text);
+    my $q = sub { my $v = shift; $v =~ s/(["\\])/\\$1/g; qq{"$v"} };
+    my $route;
+    $route = sub {
+        my ( $r, $parent ) = @_;
+        my @m;
+        for my $s ( @{ ref $r->{matchers} eq 'ARRAY' ? $r->{matchers} : [] } ) { push @m, _am_matcher($s) // return }
+        push @m, map { { name => $_, op => '=',  value => $r->{match}{$_} } } sort keys %{ ref $r->{match} eq 'HASH' ? $r->{match} : {} };
+        push @m, map { { name => $_, op => '=~', value => $r->{match_re}{$_} } } sort keys %{ ref $r->{match_re} eq 'HASH' ? $r->{match_re} : {} };
+        @m = sort { $a->{name} cmp $b->{name} || $a->{value} cmp $b->{value} || $a->{op} cmp $b->{op} } @m;
+        my $node = { m => \@m, receiver => $r->{receiver} // $parent->{receiver}, continue => $r->{continue} && "$r->{continue}" =~ /\A(?:1|true)\z/ };
+        for my $c ( grep { ref $_ eq 'HASH' } @{ $r->{routes} || [] } ) { push @{ $node->{kids} }, $route->( $c, $node ) // return }
+        return $node;
+    };
+    my $root = $route->( $d->{route}, {} ) or return;
+    if ( $sub eq 'show' ) {
+        my @l = ( 'Routing tree:', '.' );
+        my $tree;
+        $tree = sub {
+            my ( $n, $pre, $last ) = @_;
+            my $slug = @{ $n->{m} } ? '{' . join( ',', map { $_->{name} . $_->{op} . $q->( $_->{value} ) } @{ $n->{m} } ) . '}' : 'default-route';
+            $slug .= ', continue: true' if $n->{continue};
+            push @l, $pre . ( $last ? '└── ' : '├── ' ) . "$slug  receiver: " . ( $n->{receiver} // '' );
+            my @k = @{ $n->{kids} || [] };
+            $tree->( $k[$_], $pre . ( $last ? '    ' : '│   ' ), $_ == $#k ) for 0 .. $#k;
+        };
+        $tree->( $root, '', 1 );
+        return ( join( "\n", @l ), 1 );
+    }
+    my %lab;
+    for (@pos) { my $m = _am_matcher($_) or return ( "amtool: error: bad matcher format: $_", 0 ); $lab{ $m->{name} } = $m->{value} }
+    my $match;
+    $match = sub {
+        my ($n) = @_;
+        return () unless _am_matches( $n->{m}, \%lab );
+        my @all;
+        for my $c ( @{ $n->{kids} || [] } ) {
+            my @hit = $match->($c);
+            push @all, @hit;
+            last if @hit && !$c->{continue};
+        }
+        return @all ? @all : ($n);
+    };
+    my $slug = join ',', map { $_->{receiver} // '' } $match->($root);
+    return ( "$slug\nWARNING: Expected receivers did not match resolved receivers.", 0 ) if defined $verify && length $verify && $verify ne $slug;
+    return ( $slug, 1 );
+}
+
 sub amtool {
     my ( $dev, $av ) = @_;
     my @all = @$av;
+    if ( ( $all[0] // '' ) eq 'config' && ( $all[1] // '' ) eq 'routes' ) {
+        my @r = _amtool_routes( $dev, [ @all[ 2 .. $#all ] ] );
+        return @r if @r;
+        push @GAPS, join( ' ', 'amtool', @$av );
+        return ( '', 0 );
+    }
     if ( ( $all[0] // '' ) eq 'silence' ) {
         my $sub = defined $all[1] && $all[1] !~ /\A-/ ? $all[1] : '';
         return _amtool_silence( $dev, $sub, [ @all[ ( $sub eq '' ? 1 : 2 ) .. $#all ] ] );

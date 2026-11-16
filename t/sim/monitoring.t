@@ -87,6 +87,28 @@ my $P = sub { $state->{mon}{services}{prometheus} };
     like( sh('promtool check config /etc/prometheus/prometheus.yml'), qr/FAILED: .*multiple scrape configs with job name "node"/, 'doppelter job_name' );
     like( sh('amtool check-config /etc/prometheus/alertmanager.yml'), qr/FAILED: undefined receiver "dba" used in route/, 'amtool: unbekannter Empfaenger' );
 
+    # amtool config routes: Ladefehler wie amtool; Baum mit sortierten Matchern und continue;
+    # test folgt dem ersten passenden Zweig, mit continue auch den naechsten
+    like( sh('amtool config routes show --config.file=/etc/prometheus/alertmanager.yml'), qr/\Aamtool: error: undefined receiver "dba" used in route\z/,
+        'amtool config routes: Ladefehler' );
+    $state->{mon}{files}{'/etc/prometheus/alertmanager.yml'} = "route:\n  receiver: team\n  routes:\n"
+        . "    - matchers: ['team=\"db\"', 'severity=~\"crit|warn\"']\n      receiver: dba\n      continue: true\n"
+        . "    - match_re:\n        team: 'db|web'\n      receiver: chat\n"
+        . "    - match:\n        team: db\n      receiver: nie\n"
+        . "receivers:\n  - name: team\n  - name: dba\n  - name: chat\n  - name: nie\n";
+    is( sh('amtool config routes --config.file /etc/prometheus/alertmanager.yml'),
+        qq{Routing tree:\n.\n\x{2514}\x{2500}\x{2500} default-route  receiver: team\n}
+            . qq{    \x{251c}\x{2500}\x{2500} {severity=~"crit|warn",team="db"}, continue: true  receiver: dba\n}
+            . qq{    \x{251c}\x{2500}\x{2500} {team=~"db|web"}  receiver: chat\n}
+            . qq{    \x{2514}\x{2500}\x{2500} {team="db"}  receiver: nie},
+        'amtool config routes: Baum' );
+    is( sh('amtool config routes test --config.file=/etc/prometheus/alertmanager.yml team=db severity=crit'), 'dba,chat', 'test: continue' );
+    is( sh('amtool config routes test --config.file=/etc/prometheus/alertmanager.yml team=db'), 'chat', 'test: erster Treffer' );
+    is( sh('amtool config routes test --config.file=/etc/prometheus/alertmanager.yml team=mail'), 'team', 'test: Vorgabe' );
+    ( $o, $ok ) = sh('amtool config routes test --config.file=/etc/prometheus/alertmanager.yml --verify.receivers=dba team=mail');
+    ok( !$ok, 'test --verify.receivers falsch' );
+    like( $o, qr/\Ateam\nWARNING: Expected receivers did not match/, '… Meldung' );
+
     fresh();
     sh(q{sed -i 's/^  - job_name: node$/  - job_name: node\n    scrape_timeout: 30s/' /etc/prometheus/prometheus.yml});
     like( sh('promtool check config /etc/prometheus/prometheus.yml'), qr/scrape timeout greater than scrape interval for scrape config with job name "node"/,
