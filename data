@@ -1,0 +1,16 @@
+---
+class: standard
+completed: 2026-11-16T04:21:55Z
+created: 2026-11-16T04:21:30Z
+id: 72
+priority: low
+started: 2026-11-16T04:21:55Z
+status: done
+tags:
+- sim
+- bug
+title: ps -o etimes (ELAPSED), ETIME/ELAPSED rechtsbündig; od -t x1
+updated: 2026-11-16T04:21:55Z
+---
+
+2026-11-16 04:21 Erledigt: 84a8736 (gepusht). Verifiziert: neue Tests scheitern auf altem Code, volle Suite PASS, Musterlösung 1049/1049, 0 sim_gaps.
