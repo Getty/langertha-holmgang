@@ -1,0 +1,17 @@
+---
+class: standard
+completed: 2026-11-16T03:56:50Z
+created: 2026-11-16T03:55:59Z
+id: 66
+priority: medium
+started: 2026-11-16T03:56:50Z
+status: done
+tags:
+- sim
+- bug
+title: 'lsblk: -o, -b, -n, -l, -p umsetzen; -f/-m ohne Plattendaten als Lücke statt
+  Standardausgabe'
+updated: 2026-11-16T03:56:50Z
+---
+
+2026-11-16 03:56 Erledigt: 7d5ce8b (gepusht). Verifiziert: prove -lr t 99 Dateien/3305 Tests PASS; Musterlösung über alle Platform-Suites 1049/1049 passed, 0 sim_gaps. Quelle: Kern-Bench 2026-11-03 (anweisungstreue/20 mon2: lsblk -b -o …).
