@@ -1,0 +1,16 @@
+---
+class: standard
+completed: 2026-11-16T04:02:05Z
+created: 2026-11-16T04:01:40Z
+id: 68
+priority: medium
+started: 2026-11-16T04:02:05Z
+status: done
+tags:
+- sim
+- bug
+title: 'amtool config routes [show|test]: Routenbaum und Empfänger aus der Konfiguration'
+updated: 2026-11-16T04:02:05Z
+---
+
+2026-11-16 04:01 Erledigt: edc453c (gepusht). Verifiziert: t/sim/monitoring.t (Ladefehler, Baum, test mit continue/Vorgabe/--verify.receivers), volle Suite 3312 PASS, Musterlösung 1049/1049, 0 sim_gaps. Format nach amtool cli/routing.go (treeprint, Matchers.String) aus dem Gedächtnis — gegen ein echtes amtool nicht abgeglichen.
