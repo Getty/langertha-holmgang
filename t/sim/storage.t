@@ -115,6 +115,7 @@ subtest 'mount und fstab' => sub {
     run( $s, 'systemctl daemon-reload' );
     unlike( run( $s, 'mount -a' ), qr/hint/, 'nach daemon-reload kein Hinweis' );
     like( run( $s, 'lsblk -f' ), qr/vdc\s+ext4\s+daten\s+c0ffee00/, 'lsblk -f' );
+    is( run( $s, 'lsblk -no NAME,LABEL,UUID /dev/vdc' ), 'vdc daten c0ffee00-0000-4000-8000-000000000001', 'lsblk -no SPALTEN GERAET' );
     like( run( $s, 'blkid /dev/vdc' ), qr{/dev/vdc: LABEL="daten" UUID="c0ffee00-0000-4000-8000-000000000001" BLOCK_SIZE="4096" TYPE="ext4"}, 'blkid' );
 };
 

@@ -394,45 +394,51 @@ C<lsblk [-f] [device]>.
 
 sub lsblk {
     my ( $dev, $av ) = @_;
-    my $f = grep { /\A-\w*f/ || $_ eq '--fs' } @$av;
+    my ( $o, $err ) = _L( '_lsblk_opts', $av );
+    return ( $err, 0 ) if defined $err;
+    if ( !$o ) { push @Langertha::Holmgang::Sim::Linux::GAPS, join( ' ', 'lsblk', @$av ); return ( '', 0 ) }
+    my $f = $o->{f};
     my $s = _st($dev);
     my $all = _all($dev);
     my %kids;
     my $d = $s->{disks} || {};
     for my $p ( keys %$d ) { push @{ $kids{ $d->{$p}{parent} } }, $p if $d->{$p}{parent} }
     for my $vg ( keys %{ $s->{vgs} || {} } ) {
-        my ($pv) = @{ $s->{vgs}{$vg}{pvs} || [] };
         for my $pvx ( @{ $s->{vgs}{$vg}{pvs} || [] } ) { push @{ $kids{$pvx} }, map {"/dev/mapper/$vg-$_"} sort keys %{ $s->{vgs}{$vg}{lvs} || {} } }
     }
     for my $md ( keys %{ $s->{md} || {} } ) {
         for my $mem ( keys %{ $s->{md}{$md}{members} || {} } ) { push @{ $kids{$mem} }, $md if ( $s->{md}{$md}{members}{$mem} // '' ) ne 'removed' }
     }
     my %swap = map { $_->{name} => 1 } @{ $s->{swaps} || [] };
-    my @l = $f ? sprintf( '%-20s %-11s %-6s %-37s %6s %4s %s', 'NAME', 'FSTYPE', 'LABEL', 'UUID', 'FSAVAIL', 'FSUSE%', 'MOUNTPOINTS' )
-        : sprintf( '%-20s %7s %2s %6s %2s %-5s %s', 'NAME', 'MAJ:MIN', 'RM', 'SIZE', 'RO', 'TYPE', 'MOUNTPOINTS' );
     my %row = map { $_->{mount} => $_ } _L( '_df_rows', $dev );
+    my @rows;
     my $line;
     $line = sub {
         my ( $p, $pre, $last, $depth ) = @_;
         my $e = $all->{$p} || {};
         ( my $name = $p ) =~ s{\A/dev/(?:mapper/)?}{};
-        my $tree = $depth ? $pre . ( $last ? '└─' : '├─' ) : '';
         my @mp = ( _mounted_at( $dev, $p ), $swap{$p} ? '[SWAP]' : () );
-        my $type = $p =~ m{/mapper/} ? 'lvm' : $p =~ m{/md\d} ? ( $e->{level} // 'raid1' ) : $e->{parent} ? 'part' : 'disk';
-        if ($f) {
-            my $r = @mp && $row{ $mp[0] };
-            push @l, sprintf( '%-20s %-11s %-6s %-37s %6s %4s %s', $tree . $name, $e->{fstype} // '', $e->{label} // '', $e->{uuid} // '',
-                $r ? _h( $r->{avail} ) : '', $r ? "$r->{pct}%" : '', join( ' ', @mp ) );
-        }
-        else { push @l, sprintf( '%-20s %7s %2d %6s %2d %-5s %s', $tree . $name, '254:0', 0, _h( _b( $e->{size} ) ), 0, $type, join( ' ', @mp ) ) }
+        my $r = @mp && $row{ $mp[0] };
+        push @rows, { name => $name, path => $p, tree => $depth ? $pre . ( $last ? '└─' : '├─' ) : '', majmin => '254:0', size => _b( $e->{size} ),
+            type => $p =~ m{/mapper/} ? 'lvm' : $p =~ m{/md\d} ? ( $e->{level} // 'raid1' ) : $e->{parent} ? 'part' : 'disk', mps => \@mp,
+            fstype => $e->{fstype}, label => $e->{label}, uuid => $e->{uuid}, fsavail => $r ? $r->{avail} : undef, fsuse => $r ? $r->{pct} : undef };
         my @k = sort @{ $kids{$p} || [] };
         for my $i ( 0 .. $#k ) { $line->( $k[$i], $depth ? $pre . ( $last ? '  ' : '│ ' ) : '', $i == $#k, $depth + 1 ) }
     };
     my @top = grep { !$d->{$_}{parent} } sort keys %$d;
-    my ($want) = grep { !/\A-/ } @$av;
+    my ($want) = @{ $o->{dev} };
     @top = grep { $_ eq ( canon( $dev, $want ) // '' ) } keys %$all if defined $want;
     return ( "lsblk: $want: not a block device", 0 ) if defined $want && !@top;
     $line->( $_, '', 1, 0 ) for @top;
+    return ( _L( '_lsblk_table', \@rows, $o ), 1 ) if $o->{table};
+    my @l = $f ? sprintf( '%-20s %-11s %-6s %-37s %6s %4s %s', 'NAME', 'FSTYPE', 'LABEL', 'UUID', 'FSAVAIL', 'FSUSE%', 'MOUNTPOINTS' )
+        : sprintf( '%-20s %7s %2s %6s %2s %-5s %s', 'NAME', 'MAJ:MIN', 'RM', 'SIZE', 'RO', 'TYPE', 'MOUNTPOINTS' );
+    for my $r (@rows) {
+        push @l, $f
+            ? sprintf( '%-20s %-11s %-6s %-37s %6s %4s %s', $r->{tree} . $r->{name}, $r->{fstype} // '', $r->{label} // '', $r->{uuid} // '',
+                defined $r->{fsavail} ? _h( $r->{fsavail} ) : '', defined $r->{fsuse} ? "$r->{fsuse}%" : '', join( ' ', @{ $r->{mps} } ) )
+            : sprintf( '%-20s %7s %2d %6s %2d %-5s %s', $r->{tree} . $r->{name}, $r->{majmin}, 0, _h( $r->{size} ), 0, $r->{type}, join( ' ', @{ $r->{mps} } ) );
+    }
     return ( join( "\n", @l ), 1 );
 }
 

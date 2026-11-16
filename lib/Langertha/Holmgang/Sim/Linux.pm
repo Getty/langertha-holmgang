@@ -6415,10 +6415,80 @@ sub _digest {
     return ( join( "\n", @out ), $ok );
 }
 
-# lsblk ohne Platten im Zustand: die Geraete der Einhaengepunkte (vda1 -> Platte vda)
+# lsblk-Optionen: -o|--output LISTE (+LISTE ergaenzt die Vorgabe), -b, -n, -l, -p, -a, -f, -m,
+# Geraete als Argumente. Rueckgabe \%o; ( undef, Text ) bei Fehler wie lsblk; () bei Luecke
+our %LSBLK_COL = map { $_ => 1 } qw( NAME KNAME PATH MAJ:MIN RM SIZE RO TYPE MOUNTPOINT MOUNTPOINTS FSTYPE LABEL UUID FSAVAIL FSUSE% );
+
+sub _lsblk_opts {
+    my ($av) = @_;
+    my %o = ( dev => [] );
+    my %long = ( all => 'a', bytes => 'b', noheadings => 'n', list => 'l', paths => 'p', fs => 'f', perms => 'm' );
+    my @a = @$av;
+    while (@a) {
+        my $x = shift @a;
+        if    ( $x =~ /\A--output=(.*)\z/ ) { $o{cols} = $1 }
+        elsif ( $x eq '--output' ) { $o{cols} = shift(@a) // return }
+        elsif ( $x =~ /\A--(\w+)\z/ && $long{$1} ) { $o{ $long{$1} } = 1 }
+        elsif ( $x =~ /\A-([abnlpfm]*)(?:(o)(.*))?\z/ && length( $1 . ( $2 // '' ) ) ) {
+            my ( $fl, $oo, $rest ) = ( $1, $2, $3 );
+            $o{$_} = 1 for split //, $fl;
+            $o{cols} = length $rest ? $rest : shift(@a) // return if $oo;
+        }
+        elsif ( $x =~ /\A-/ ) { return }
+        else { push @{ $o{dev} }, $x }
+    }
+    return if $o{m};
+    my @def = $o{f} ? qw( NAME FSTYPE LABEL UUID FSAVAIL FSUSE% MOUNTPOINTS ) : qw( NAME MAJ:MIN RM SIZE RO TYPE MOUNTPOINTS );
+    if ( defined $o{cols} ) {
+        my $plus = $o{cols} =~ s/\A\+//;
+        my @c = map {uc} grep {length} split /,/, $o{cols};
+        for (@c) { return ( undef, "lsblk: unknown column: $_" ) unless $LSBLK_COL{$_} }
+        $o{list} = [ $plus ? ( @def, @c ) : @c ];
+    }
+    else { $o{list} = \@def }
+    $o{table} = 1 if defined $o{cols} || grep { $o{$_} } qw( b n l p );
+    return \%o;
+}
+
+# Zeilen -> Tabelle wie lsblk: Zeile { name, path, tree, majmin, size (Bytes), type, mps => [], fstype,
+# label, uuid, fsavail (Bytes), fsuse }; Zahlenspalten rechtsbuendig, eine Leerstelle dazwischen
+sub _lsblk_table {
+    my ( $rows, $o ) = @_;
+    my %right = map { $_ => 1 } qw( RM SIZE RO FSAVAIL FSUSE% );
+    my $sz = sub { my $b = shift; return '' unless defined $b; $o->{b} ? $b : _human($b) };
+    my %val = (
+        NAME        => sub { ( $o->{l} ? '' : $_[0]{tree} // '' ) . ( $o->{p} ? $_[0]{path} : $_[0]{name} ) },
+        KNAME       => sub { $o->{p} ? $_[0]{path} : $_[0]{name} },
+        PATH        => sub { $_[0]{path} },
+        'MAJ:MIN'   => sub { $_[0]{majmin} },
+        RM          => sub {0},
+        RO          => sub {0},
+        SIZE        => sub { $sz->( $_[0]{size} ) },
+        TYPE        => sub { $_[0]{type} },
+        MOUNTPOINT  => sub { $_[0]{mps}[0] // '' },
+        MOUNTPOINTS => sub { join ' ', @{ $_[0]{mps} } },
+        FSTYPE      => sub { $_[0]{fstype} // '' },
+        LABEL       => sub { $_[0]{label} // '' },
+        UUID        => sub { $_[0]{uuid} // '' },
+        FSAVAIL     => sub { $sz->( $_[0]{fsavail} ) },
+        'FSUSE%'    => sub { defined $_[0]{fsuse} ? "$_[0]{fsuse}%" : '' },
+    );
+    my @c = @{ $o->{list} };
+    my @t = ( $o->{n} ? () : [@c], map { my $r = $_; [ map { $val{$_}->($r) } @c ] } @$rows );
+    my @w = map { my $i = $_; my $m = 0; for (@t) { my $l = length $_->[$i]; $m = $l if $l > $m } $m } 0 .. $#c;
+    return join "\n", map {
+        my $r = $_;
+        join( ' ', map { $right{ $c[$_] } ? sprintf( '%*s', $w[$_], $r->[$_] ) : sprintf( '%-*s', $w[$_], $r->[$_] ) } 0 .. $#c ) =~ s/\s+\z//r
+    } @t;
+}
+
+# lsblk ohne Platten im Zustand: die Geraete der Einhaengepunkte (vda1 -> Platte vda);
+# LABEL, UUID und -f/-m kennt der Zustand hier nicht (Luecke)
 sub _lsblk_basic {
     my ( $dev, $av ) = @_;
-    if ( grep { !/\A-(?:[afmp]+|-all)\z/ } @$av ) { push @GAPS, join( ' ', 'lsblk', @$av ); return ( '', 0 ) }
+    my ( $o, $err ) = _lsblk_opts($av);
+    return ( $err, 0 ) if defined $err;
+    if ( !$o || $o->{f} || @{ $o->{dev} } || grep { /\A(?:LABEL|UUID)\z/ } @{ $o->{list} } ) { push @GAPS, join( ' ', 'lsblk', @$av ); return ( '', 0 ) }
     my $m = _mounts($dev);
     my ( %disk, @order );
     my $minor = 0;
@@ -6429,23 +6499,34 @@ sub _lsblk_basic {
         ( my $disk = $part ) =~ s/(?:p?\d+)\z// unless $part =~ /\Anvme\d+n\d+\z/;
         $disk //= $part;
         push @order, $disk unless $disk{$disk};
-        push @{ $disk{$disk} }, [ $part, $m->{$mp}{size} // '40G', $mp ];
+        push @{ $disk{$disk} }, [ $part, $m->{$mp}{size} // '40G', $mp, $m->{$mp}{fstype} ];
     }
-    my @l = ( sprintf '%-8s %-7s %2s %5s %2s %-4s %s', 'NAME', 'MAJ:MIN', 'RM', 'SIZE', 'RO', 'TYPE', 'MOUNTPOINTS' );
+    my %df = map { $_->{mount} => $_ } _df_rows($dev);
+    my @rows;
     my $maj = 254;
     for my $dk (@order) {
         my $base = $minor;
         my @parts = grep { $_->[0] ne $dk } @{ $disk{$dk} };
         my ($whole) = grep { $_->[0] eq $dk } @{ $disk{$dk} };
         my $size = $whole ? $whole->[1] : $parts[0][1];
-        push @l, sprintf( '%-8s %-7s %2d %5s %2d %-4s %s', $dk, "$maj:$base", 0, $size, 0, 'disk', $whole ? $whole->[2] : '' ) =~ s/\s+\z//r;
+        my @r = ( [ $dk, "$maj:$base", $size, 'disk', $whole, '' ] );
         my $i = 0;
         for my $pt (@parts) {
             $i++;
-            push @l, sprintf( '%-8s %-7s %2d %5s %2d %-4s %s', ( $i == @parts ? "\x{2514}\x{2500}" : "\x{251c}\x{2500}" ) . $pt->[0], "$maj:" . ( $base + $i ), 0, $pt->[1], 0, 'part', $pt->[2] ) =~ s/\s+\z//r;
+            push @r, [ $pt->[0], "$maj:" . ( $base + $i ), $pt->[1], 'part', $pt, $i == @parts ? "\x{2514}\x{2500}" : "\x{251c}\x{2500}" ];
+        }
+        for (@r) {
+            my ( $n, $mm, $sz, $type, $src, $tree ) = @$_;
+            my $mp = $src ? $src->[2] : undef;
+            my $df = defined $mp ? $df{$mp} : undef;
+            push @rows, { name => $n, path => "/dev/$n", tree => $tree, majmin => $mm, size => $sz, type => $type, mps => [ $mp // () ],
+                fstype => $src ? $src->[3] // 'ext4' : undef, fsavail => $df ? $df->{avail} : undef, fsuse => $df ? $df->{pct} : undef };
         }
         $minor += 16;
     }
+    if ( $o->{table} ) { $_->{size} = _bytes( $_->{size} ) for @rows; return ( _lsblk_table( \@rows, $o ), 1 ) }
+    my @l = ( sprintf '%-8s %-7s %2s %5s %2s %-4s %s', 'NAME', 'MAJ:MIN', 'RM', 'SIZE', 'RO', 'TYPE', 'MOUNTPOINTS' );
+    push @l, sprintf( '%-8s %-7s %2d %5s %2d %-4s %s', $_->{tree} . $_->{name}, $_->{majmin}, 0, $_->{size}, 0, $_->{type}, join( ' ', @{ $_->{mps} } ) ) =~ s/\s+\z//r for @rows;
     return ( join( "\n", @l ), 1 );
 }
 
