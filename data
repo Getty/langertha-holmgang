@@ -1,0 +1,17 @@
+---
+class: standard
+completed: 2026-11-16T04:12:12Z
+created: 2026-11-16T04:11:45Z
+id: 70
+priority: medium
+started: 2026-11-16T04:12:12Z
+status: done
+tags:
+- sim
+- bug
+title: 'MariaDB-SQL: SELECT-Listen mit Alias und Funktionen (CONCAT, LEFT, LENGTH,
+  CHAR_LENGTH, PASSWORD, COUNT(*)), SHOW DATABASES LIKE, --connect-timeout'
+updated: 2026-11-16T04:12:12Z
+---
+
+2026-11-16 04:12 Erledigt: 67c317a (gepusht). Verifiziert: t/sim/mariadb.t (neue Tests), volle Suite PASS, Musterlösung 1049/1049, 0 sim_gaps. Offen und ehrlich Lücke: SHOW TABLES/information_schema.tables ohne Tabellen im Fall, Unterabfragen, password_last_changed.
