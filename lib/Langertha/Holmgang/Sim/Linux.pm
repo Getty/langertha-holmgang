@@ -911,7 +911,7 @@ sub _exec_cmd {
                 push @files, [ $op, shift @r ];
                 next;
             }
-            if ( !ref $x && $x =~ /\A\d+>&-\z/ ) { next }
+            if ( !ref $x && $x =~ /\A\d*[<>]&-\z/ ) { next }    # N>&- / N<&-: schliesst
             $only_fd = 0;
             last;
         }

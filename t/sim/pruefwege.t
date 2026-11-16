@@ -141,6 +141,8 @@ subtest 'Shell: flock, PIPESTATUS, done < <( … ) ueber Zeilen, md5sum, ps, lsb
     my ( $o, $ok, $gap ) = $s->('( exec 9>/tmp/lk; flock -n 9; echo "rc2=$?" )');
     is( $o, 'rc2=0', 'exec 9>datei; flock -n 9' );
     ok( !defined $gap && exists $state->{app}{files}{'/tmp/lk'}, '... Sperrdatei angelegt, keine Luecke' );
+    ( $o, $ok, $gap ) = $s->('exec 9>&-; exec 3<&-; echo zu');
+    ok( $o eq 'zu' && !defined $gap, 'exec N>&- und N<&- schliessen, keine Luecke' );
     is( scalar $s->(q{flock -n /tmp/s.lock -c 'echo drin'}), 'drin', 'flock DATEI -c BEFEHL' );
     is( scalar $s->('flock -n /tmp/s2.lock echo auch'), 'auch', 'flock DATEI BEFEHL' );
     is( scalar $s->('false | true; echo "${PIPESTATUS[0]} ${PIPESTATUS[1]} ${PIPESTATUS[@]} ${#PIPESTATUS[@]}"'), '1 0 1 0 2', 'PIPESTATUS' );
