@@ -413,12 +413,88 @@ sub _split_sql {
 
 sub _err { my ( $code, $state, $msg ) = @_; return ( "ERROR $code ($state) at line 1: $msg", 0 ) }
 
+# an Kommas der obersten Ebene trennen (nicht in Klammern oder Anfuehrungszeichen)
+sub _split_top {
+    my ($s) = @_;
+    my @p;
+    my ( $cur, $depth, $q ) = ( '', 0, '' );
+    for my $ch ( split //, $s ) {
+        if ($q) { $q = '' if $ch eq $q; $cur .= $ch; next }
+        if ( $ch eq "'" || $ch eq '"' ) { $q = $ch; $cur .= $ch; next }
+        $depth++ if $ch eq '(';
+        $depth-- if $ch eq ')';
+        if ( $ch eq ',' && !$depth ) { push @p, $cur; $cur = ''; next }
+        $cur .= $ch;
+    }
+    push @p, $cur;
+    return map { s/\A\s+|\s+\z//gr } @p;
+}
+
+# Spaltenliste eines SELECT: [ { expr, label } ]; Alias mit AS oder nachgestellt, sonst der
+# Ausdruck wie geschrieben (ein Text ohne Anfuehrungszeichen) als Ueberschrift
+sub _sel_items {
+    my ($cols) = @_;
+    return [ map {
+        my ( $e, $al ) = /\A(.+?)\s+(?:AS\s+)?[`"]?(\w+)[`"]?\z/is ? ( $1, $2 ) : ( $_, undef );
+        ( $e, $al ) = ( $_, undef ) if $e =~ /\A'[^']*\z/;    # Leerzeichen im Text, kein Alias
+        +{ expr => $e, label => $al // ( $e =~ /\A'(.*)'\z/s ? $1 =~ s/''/'/gr : $e ) }
+    } _split_top($cols) ];
+}
+
+# Wert eines Ausdrucks in einer Zeile: Spalte, Zahl, 'Text', NOW(), USER(), VERSION(), CONCAT,
+# LEFT, RIGHT, LENGTH, CHAR_LENGTH, UPPER, LOWER, PASSWORD; undef = nicht nachgebildet (Luecke)
+sub _sql_val {
+    my ( $e, $row, $env ) = @_;
+    $e =~ s/\A\s+|\s+\z//g;
+    return $1 =~ s/''/'/gr if $e =~ /\A'((?:[^']|'')*)'\z/s;
+    return $e if $e =~ /\A-?\d+(?:\.\d+)?\z/;
+    if ( $e =~ /\A(\w+)\s*\((.*)\)\z/s ) {
+        my ( $f, $in ) = ( uc $1, $2 );
+        return $env->{now}     if $f eq 'NOW' && $in !~ /\S/;
+        return $env->{user}    if ( $f eq 'USER' || $f eq 'CURRENT_USER' ) && $in !~ /\S/;
+        return $env->{version} if $f eq 'VERSION' && $in !~ /\S/;
+        my @a = map { _sql_val( $_, $row, $env ) } _split_top($in);
+        return undef if !@a || grep { !defined } @a;
+        return join( '', @a ) if $f eq 'CONCAT';
+        return substr( $a[0], 0, $a[1] ) if $f eq 'LEFT' && @a == 2 && $a[1] =~ /\A\d+\z/;
+        return $a[1] ? substr( $a[0], -$a[1] ) : '' if $f eq 'RIGHT' && @a == 2 && $a[1] =~ /\A\d+\z/;
+        if ( @a == 1 ) {
+            if ( $f eq 'LENGTH' ) { require Encode; return length Encode::encode( 'UTF-8', $a[0] ) }
+            return length $a[0] if $f eq 'CHAR_LENGTH' || $f eq 'CHARACTER_LENGTH';
+            return uc $a[0]     if $f eq 'UPPER' || $f eq 'UCASE';
+            return lc $a[0]     if $f eq 'LOWER' || $f eq 'LCASE';
+            return _pwhash( $a[0] ) if $f eq 'PASSWORD';
+        }
+        return undef;
+    }
+    return $row->{ lc $1 } if $e =~ /\A`?(\w+)`?\z/ && $row && exists $row->{ lc $1 };
+    return undef;
+}
+
+# Ergebnis einer Spaltenliste ueber Zeilen: nur COUNT(*) -> eine Zeile mit der Anzahl;
+# ( \@ueberschriften, \@zeilen ) oder () wenn ein Ausdruck nicht nachgebildet ist
+sub _sel_rows {
+    my ( $items, $rows, $env ) = @_;
+    my @h = map { $_->{label} } @$items;
+    if ( !grep { $_->{expr} !~ /\ACOUNT\s*\(\s*\*\s*\)\z/i } @$items ) { return ( \@h, [ [ map { scalar @$rows } @$items ] ] ) }
+    return if grep { $_->{expr} =~ /\A\w+\s*\(\s*(?:\*|DISTINCT\b)/i } @$items;
+    my @out;
+    for my $r (@$rows) {
+        my @v;
+        for (@$items) { my $x = _sql_val( $_->{expr}, $r, $env ); return unless defined $x; push @v, $x }
+        push @out, \@v;
+    }
+    return ( \@h, \@out );
+}
+
 sub _statement {
     my ( $dev, $sql, $o, $acc ) = @_;
     my $m = $dev->{mariadb};
     my $v = _vars($dev);
     my $super = _has_priv( $m, $acc, 'SUPER' ) || _has_priv( $m, $acc, 'ALL PRIVILEGES' );
     ( my $s = $sql ) =~ s/\s+/ /g;
+    my $env = { user => $acc // '', version => $v->{version},
+        now => '2026-10-24 ' . ( ( $dev->{clock} // '' ) =~ /(\d+:\d+)\z/ ? "$1:00" : '09:12:00' ) };
 
     if ( $s =~ /\ASHOW (?:(GLOBAL|SESSION) )?VARIABLES(?: (?:LIKE (\S+)|WHERE .*))?\z/i ) {
         my $re = _like($2);
@@ -534,15 +610,16 @@ sub _statement {
         }
         return _err( 1094, 'HY000', "Unknown thread id: $id" );
     }
-    if ( $s =~ /\ASHOW DATABASES\z/i ) {
-        my @d = sort( qw( information_schema mysql performance_schema sys ), @{ $m->{databases} || [] } );
-        return ( _render( $o, ['Database'], [ map { [$_] } @d ] ), 1 );
+    if ( $s =~ /\ASHOW DATABASES(?: LIKE (\S+))?\z/i ) {
+        my $pat = $1;
+        my $re  = _like($pat);
+        my @d = grep { !defined $re || $_ =~ $re } sort( qw( information_schema mysql performance_schema sys ), @{ $m->{databases} || [] } );
+        return ( _render( $o, [ defined $pat ? "Database ($pat)" =~ s/['"]//gr : 'Database' ], [ map { [$_] } @d ] ), 1 );
     }
     if ( $s =~ /\ASELECT (.+?) FROM mysql\.user(?: WHERE (.+?))?(?: ORDER BY .+)?\z/i ) {
         my ( $cols, $where ) = ( $1, $2 );
-        my @c = map { s/[`\s]//gr } split /,/, $cols;
-        @c = qw( Host User ) if $c[0] eq '*';
-        my @r;
+        $cols = 'Host,User' if $cols =~ /\A\s*\*\s*\z/;
+        my @rows;
         for my $k ( sort keys %{ $m->{users} || {} } ) {
             my ( $u, $h ) = split /@/, $k, 2;
             my $a  = $m->{users}{$k};
@@ -550,10 +627,10 @@ sub _statement {
             my %row = ( user => $u, host => $h, plugin => ( $a->{auth} // 'mysql_native_password' ), authentication_string => $hash,
                 password => $hash, account_locked => 'N', password_expired => 'N' );
             my $keep = _where( \%row, $where ) // return _gap($sql);
-            next unless $keep;
-            push @r, [ map { $row{ lc $_ } // return _gap($sql) } @c ];
+            push @rows, \%row if $keep;
         }
-        return ( _render( $o, \@c, \@r ), 1 );
+        my ( $hd, $r ) = _sel_rows( _sel_items($cols), \@rows, $env ) or return _gap($sql);
+        return ( _render( $o, $hd, $r ), 1 );
     }
     # mysql.db: Rechte je Datenbank aus den Grants (db.*)
     if ( $s =~ /\ASELECT (.+?) FROM mysql\.db(?: WHERE (.+?))?(?: ORDER BY .+)?\z/i ) {
@@ -577,16 +654,10 @@ sub _statement {
         }
         return ( _render( $o, \@c, \@r ), 1 );
     }
-    # SELECT 1, SELECT 'text', SELECT NOW()
-    if ( $s =~ /\ASELECT ((?:\d+|'[^']*'|NOW\(\)|CURRENT_USER\(\)|USER\(\))(?:\s*,\s*(?:\d+|'[^']*'|NOW\(\)|CURRENT_USER\(\)|USER\(\)))*)\z/i ) {
-        my @e = split /\s*,\s*/, $1;
-        my @v = map {
-                  /\A'(.*)'\z/            ? $1
-                : /\ANOW\(\)\z/i          ? '2026-10-24 ' . ( ( $dev->{clock} // '' ) =~ /(\d+:\d+)\z/ ? "$1:00" : '09:12:00' )
-                : /\A(?:CURRENT_)?USER/i  ? ( $acc // '' )
-                :                           $_
-        } @e;
-        return ( _render( $o, [ map { s/\A'(.*)'\z/$1/r } @e ], [ \@v ] ), 1 );
+    # SELECT ohne FROM: Konstanten und Funktionen (SELECT 1 AS ok, SELECT NOW(), CONCAT(…))
+    if ( $s =~ /\ASELECT (.+)\z/i && $1 !~ /\bFROM\b|\@\@|\(\s*SELECT\b/i ) {
+        my ( $h, $r ) = _sel_rows( _sel_items($1), [ {} ], $env ) or return _gap($sql);
+        return ( _render( $o, $h, $r ), 1 );
     }
     # Tabellen der Anwendung: nur, was der Fall unter mariadb.tables vorgibt
     if ( $s =~ /\ASELECT (.+?) FROM `?(\w+)`?\.`?(\w+)`?(?: WHERE (.+?))?(?: LIMIT \d+)?\z/i && lc $2 ne 'mysql' && lc $2 ne 'information_schema' && lc $2 ne 'performance_schema' ) {
@@ -603,9 +674,8 @@ sub _statement {
             my $keep = _where( \%row, $where ) // return _gap($sql);
             push @r, \%row if $keep;
         }
-        if ( $cols =~ /\ACOUNT\(\*\)\z/i ) { return ( _render( $o, ['COUNT(*)'], [ [ scalar @r ] ] ), 1 ) }
-        my @c = $cols eq '*' ? @all : map { s/[`\s]//gr } split /,/, $cols;
-        return ( _render( $o, \@c, [ map { my $x = $_; [ map { $x->{ lc $_ } // return _gap($sql) } @c ] } @r ] ), 1 );
+        my ( $hd, $r ) = _sel_rows( _sel_items( $cols eq '*' ? join( ',', @all ) : $cols ), \@r, $env ) or return _gap($sql);
+        return ( _render( $o, $hd, $r ), 1 );
     }
     if ( $s =~ /\ASHOW CREATE USER (.+?)\z/i ) {
         my ( $u, $h ) = _account($1) or return _gap($sql);
@@ -893,6 +963,8 @@ sub client {
         elsif ( $x eq '-h' || $x eq '--host' ) { $host = shift @a }
         elsif ( $x =~ /\A-h(.+)\z/ || $x =~ /\A--host=(.+)\z/ ) { $host = $1 }
         elsif ( $x eq '-P' || $x eq '--port' ) { shift @a }
+        elsif ( $x eq '--connect-timeout' ) { shift @a }
+        elsif ( $x =~ /\A--(?:connect-timeout|port)=\d+\z/ ) { }
         elsif ( $x eq '-D' || $x eq '--database' ) { $db = shift @a }
         elsif ( $x eq '-e' || $x eq '--execute' ) { push @exec, shift(@a) // '' }
         elsif ( $x =~ /\A--execute=(.*)\z/s ) { push @exec, $1 }

@@ -201,4 +201,22 @@ my $M = sub { $state->{db1}{mariadb} };
     like( sh(q{mysqladmin -S /run/mysqld/mysqld.sock status}), qr/\AUptime: /, '-S mit Wert' );
 }
 
+# SELECT-Listen: Alias (AS oder nachgestellt), Funktionen, COUNT(*) ueber mysql.user,
+# SHOW DATABASES LIKE, --connect-timeout; Unbekanntes bleibt eine Luecke.
+{
+    fresh();
+    is( sh(q{mysql -e "SELECT 1 AS ok, 'a b' x"}), "ok\tx\n1\ta b", 'Konstanten mit Alias' );
+    is( sh(q{mysql -N -e "SELECT 'tcp ok'"}), 'tcp ok', 'Text mit Leerzeichen ohne Alias' );
+    is( sh(q{mysql -N -e "SELECT COUNT(*) FROM mysql.user"}), '3', 'COUNT(*) ueber mysql.user' );
+    is( sh(q{mysql -N -e "SELECT CONCAT(user,'@',host) FROM mysql.user WHERE user = 'app'"}), "app\@10.20.0.%\napp\@localhost", 'CONCAT' );
+    is( sh(q{mysql -e "SELECT user, CHAR_LENGTH(authentication_string) AS len, LEFT(plugin,5) FROM mysql.user WHERE user = 'root'"}),
+        "user\tlen\tLEFT(plugin,5)\nroot\t0\tunix_", 'CHAR_LENGTH mit Alias, LEFT' );
+    is( sh(q{mysql -N -e "SELECT PASSWORD('pw1') AS h"}), sh(q{mysql -N -e "SELECT authentication_string FROM mysql.user WHERE user = 'app' AND host = 'localhost'"}),
+        'PASSWORD() wie der gespeicherte Hash' );
+    is( sh(q{mysql -e "SHOW DATABASES LIKE 'sh%'"}), "Database (sh%)\nshop", 'SHOW DATABASES LIKE' );
+    is( sh(q{mysql --connect-timeout=5 -N -e "SELECT 1"}), '1', '--connect-timeout' );
+    my ( $o, $ok, $gap ) = sh(q{mysql -e "SELECT SOUNDEX(user) FROM mysql.user"});
+    ok( !$ok && $gap, 'unbekannte Funktion: Luecke' );
+}
+
 done_testing;
