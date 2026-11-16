@@ -1,0 +1,16 @@
+---
+class: standard
+completed: 2026-11-16T04:06:33Z
+created: 2026-11-16T04:06:13Z
+id: 69
+priority: low
+started: 2026-11-16T04:06:33Z
+status: done
+tags:
+- sim
+- bug
+title: exec N<&- (Eingabe-fd schließen) wie N>&- behandeln statt Lücke
+updated: 2026-11-16T04:06:33Z
+---
+
+2026-11-16 04:06 Erledigt: a86905d (gepusht). Verifiziert: Test in t/sim/pruefwege.t scheitert auf altem Code, volle Suite PASS.
