@@ -168,8 +168,8 @@ subtest 'Unit-Datei und daemon-reload' => sub {
     $state->{srv}{files}{'/etc/app/gunicorn.conf.py'} = "timeout = 90\n";
     ok( ( sh('systemctl kill -s HUP web') )[1], 'systemctl kill -s HUP' );
     is( $state->{srv}{services}{web}{running}, "timeout = 90\n", '... wirkt wie reload' );
-    my ( undef, undef, $kgap ) = sh('systemctl kill -s TERM web');
-    ok( $kgap, 'anderes Signal: Luecke der Simulation' );
+    my ( undef, undef, $kgap ) = sh('systemctl kill -s USR1 web');
+    ok( $kgap, 'anderes Signal (USR1): Luecke der Simulation' );
 
     $state->{srv}{files}{'/etc/systemd/system/web.service'} = "[Service]\nExecStart=/opt/app/venv/bin/gunicorn\n";
     $state->{srv}{services}{web}{unit} = '/etc/systemd/system/web.service';
@@ -415,6 +415,32 @@ subtest 'Journal nach Start/Neustart, find -type d' => sub {
     like( sh("cat /proc/$master/cmdline"), qr{--workers\x006\x00}, '/proc/<pid>/cmdline, NUL-getrennt' );
     like( sh('ps -eo pid,ppid,comm'), qr/\A\s*PID\s+PPID COMMAND/, 'ps -eo mit Kopf' );
     is( ( sh('ps -C gunicorn -o pid=') =~ tr/\n// ) + 1, 11, 'ps -C: Master und Worker beider Dienste' );
+}
+
+# --- Signale und Restart= --------------------------------------
+# Behauptet: kill und systemctl kill halten sich an Restart= der Unit wie systemd —
+# on-failure startet nach SIGKILL neu (neue PID, NRestarts), nicht nach SIGTERM;
+# always auch nach SIGTERM; ohne Restart= bleibt der Dienst stehen (KILL: failed).
+{
+    fresh();
+    for my $n (qw( a b c )) {
+        my $r = { a => "Restart=on-failure\n", b => "Restart=always\n", c => '' }->{$n};
+        $state->{srv}{files}{"/etc/systemd/system/$n.service"} = "[Service]\nExecStart=/usr/bin/sleep infinity\n$r\n[Install]\nWantedBy=multi-user.target\n";
+        $state->{srv}{services}{$n} = { active => JSON::MaybeXS::true(), unit => "/etc/systemd/system/$n.service" };
+    }
+    my $pid = sh('systemctl show -p MainPID --value a');
+    sh("kill -9 $pid");
+    is( sh('systemctl is-active a'), 'active', 'on-failure: nach SIGKILL wieder aktiv' );
+    is( sh('systemctl show -p NRestarts --value a'), '1', '... NRestarts zaehlt' );
+    isnt( sh('systemctl show -p MainPID --value a'), $pid, '... mit neuer PID' );
+    sh('systemctl kill a');
+    is( sh('systemctl is-active a'), 'inactive', 'on-failure: SIGTERM (systemctl kill) beendet ihn' );
+    sh('systemctl kill --signal=SIGTERM b');
+    is( sh('systemctl is-active b'), 'active', 'always: auch nach SIGTERM wieder aktiv' );
+    sh('systemctl kill -s KILL c');
+    is( sh('systemctl is-active c'), 'failed', 'ohne Restart=: SIGKILL laesst ihn auf failed' );
+    my ( undef, undef, $gap ) = sh('systemctl kill c');
+    ok( $gap, 'systemctl kill auf einen stehenden Dienst: Luecke' );
 }
 
 done_testing;

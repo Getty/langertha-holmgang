@@ -132,7 +132,10 @@ gap instead of "command not found"); C<sudo> of a user without root rights
 (L<Langertha::Holmgang::Sim::Linux::Accounts/sudo_check>); the usual directories
 of a Debian 12 exist, also empty; C<crontab -l|-r [-u user]>; C<ps -p|-C|-o>,
 C<pkill [-SIG] [-x] name>, C<kill [-SIG] pid> with the same PIDs as C<ss> and
-C<systemctl status> (HUP rereads, otherwise the service ends); C<nft --version>. C<find> evaluates
+C<systemctl status> and C<systemctl kill [-s SIG] unit> (HUP rereads, otherwise the service ends
+— and comes back as systemd brings it back by the unit's C<Restart=>: C<always> after
+any signal, C<on-failure>, C<on-abnormal> and C<on-abort> after an unclean one such
+as KILL, C<on-success> after TERM, INT, HUP or PIPE; C<NRestarts> counts it); C<nft --version>. C<find> evaluates
 expressions like find: C<\( \)>, C<!>/C<-not>, C<-a> (also without the word) before
 C<-o>/C<-or>; actions (C<-print>, C<-ls>, C<-printf>, C<-exec>, C<-delete>)
 apply where the evaluation reaches them. C<redis-cli>/C<redis-server> with
@@ -5450,6 +5453,17 @@ sub _signal {
     $svc->{active} = JSON::MaybeXS::false();
     $svc->{failed} = JSON::MaybeXS::true() if $sig eq 'KILL' && !$svc->{failed};
     $dev->{deleted_open} = [ grep { ( $_->{by} // '' ) ne $unit } @{ $dev->{deleted_open} } ] if $dev->{deleted_open};
+    # Restart= der geladenen Unit: systemd startet den Dienst neu — always immer, on-failure,
+    # on-abnormal und on-abort nach einem unsauberen Signal (nicht TERM, INT, HUP, PIPE),
+    # on-success nach einem sauberen
+    my $pol   = _unit_props( _unit_loaded_text( $dev, $unit, $svc ) // '' )->{Restart} // 'no';
+    my $clean = $sig =~ /\A(?:TERM|INT|HUP|PIPE)\z/;
+    if ( $pol eq 'always' || ( $clean ? $pol eq 'on-success' : $pol =~ /\Aon-(?:failure|abnormal|abort)\z/ ) ) {
+        $svc->{failed} = JSON::MaybeXS::false() if $svc->{failed};
+        _systemd_start( $dev, $unit, $svc, 'start' );
+        if ( $svc->{active} ) { $svc->{_nrestarts} = ( $svc->{_nrestarts} // 0 ) + 1 }
+        else { $svc->{failed} = JSON::MaybeXS::true() }    # Neustart gescheitert: die Unit steht auf failed
+    }
     return;
 }
 
@@ -8592,10 +8606,10 @@ sub _systemctl_show {
                 $p{MainPID} = _main_pid( $dev, $n );
                 $p{ExecMainPID} = $p{MainPID};
                 # Startzeit des laufenden Prozesses; NRestarts zaehlt wie systemd nur
-                # automatische Neustarts (Restart=), die der Simulator nicht ausloest
+                # automatische Neustarts (Restart= nach einem Signal, _signal)
                 my $st = $svc->{active} ? _svc_since($svc) // _parse_stamp($BOOT_STAMP) : _svc_since($svc);
                 $p{ExecMainStartTimestamp} = $p{ActiveEnterTimestamp} = defined $st ? Langertha::Holmgang::Sim::Linux::Calendar::format_local($st) : '';
-                $p{NRestarts} = 0;
+                $p{NRestarts} = $svc->{_nrestarts} // 0;
                 $p{LoadState} = 'bad-setting' if !$svc->{masked} && _unit_bad( $n, $up );
                 $p{DropInPaths} = join ' ', _dropins( $dev, $n );
                 $p{NeedDaemonReload} = _unit_changed( $dev, $n, $svc ) ? 'yes' : 'no';
@@ -8776,7 +8790,8 @@ sub _systemctl {
     }
     my $now    = grep { $_ eq '--now' } @$av;
     my $failed = grep { $_ eq '--failed' || $_ eq '--state=failed' } @$av;
-    # systemctl kill -s HUP dienst: SIGHUP wirkt wie reload, anderes ist eine Luecke
+    # systemctl kill [-s SIG] dienst…: SIGHUP wirkt wie reload; TERM, KILL, INT treffen den
+    # laufenden Dienst wie kill (Restart= der Unit gilt); nicht geladen, stehend, anderes: Luecke
     if ( ( $av->[0] // '' ) eq 'kill' ) {
         my ( @rest, $sig ) = ();
         my @k = @{$av}[ 1 .. $#$av ];
@@ -8784,11 +8799,19 @@ sub _systemctl {
             my $x = shift @k;
             if    ( $x eq '-s' || $x eq '--signal' ) { $sig = shift @k }
             elsif ( $x =~ /\A--signal=(.+)\z/ )      { $sig = $1 }
+            elsif ( $x =~ /\A--kill-whom=(?:all|main)\z/ ) { }
             elsif ( $x !~ /\A-/ )                    { push @rest, $x }
+            else { push @GAPS, join( ' ', 'systemctl', @$av ); return ( '', 0 ) }
         }
-        return _systemctl( $dev, [ 'reload', @rest ], $ctx ) if ( $sig // '' ) =~ /\A(?:SIG)?HUP\z|\A1\z/;
-        push @GAPS, join( ' ', 'systemctl', @$av );
-        return ( '', 0 );
+        my $s = _sig_of( $sig // 'TERM' );
+        return _systemctl( $dev, [ 'reload', @rest ], $ctx ) if $s eq 'HUP';
+        my @units = map { _unit($_) } @rest;
+        if ( !@units || $s !~ /\A(?:TERM|KILL|INT)\z/ || grep { !( ( $dev->{services} || {} )->{$_} || {} )->{active} } @units ) {
+            push @GAPS, join( ' ', 'systemctl', @$av );
+            return ( '', 0 );
+        }
+        _signal( $dev, $_, $s ) for @units;
+        return ( '', 1 );
     }
     my $all    = grep { $_ eq '--all' || $_ eq '-a' } @$av;
     my ($type) = map { /\A--type=(\w+)\z/ ? $1 : () } @$av;
