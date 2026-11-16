@@ -1,0 +1,17 @@
+---
+class: standard
+completed: 2026-11-16T03:57:07Z
+created: 2026-11-16T03:56:07Z
+id: 67
+priority: medium
+started: 2026-11-16T03:57:07Z
+status: done
+tags:
+- sim
+- bug
+title: 'mysqladmin: Werte von -h/-P/-u/-S nicht als Befehl lesen; Verbindung und Anmeldung
+  wie mysql'
+updated: 2026-11-16T03:57:07Z
+---
+
+2026-11-16 03:56 Erledigt: 7c9abfc (gepusht). Verifiziert: t/sim/mariadb.t (neue Tests scheitern auf altem Code), volle Suite PASS, Musterlösung 0 Lücken. Quelle: Kern-Bench 2026-11-03 weitere-datenbanken/11 db6 (mysqladmin -h 10.20.0.36 … ping war Lücke, jetzt Can't connect wegen bind-address 127.0.0.1).
