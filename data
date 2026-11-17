@@ -1,0 +1,27 @@
+---
+class: standard
+completed: 2026-11-17T01:25:39Z
+created: 2026-11-17T00:29:12Z
+id: 73
+priority: medium
+started: 2026-11-17T01:06:03Z
+status: done
+title: 'report: Suite ohne threshold bekommt verdict ok, obwohl nichts gemessen wurde'
+updated: 2026-11-17T02:16:58Z
+---
+
+Gemessen 2026-11-17 00:20 von cai-admin, holmgang 84a8736: Lauf gegen OpenAI gpt-6-luna, alle 16 Fälle error (429 no credits). holmgang report zeigt für linux-server (kein threshold) 'passed 0/8, verdict ok' samt Hinweis 'nothing measured'; injection-werkzeug (threshold 80%) korrekt NOT PASSED. Exit des run war richtig 1. Erwartet: eine Suite ohne einziges gemessenes Ergebnis bekommt kein ok, sondern ein eigenes Urteil (z. B. 'not measured').
+
+2026-11-17 Maintainer-Ansage ('ja'): Vorschlag umsetzen. Suite ohne eine einzige gemessene Wiederholung (repetitions_error == k, nur status error zählt als ungemessen) -> ok false, Text NOT MEASURED, Exit 1 bei run und report. Teilausfall einzelner Wiederholungen bleibt nur berichtet (k42). Bewusst kippende Zusagen: t/evaluation/verdicts.t:116, t/cli/no_answer.t:89. ADR-0008-Nachtrag k73.
+
+2026-11-17 01:08 Worker started. Baseline at 84a8736: prove -lr t -> Files=99, Tests=3328, PASS. Plan: red tests first (verdicts.t, no_answer.t, a report exit test), then the ok rule in Evaluation::_build_verdicts, NOT MEASURED in the text renderers, POD in Evaluation.pm, CLI.pm and bin/holmgang, ADR 0008 k73 amendment, ADR 0009 k73 note.
+
+2026-11-17 01:11 Reproduced, red tests in place. (1) t/evaluation/verdicts.t: all-error / no-result suite without threshold has ok true and the text says ok. (2) t/cli/no_answer.t: holmgang report on a report whose results are all error (repeat 2, no threshold) exits 0, text verdict ok -- the second gap confirmed. Found a conflict in the brief: verdicts.t:123 ('ok without threshold: counted, not deciding', k42) is a suite of ONE repetition all error (repetitions_error 1 == k 1), so by the approved rule it flips too; it cannot hold. Flipped it on purpose with a comment and moved its k42 claim to a two-repetition suite (one all error, one measured -> ok without threshold), which pins the partial rule. no_answer.t:69 (error + passed, repeat 2 -> exit 0) holds unchanged.
+
+2026-11-17 01:20 Done, tree commit-ready (nothing committed). Fix: Evaluation::_build_verdicts adds _unmeasured (repetitions_error == k) to the ok condition; to_text/to_markdown say NOT MEASURED for such a verdict (whatever else failed it, the notes say the rest), NOT PASSED for any other not-ok. No new JSON field, holmgang_evaluation stays 1: ok false with repetitions_error == k says it. CLI code unchanged; run and report now exit 1 through the verdict. Flipped on purpose, with comments: verdicts.t 'no results, no threshold: ok (k58)' -> not ok; verdicts.t 'ok without threshold: counted, not deciding (k42)' -> not ok, because that suite is one repetition all error (k=1), so the brief's 'must hold' could not; its k42 claim now sits on a two-repetition suite (one all error, one measured -> ok); no_answer.t 'one suite without an answer next to a measured one: exit by the verdicts' -> exit 1 (fixture is all error). Held: no_answer.t error+passed repeat 2 -> exit 0. New: report on an all-error file exits 1 (text, markdown, json); all context_exceeded/no_vision stays ok (Evaluation and CLI, next to a measured suite exit 0 with the stderr note); a run cancelled before any result reads NOT MEASURED. Mutation check: the cai-platform rule (repetitions_error > 0) turns 3 verdicts.t and 4 no_answer.t assertions red. Docs: ADR 0008 k73 amendment, ADR 0009 k73 note on k42, POD in Evaluation.pm, CLI.pm, bin/holmgang. Verified: prove -lr t -> Files=99, Tests=3347, PASS (baseline 3328); skipped as at baseline: acceptance_load, acceptance_dsl, acceptance_mock_runs (no HOLMGANG_ACCEPTANCE_*), sim/denken_vectors (no HOLMGANG_DENKEN_VECTORS). dzil build: built POD of Evaluation.pm and CLI.pm passes podchecker. For the release manager: the Changes bullet of k58 ('repetitions_error ... reported, not deciding ok') is now partly outdated.
+
+Committed cedfd54
+
+
+
+2026-11-17 cai-admin: abgenommen. cedfd54 (auf origin/main): Suite ohne Messung heißt NOT MEASURED; geprüft mit dem Lauf gegen gpt-6-luna (429), beide Suites NOT MEASURED; prove -lr t: 99 Dateien, 3347 Tests PASS.
