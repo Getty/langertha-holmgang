@@ -1,6 +1,6 @@
 Revision history for Langertha-Holmgang
 
-{{$NEXT}}
+0.001     2026-11-17 03:22:26Z
   - Initial release
   - Deterministic tool-use benchmarks for language models: a case gives the
     model a task and tools in a simulated world, and the rules grade the
