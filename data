@@ -1,0 +1,33 @@
+---
+class: standard
+completed: 2026-11-17T01:25:47Z
+created: 2026-11-04T19:34:11Z
+depends_on:
+- 14
+- 15
+- 16
+id: 17
+priority: medium
+started: 2026-11-17T01:10:26Z
+status: done
+tags:
+- abnahme
+title: 'Abnahme 4: echter Lauf gegen ein OpenAI-kompatibles Ziel'
+updated: 2026-11-17T02:17:06Z
+---
+
+Von agent-lab gegen ein CitiAI-Ziel, nur auf Ansage (GPU-Zeit): Token je Fall, context_exceeded bei einem zu langen Fall, Auswertung je Kategorie.
+
+
+
+Teilabnahme 2026-11-17 durch cai-admin (84a8736): (1) lint über cai-platform/share/evals: 36/37 Suites ok, abgelehnt nur pii-de (format pii-1, kein Holmgang-Format, richtig). (2) Echter Lauf vLLM-Target gegen cortex tensorfold Qwen3.8-Flash-Next, linux-server + injection-werkzeug, concurrency 4, 11m27s: linux-server 7/8, injection-werkzeug 5/8 (2 uncertain); Token je Fall und je Turn im Bericht, Auswertung je Topic/Schwierigkeit läuft. (3) langkontext-stufen 16k und 160k gegen cortex: beide passed, 160k passt ins Fenster -> context_exceeded NICHT ausgelöst, offen (braucht Ziel mit kleinerem Fenster). (4) OpenAI gpt-6-luna: 16/16 error 429 no credits, Exit 1 richtig; Urteil-Befund in #73.
+
+2026-11-17 Maintainer-Ansage: citilan-Ziele nach Bedarf. Ziel mit kleinem Fenster: synapse (Skeid 10.230.30.50:8090, qwen3.8-flash, llama.cpp, 131072 Token je Slot), Key ~/.config/cai/synapse-skeid-cai.key auf agent-lab. Probe 14-journal-160k (Holmgang 84a8736, --target OpenAI): context_exceeded nach 4 s, Meldung 'request (245044 tokens) exceeds the available context size (131072 tokens)' -> von $CONTEXT_RE erkannt, kein Prefill. Report ~/holmgang-abnahme/scratch/k17/probe.json. Lauf über Auszug (11/14/21/24/31/34, je 16k und 160k der drei Auftrags-Familien) läuft, concurrency 1.
+
+2026-11-17 Lauf über Auszug, synapse qwen3.8-flash, Holmgang 84a8736, --target OpenAI, concurrency 1, 572 s, Exit 1 (Verdict 33,3 % < threshold 50 %, richtig): 16k-Kontrollen 2 passed / 1 failed, mit Token je Fall und je Turn (input 74672..191383, input_max 19443..28736, output 1438..3102; reasoning null, llama.cpp meldet keine). 160k: 3/3 context_exceeded in 2,5-3,1 s, Token null, Meldung 'request (N tokens) exceeds the available context size (131072 tokens)'. Stufenkurve 16k 66,7 % passed, 160k 100 % context_exceeded; Auswertung je Topic und Schwierigkeit. Report ~/holmgang-abnahme/scratch/k17/run.json auf agent-lab. Damit Abnahme 4 vollständig: Token je Fall (cortex + synapse), context_exceeded (synapse), Auswertung je Topic (beide).
+
+Committed cab7cef (ADR 0006 amendment); acceptance 4 complete
+
+
+
+2026-11-17 cai-admin: abgenommen. context_exceeded auf synapse belegt (ADR 0006, cab7cef); Token je Fall/Turn und Auswertung je Topic/Tier aus dem cortex-Lauf. prove -lr t: 3347 Tests PASS.
