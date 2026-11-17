@@ -2,7 +2,7 @@
 # PODNAME: holmgang
 # ABSTRACT: Lint Holmgang suites, run them against a Langertha engine, evaluate the reports
 
-our $VERSION = '0.001';
+our $VERSION = '0.002';
 
 use strict;
 use warnings;

@@ -7,7 +7,7 @@ use utf8;
 
 use JSON::MaybeXS ();
 
-our $VERSION = '0.001';
+our $VERSION = '0.002';
 
 =synopsis
 

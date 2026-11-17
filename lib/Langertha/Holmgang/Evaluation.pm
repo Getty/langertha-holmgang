@@ -8,7 +8,7 @@ use JSON::MaybeXS ();
 use Langertha::Holmgang::Report ();
 use Scalar::Util qw( blessed );
 
-our $VERSION = '0.001';
+our $VERSION = '0.002';
 
 #### Constants
 

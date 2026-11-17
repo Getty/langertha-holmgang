@@ -9,7 +9,7 @@ use Langertha::Holmgang::Error;
 use Scalar::Util qw( blessed );
 use Time::Local ();
 
-our $VERSION = '0.001';
+our $VERSION = '0.002';
 
 =synopsis
 

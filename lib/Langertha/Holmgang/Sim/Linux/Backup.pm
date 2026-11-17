@@ -10,7 +10,7 @@ use JSON::MaybeXS ();
 use POSIX ();
 use Time::Local ();
 
-our $VERSION = '0.001';
+our $VERSION = '0.002';
 
 =synopsis
 

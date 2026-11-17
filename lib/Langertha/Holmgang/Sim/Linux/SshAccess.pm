@@ -7,7 +7,7 @@ use utf8;
 
 use Langertha::Holmgang::Sim::Linux::Nft ();
 
-our $VERSION = '0.001';
+our $VERSION = '0.002';
 
 =synopsis
 

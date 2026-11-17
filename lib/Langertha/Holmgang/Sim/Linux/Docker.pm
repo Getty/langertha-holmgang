@@ -14,7 +14,7 @@ use JSON::PP ();
 my $OUT_JSON = JSON::PP->new->canonical->indent->indent_length(4)->space_after;
 use YAML::XS ();
 
-our $VERSION = '0.001';
+our $VERSION = '0.002';
 
 =synopsis
 

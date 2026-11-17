@@ -7,7 +7,7 @@ use Carp qw( croak );
 use Module::Runtime qw( module_notional_filename use_module );
 use Moose::Util qw( find_meta );
 
-our $VERSION = '0.001';
+our $VERSION = '0.002';
 
 =synopsis
 

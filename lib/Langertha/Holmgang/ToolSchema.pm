@@ -10,7 +10,7 @@ use JSON::MaybeXS ();
 use Langertha::Holmgang::Error;
 use Langertha::Holmgang::Expectation qw( same_scalar );
 
-our $VERSION = '0.001';
+our $VERSION = '0.002';
 
 our @EXPORT_OK = qw( check_schema schema_errors );
 

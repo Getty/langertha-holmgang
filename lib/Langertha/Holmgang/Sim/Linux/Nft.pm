@@ -7,7 +7,7 @@ use utf8;
 
 use Socket qw( inet_pton AF_INET AF_INET6 );
 
-our $VERSION = '0.001';
+our $VERSION = '0.002';
 
 =synopsis
 

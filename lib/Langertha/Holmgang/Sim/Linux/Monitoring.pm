@@ -10,7 +10,7 @@ use JSON::MaybeXS ();
 use Text::ParseWords ();
 use YAML::XS ();
 
-our $VERSION = '0.001';
+our $VERSION = '0.002';
 
 =synopsis
 

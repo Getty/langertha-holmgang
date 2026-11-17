@@ -8,7 +8,7 @@ use utf8;
 use JSON::MaybeXS ();
 use Time::Local ();
 
-our $VERSION = '0.001';
+our $VERSION = '0.002';
 
 =synopsis
 

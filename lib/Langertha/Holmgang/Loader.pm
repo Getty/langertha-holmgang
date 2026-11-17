@@ -20,7 +20,7 @@ use Langertha::Holmgang::Simulators;
 use Langertha::Holmgang::Structure;
 use Langertha::Holmgang::Suite;
 
-our $VERSION = '0.001';
+our $VERSION = '0.002';
 
 =synopsis
 

@@ -10,7 +10,7 @@ use Exporter qw( import );
 use JSON::MaybeXS ();
 use Scalar::Util qw( looks_like_number );
 
-our $VERSION = '0.001';
+our $VERSION = '0.002';
 
 our @EXPORT_OK = qw( condition check_value element_match path get flat same_scalar near interp_text filter_value );
 

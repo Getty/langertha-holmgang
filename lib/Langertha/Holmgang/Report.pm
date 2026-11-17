@@ -13,7 +13,7 @@ use POSIX qw( strftime );
 use Scalar::Util qw( blessed );
 use URI ();
 
-our $VERSION = '0.001';
+our $VERSION = '0.002';
 
 #### Format
 
