@@ -129,6 +129,13 @@ and written to stderr as `holmgang: <text>`, cleaned like a relayed error (k41).
 `$Langertha::Holmgang::Target::LOCATION`, which also covers Perl's `, <FH> line N` /
 `chunk N` suffix.
 
+*Note 2026-11-17 (k73).* A suite whose results are all `error` next to a measured one now
+fails its verdict (ADR 0008 k73 amendment, `NOT MEASURED`): it keeps its stderr note, and
+the exit code, still from the verdicts, is 1. A suite all `context_exceeded` or
+`no_vision` still gets only the stderr note — those are measurements. `holmgang report`
+has no no-answer rule of its own; a report whose results are all `error` exits 1 by the
+same verdict.
+
 **Amendment 2026-11-08 (k44).** The exit-code table at the top now carries the k42 rule;
 the amendment above stays as its history. The maintainer decided that the run's
 no-answer note quotes the first error text, cleaned as the target cleans it, on one line,

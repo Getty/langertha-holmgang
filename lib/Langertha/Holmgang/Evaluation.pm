@@ -58,8 +58,9 @@ has thresholds => ( is => 'ro', default => sub { {} } );
 
 Optional. Per suite id the suite's C<threshold> as the loader reads it from
 F<suite.yaml>: C<< { 'suite-id' => { pass_rate => 0.9, pass_k => 0.5 } } >>.
-A report does not carry the threshold, so a suite missing here is judged by its
-hard cases alone.
+A report does not carry the threshold, so a suite missing here is judged
+without one: by its hard cases, an unfinished run and whether anything was
+measured (L</verdicts>).
 
 =cut
 
@@ -413,14 +414,17 @@ sub _build_verdicts {
     };
     my $below = ( defined $out->{pass_rate} && ( !defined $out->{rate} || $out->{rate} < $out->{pass_rate} ) )
       || ( defined $out->{pass_k_min} && ( !defined $out->{pass_k} || $out->{pass_k} < $out->{pass_k_min} ) );
-    # repetitions_error is reported, not part of ok: ADR 0009 k42 keeps the verdicts as they
-    # were once a result was measured (ADR 0008 k58 amendment)
-    $out->{ok} = $below || @{ $out->{hard_failed} } || $out->{unfinished}
+    # a suite without any measured repetition is not ok; unmeasured repetitions
+    # next to a measured one are only reported -- ADR 0009 k42 (ADR 0008 k73 amendment)
+    $out->{ok} = $below || @{ $out->{hard_failed} } || $out->{unfinished} || $self->_unmeasured($out)
       ? JSON::MaybeXS::false() : JSON::MaybeXS::true();
     push @out, $out;
   }
   return \@out;
 }
+
+# a verdict whose suite measured nothing: no repetition reached the target (k73)
+sub _unmeasured { my ( $self, $v ) = @_; return $v->{repetitions_error} == $v->{k} }
 
 =attr verdicts
 
@@ -440,15 +444,20 @@ C<pass_k> is below C<pass_k_min> (or there is no case), or when a hard case
 whatever the rate. Never C<ok> either, with or without a threshold, when
 C<unfinished> is set: the run's C<status> and C<error> when its status is not
 C<complete> (C<cancelled>, C<aborted>), so its results are a partial state
-even if all of them passed. Without a threshold the hard cases and
-C<unfinished> decide.
+even if all of them passed. Nor is it C<ok>, with or without a threshold,
+when the suite measured nothing: C<repetitions_error> equals C<k>. Without a
+threshold the hard cases, C<unfinished> and that decide.
 
 C<repetitions_error> is the number of repetitions (of C<k>) in which no case
 has a result other than C<error>, none at all included: the target was not
-reached (401, timeout, connection refused) and nothing was measured;
-C<context_exceeded> counts as reached. It is reported and noted in the text,
-but does not decide C<ok> (unlike cai-platform's C<runs_error>; ADR 0008,
-k58 amendment).
+reached (401, 429, timeout, connection refused) and nothing was measured.
+C<context_exceeded>, C<no_vision> and every other status count as reached, so
+a suite all C<context_exceeded> is a measurement and can be C<ok>. When every
+repetition measured nothing the verdict is not C<ok>; when some did and at
+least one was measured, it is reported and noted in the text but does not
+decide C<ok> (ADR 0008, k73 amendment; cai-platform's C<runs_error> decides
+for any count). C<ok> false with C<repetitions_error> equal to C<k> is what
+the text shows as C<NOT MEASURED>.
 
 B<Reliability:> C<k> is the run's C<repeat>; C<pass_k> is the weighted share
 of cases passed in all C<k> repetitions, C<pass_any> (pass@k) of those passed in
@@ -561,7 +570,8 @@ sub _tables {
     push @vrows, [ $v->{target}, $self->_cell( $v->{variant} ), $v->{suite_id},
       $v->{passed}.'/'.$v->{results}, $self->_pct( $v->{rate} ), $self->_pct( $v->{pass_rate} ),
       $v->{k} > 1 ? $self->_pct( $v->{pass_k} ).' (k='.$v->{k}.')' : '-',
-      $self->_pct( $v->{pass_k_min} ), $v->{ok} ? 'ok' : 'NOT PASSED' ];
+      $self->_pct( $v->{pass_k_min} ),
+      $v->{ok} ? 'ok' : $self->_unmeasured($v) ? 'NOT MEASURED' : 'NOT PASSED' ];
     push @notes, [
       ( $v->{unfinished}
         ? 'run '.$v->{unfinished}{status}.( defined $v->{unfinished}{error} ? ': '.$self->_line( $v->{unfinished}{error} ) : '' ) : () ),
@@ -621,7 +631,9 @@ The comparison table, the verdicts (with a note for an unfinished run, for
 repetitions without a measurement and for each hard case that failed one),
 when any case has a tier the tier curves, and when any case has a difficulty
 the difficulty curves — as aligned plain-text tables.
-Rates as percentages, C<-> for none.
+Rates as percentages, C<-> for none. A verdict reads C<ok>, C<NOT MEASURED>
+when the suite measured nothing (whatever else failed it; the notes say the
+rest), or C<NOT PASSED>.
 
 =cut
 

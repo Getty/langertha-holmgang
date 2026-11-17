@@ -604,7 +604,11 @@ and the first error text of the run (the first result in suite, case and
 repetition order; already scrubbed by the target, put on one line, cut to 200
 characters with an ellipsis) and returns 1, whatever the verdicts. The report is written as always. When at
 least one result was measured, the verdicts decide; a suite in which no case
-got an answer then gets a note on the error handle. An aborted run stays 2.
+got an answer then gets a note on the error handle, and one whose results are
+all C<error> also fails its verdict (C<NOT MEASURED>,
+L<Langertha::Holmgang::Evaluation/verdicts>), so the run returns 1; all
+C<context_exceeded> or C<no_vision> is a measurement and gets only the note.
+An aborted run stays 2.
 The engine's warnings while it is built go to the error handle, cleaned like
 a relayed error.
 
@@ -649,9 +653,12 @@ sub cmd_report {
 
 C<holmgang report>: reads the report files, joins them in one
 L<Langertha::Holmgang::Evaluation> and prints it as text, Markdown or JSON.
-Thresholds come from the suites given with C<--suite>; without them only the
-hard cases decide a verdict. Returns 1 when a verdict is not ok, 2 when a file
-does not read or the reports conflict.
+Thresholds come from the suites given with C<--suite>; without them a verdict
+is judged by its hard cases, an unfinished run and whether anything was
+measured (L<Langertha::Holmgang::Evaluation/verdicts>). Returns 1 when a
+verdict is not ok -- among them a suite whose results are all C<error>, so a
+report of a run that measured nothing returns 1 as C<run> did -- and 2 when a
+file does not read or the reports conflict.
 
 =cut
 

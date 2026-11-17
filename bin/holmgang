@@ -74,7 +74,9 @@ under C<--out> is a usage error before anything is written: nothing is
 overwritten.
 
 B<Exit codes:> C<0> everything loaded or ran and every verdict is ok; C<1> a
-suite was refused (lint, export-yaml), a verdict is not ok (run, report), or the target
+suite was refused (lint, export-yaml), a verdict is not ok (run, report; a
+suite in which every result is C<error> measured nothing, its verdict reads
+C<NOT MEASURED>, with or without a threshold), or the target
 answered no case of the run -- every result C<error>, C<context_exceeded> or
 C<no_vision> (run; said on standard error with the count per status and the
 first error text, the report is written all the same); C<2> a usage or setup
@@ -88,8 +90,8 @@ endpoint.
 =opt --suite DIR
 
 C<run>, C<report>: a suite directory, repeatable. For C<report> only the
-suites' C<threshold> is taken; without C<--suite> a verdict is judged by its
-hard cases alone.
+suites' C<threshold> is taken; without C<--suite> a verdict is judged without
+one: by its hard cases, an unfinished run and whether anything was measured.
 
 =opt --target NAME
 

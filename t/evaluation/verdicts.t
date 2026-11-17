@@ -10,9 +10,11 @@
 # whatever the rate, a soft one only lowers the rate; (6) weights weigh rate
 # and pass_k; (7) a run that did not complete is never ok, with or without a
 # threshold (cai-platform Eval::Batch::verdicts runs_aborted, ported in k58);
-# repetitions without any result but error (target not reached) are counted,
-# but do not decide ok (cai-platform's runs_error does; ADR 0008 k58 amendment
-# keeps ADR 0009 k42). Invented data only (ADR 0003).
+# repetitions without any result but error (target not reached) are counted;
+# a suite in which no repetition was measured at all is not ok, with or
+# without a threshold, shown NOT MEASURED, while some unmeasured repetitions
+# next to a measured one do not decide ok (ADR 0008 k73 amendment, reversing
+# part of k58; the partial rule is ADR 0009 k42). Invented data only (ADR 0003).
 use strict;
 use warnings;
 use FindBin;
@@ -113,18 +115,39 @@ subtest 'threshold pass_k' => sub {
   is $e->{pass_k}, undef, 'no results: pass_k undef';
   is $e->{rate}, undef, '... rate undef';
   is $e->{repetitions_error}, 1, '... the one repetition measured nothing';
-  ok $e->{ok}, '... without threshold ok (repetitions_error does not decide, k58)';
+  # flipped on purpose (k73): k58 claimed "no results, no threshold: ok"
+  ok !$e->{ok}, '... without threshold not ok either: no repetition measured (k73)';
 };
 
 subtest 'target not reached, run not finished (k58)' => sub {
   my $v = one( [ rounds( 'm', 's', [ a => 'error', b => 'error' ] ) ] );
   is $v->{repetitions_error}, 1, 'every case error: the repetition measured nothing';
   is $v->{unfinished}, undef, 'run complete';
-  ok $v->{ok}, 'ok without threshold: counted, not deciding (ADR 0009 k42)';
+  # flipped on purpose (k73): k58 claimed "ok without threshold: counted, not
+  # deciding" for this suite of one repetition, all error -- k = 1 makes it a
+  # suite with no measured repetition at all, so it is not ok now
+  ok !$v->{ok}, 'all error in the only repetition, no threshold: not ok (k73)';
+  $v = one( [ rounds( 'm', 's', [ a => 'error', b => 'error' ], [ a => 'error', b => 'error' ] ) ] );
+  is $v->{repetitions_error}, 2, 'all error in both repetitions: both measured nothing';
+  ok !$v->{ok}, '... not ok without threshold (k73)';
+  $v = one( [ rounds( 'm', 's', [ a => 'error' ], [] ) ] );
+  is $v->{repetitions_error}, 2, 'one repetition all error, the other without any result: neither measured';
+  ok !$v->{ok}, '... not ok (k73)';
+  ok !one( [ rounds( 'm', 's', [ a => 'error', b => 'error' ] ) ], { s => { pass_rate => 0.1 } } )->{ok},
+    'all error with a threshold: not ok';
+  # the k58 claim "counted, not deciding" holds where something was measured (ADR 0009 k42)
+  $v = one( [ rounds( 'm', 's', [ a => 'error', b => 'error' ], [ a => 'passed', b => 'failed' ] ) ] );
+  is $v->{repetitions_error}, 1, 'one of two repetitions measured nothing';
+  ok $v->{ok}, '... the other was measured: ok without threshold, counted, not deciding (ADR 0009 k42)';
   $v = one( [ rounds( 'm', 's', [ a => 'error', b => 'failed' ] ) ] );
   is $v->{repetitions_error}, 0, 'one case reached the target: measured';
+  ok $v->{ok}, '... ok without threshold';
   $v = one( [ rounds( 'm', 's', [ a => 'context_exceeded' ] ) ] );
   is $v->{repetitions_error}, 0, 'context_exceeded counts as reached';
+  ok $v->{ok}, '... all context_exceeded is a measurement: ok without threshold (k73)';
+  $v = one( [ rounds( 'm', 's', [ a => 'no_vision', b => 'context_exceeded' ] ) ] );
+  is $v->{repetitions_error}, 0, 'no_vision counts as reached';
+  ok $v->{ok}, '... ok without threshold (k73)';
   $v = one( [ rounds( 'm', 's', [ a => 'passed', b => 'passed' ], [ a => 'error', b => 'error' ], [ a => 'passed', b => 'passed' ] ) ],
     { s => { pass_rate => 0.5 } } );
   is $v->{rate}, 0.6667, 'rate above the threshold';
@@ -144,6 +167,18 @@ subtest 'target not reached, run not finished (k58)' => sub {
   like $ev->to_text, qr/^  run cancelled: stopped by hand$/m, 'text names the unfinished run';
   like $ev->to_text, qr/^  no result but error in 1 of 1 repetition\(s\): nothing measured$/m, '... and the repetitions without a measurement';
   like $ev->to_markdown, qr/^- m \/ plain \/ s: run cancelled: stopped by hand$/m, 'markdown note names its row';
+  like $ev->to_text, qr/^m\s+plain\s+o\s+0\/1\s.*\sNOT MEASURED$/m, 'nothing measured: the verdict reads NOT MEASURED (k73)';
+  like $ev->to_text, qr/^m\s+plain\s+s\s+1\/1\s.*\sNOT PASSED$/m, '... a verdict not ok for another reason NOT PASSED';
+  like $ev->to_markdown, qr/^\| m \| plain \| o \| 0\/1 \|.* \| NOT MEASURED \|$/m, '... in markdown too';
+  like $ev->to_markdown, qr/^\| m \| plain \| s \| 1\/1 \|.* \| NOT PASSED \|$/m, '... and NOT PASSED there';
+  my $partial = evaluation( [ rounds( 'm', 's', [ a => 'error' ], [ a => 'passed' ] ) ] )->to_text;
+  like $partial, qr/^m\s+plain\s+s\s+1\/2\s.*\sok$/m, 'one repetition measured: ok, not NOT MEASURED';
+  like $partial, qr/^  no result but error in 1 of 2 repetition\(s\): nothing measured$/m, '... the other noted';
+  my $none = evaluation( [ { target => 'm', suite => 's', repeat => 1, cases => ['a'], results => [],
+    status => 'cancelled', error => 'stopped at once' } ] )->to_text;
+  like $none, qr/^m\s+plain\s+s\s+0\/0\s.*\sNOT MEASURED$/m,
+    'a run cancelled before any result: NOT MEASURED, the stronger word (k73)';
+  like $none, qr/^  run cancelled: stopped at once$/m, '... the run noted';
   my $long = { %{ rounds( 'm', 's', [ a => 'passed' ] ) }, status => 'aborted', error => "line one\n  line two ".( 'x' x 300 ) };
   my ($note) = evaluation( [$long] )->to_text =~ /^  (run aborted: .*)$/m;
   like $note, qr/\Arun aborted: line one line two x+ \x{2026}\z/, 'a long multi-line run error: one line, cut with an ellipsis';
