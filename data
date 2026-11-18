@@ -1,0 +1,14 @@
+---
+class: standard
+created: 2026-11-18T08:02:21Z
+id: 74
+priority: medium
+status: backlog
+tags:
+- runner
+title: Lauf abbrechen, wenn das Ziel tot ist (Fehlerserie statt hunderte Fälle gegen
+  500)
+updated: 2026-11-18T08:02:21Z
+---
+
+Befund 2026-11-18 (cai-bench#4): cortex antwortete ab ca. 07:55 UTC nur noch 500 CudaFailed; holmgang run spielte rund 1500 Fälle in wenigen Minuten dagegen und zählte sie als error. Wunsch: nach N aufeinanderfolgenden Transportfehlern bzw. 5xx eines Ziels (Vorgabe z. B. 10) den Lauf für dieses Ziel anhalten, im Bericht als aborted mit Grund, Rest nicht als error zählen; Option --max-consecutive-errors.
