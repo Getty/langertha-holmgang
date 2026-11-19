@@ -8331,6 +8331,12 @@ sub _systemd_start {
         # Startmeldungen des Dienstes (Kolon, duerfen vom Zustand abhaengen)
         _log( $dev, $n, $svc, map { ( $svc->{exec} // $n ) . "[$pid]: " . _render( $_, $CTX ? $CTX->{state} : {} ) =~ s/\s+\z//r }
             @{ $svc->{start_log} || [] } );
+        if ( $n eq 'systemd-journald' && exists $svc->{_journald_flushed} ) {    # der neue journald meldet, wohin er schreibt
+            my $flush = delete $svc->{_journald_flushed};
+            my ($id) = map { m{\A/var/log/journal/([0-9a-f]{32})/} ? $1 : () } _under( $dev, '/var/log/journal' );
+            _log( $dev, $n, $svc, map {"systemd-journald[$pid]: $_"} 'Journal started', _journald_msgs($dev),
+                $flush && defined $id ? "Time spent on flushing to /var/log/journal/$id is 9.871ms for 1520 entries." : () );
+        }
     }
     _reopen_logs( $dev, $n ) unless $verb eq 'start' && $was;
     _pg_event( $dev, $n, $verb =~ /restart/ ? 'restart' : $verb ) unless $verb eq 'start' && $was;
@@ -8372,7 +8378,8 @@ sub _journal_lines {
     my ( $dev, $n, $svc, $host ) = @_;
     $host //= $dev->{hostname} // 'localhost';
     my $u = _uname($n);
-    my @l = ( @{ $svc->{journal} || [] }, @{ $svc->{_log} || [] } );
+    _journald_boot( $dev, $svc, $host ) if $n eq 'systemd-journald';
+    my @l = ( @{ $svc->{journal} || $svc->{_boot} || [] }, @{ $svc->{_log} || [] } );
     # eigene Simulation (nginx): Meldung des letzten gescheiterten Starts bzw. reload
     push @l, map {"Oct 24 09:12:03 $host $n\[2210]: $_"} split /\n/, $svc->{last_error} if defined $svc->{last_error};
     push @l, @{ $dev->{bind}{log} || [] } if $dev->{bind} && $n eq ( $dev->{bind}{service} // 'named' );
@@ -8404,7 +8411,7 @@ sub _journalctl {
     my ( $dev, $av, $ctx ) = @_;
     my $host = $ctx->{host};
     my @a = @$av;
-    my ( @units, $n, $grep, $since, $until, $out, $reverse, $file, $boots, $all_units, $kernel );
+    my ( @units, $n, $grep, $since, $until, $out, $reverse, $file, $boots, $all_units, $kernel, @ident, $header );
     my $val = sub { my ($x) = @_; $x =~ /=(.*)\z/s ? $1 : shift(@a) };
     while (@a) {
         my $x = shift @a;
@@ -8422,7 +8429,11 @@ sub _journalctl {
         elsif ( $x eq '-r' || $x eq '--reverse' ) { $reverse = 1 }
         elsif ( $x eq '--list-boots' )          { $boots = 1 }
         elsif ( $x eq '-k' || $x eq '--dmesg' ) { $kernel = 1 }    # Kernel-Meldungen: der Zustand kennt keine (wie dmesg)
-        elsif ( $x eq '-p' || $x eq '--priority' || $x eq '-t' || $x eq '--identifier' ) { shift @a }    # Prioritaeten nicht nachgebildet: alles
+        elsif ( $x eq '-p' || $x eq '--priority' ) { shift @a }    # Prioritaeten nicht nachgebildet: alles
+        elsif ( $x =~ /\A(?:-t|--identifier)(?:=.*)?\z/ ) { push @ident, [ SYSLOG_IDENTIFIER => $val->($x) // '' ] }
+        elsif ( $x =~ /\A_SYSTEMD_UNIT=(.+)\z/ ) { push @units, _unit($1) }
+        elsif ( $x =~ /\A(_COMM|SYSLOG_IDENTIFIER)=(.*)\z/ ) { push @ident, [ $1, $2 ] }
+        elsif ( $x eq '--header' ) { $header = 1 }
         elsif ( $x =~ /\A-(?:b|-boot)\z/ ) {    # nachgebildet ist nur der laufende Start (--list-boots: einer)
             return ( "Data from the specified boot ($a[0]) is not available: No such boot ID in journal.", 0 ) if @a && $a[0] =~ /\A-[1-9]\d*\z/;
             shift @a if @a && $a[0] =~ /\A-?\d+\z|\A[0-9a-f]{32}\z/;
@@ -8451,7 +8462,7 @@ sub _journalctl {
             return ( 'Vacuuming done, freed ' . _human($freed) . ' of archived journals from /var/log/journal.', 1 );
         }
         elsif ( $x =~ /\A-(?:x|-no-pager|-no-hostname|-quiet|q|-catalog|a|-all|-merge|m|-system|-utc|-no-full|l|-full)\z/ ) { }
-        elsif ( $x =~ /\A(?:-F|--field|--facility|--cursor|--after-cursor|--cursor-file|-D|--directory|--header|--namespace|-M|--machine|--output-fields|--show-cursor|--user|--user-unit|-I|-N|--fields)(?:=.*)?\z/ ) {
+        elsif ( $x =~ /\A(?:-F|--field|--facility|--cursor|--after-cursor|--cursor-file|-D|--directory|--namespace|-M|--machine|--output-fields|--show-cursor|--user|--user-unit|-I|-N|--fields)(?:=.*)?\z/ ) {
             push @GAPS, join( ' ', 'journalctl', @$av );    # echte Optionen ohne Nachbildung
             return ( '', 0 );
         }
@@ -8460,6 +8471,7 @@ sub _journalctl {
         else { push @GAPS, join( ' ', 'journalctl', @$av ); return ( '', 0 ) }    # Treffer wie _SYSTEMD_UNIT=…
     }
     return ( '-- No entries --', 1 ) if $kernel;
+    return _journal_header( $dev, $host ) if $header;
     # Zeilen mit Zeitpunkt: [ epoche, text ]
     my @l;
     if ( defined $file ) {
@@ -8475,6 +8487,13 @@ sub _journalctl {
     else {
         @l = ( ( map { my $s = $_; map { [ _jtime($_), $_ ] } _journal_lines( $dev, $s, $dev->{services}{$s}, $host ) } sort keys %{ $dev->{services} || {} } ),
             _journal_file_lines( $dev, $host ) );
+    }
+    # _COMM= (Prozessname, vom Kernel auf 15 Zeichen gekuerzt), SYSLOG_IDENTIFIER=/-t: der Name vor [pid]:
+    if (@ident) {
+        @l = grep {
+            my ($id) = $_->[1] =~ /\A\w{3}\s+\d+ \d\d:\d\d:\d\d \S+ ([^\s\[:]+)(?:\[\d+\])?:/;
+            defined $id && grep { $_->[1] eq ( $_->[0] eq '_COMM' ? substr( $id, 0, 15 ) : $id ) } @ident
+        } @l;
     }
     @l = sort { $a->[0] <=> $b->[0] } @l;
     if ($boots) {
@@ -8560,6 +8579,69 @@ sub _journal_file_lines {
         push @r, [ $lt - Langertha::Holmgang::Sim::Linux::Calendar::offset( $lt - 3600 ), "$stamp $host $m", $p ];
     }
     return @r;
+}
+
+# Was journald beim Start ueber seine Dateien meldet: "Runtime Journal (/run/log/journal/ID) is
+# 24.0M, max 195.2M, 171.2M free." bzw. "System Journal (/var/log/journal/ID) …" — Groesse aus den
+# Dateien, max aus SystemMaxUse=/RuntimeMaxUse= oder der Vorgabe (10 % des Dateisystems, hoechstens 4G)
+sub _journald_msgs {
+    my ($dev) = @_;
+    my $svc = ( $dev->{services} || {} )->{'systemd-journald'} || {};
+    my $t = $svc->{running} // _file_text( $dev, '/etc/systemd/journald.conf' ) // '';
+    $t = '' if ref $t;
+    my $fmt = sub { my $b = shift; for my $u (qw( G M K )) { return sprintf '%.1f%s', $b / $UNIT{$u}, $u if $b >= $UNIT{$u} } return "${b}B" };
+    my @m;
+    for my $k ( [ 'System', '/var/log/journal', 'SystemMaxUse' ], [ 'Runtime', '/run/log/journal', 'RuntimeMaxUse' ] ) {
+        my @f = grep { m{\A\Q$k->[1]\E/[0-9a-f]{32}/[^/]+\.journal~?\z} } _under( $dev, $k->[1] );
+        next unless @f;
+        my ($id) = $f[0] =~ m{/([0-9a-f]{32})/};
+        my $size = 0;
+        $size += _file_size( _file_entry( $dev, $_ ) ) for @f;
+        my ($max) = $t =~ /^\s*$k->[2]\s*=\s*(\S+)\s*$/m;
+        my $mb = defined $max ? _bytes($max) : undef;
+        if ( !defined $mb && $k->[0] eq 'System' ) {
+            my $fs = ( ( $dev->{mounts} || {} )->{'/'} || {} )->{size};
+            $mb = defined $fs ? _bytes($fs) / 10 : 4 * $UNIT{G};
+            $mb = 4 * $UNIT{G} if $mb > 4 * $UNIT{G};
+        }
+        $mb //= 195.2 * $UNIT{M};
+        push @m, "$k->[0] Journal ($k->[1]/$id) is " . $fmt->($size) . ', max ' . $fmt->($mb) . ', ' . $fmt->( $mb > $size ? $mb - $size : 0 ) . ' free.';
+    }
+    return @m;
+}
+
+# Die Meldungen von journald beim Start des Systems (einmal festgehalten, unter _boot)
+sub _journald_boot {
+    my ( $dev, $svc, $host ) = @_;
+    return if !$svc || $svc->{journal} || $svc->{_boot};
+    $host //= $dev->{hostname} // 'localhost';
+    require POSIX;
+    my $st = POSIX::strftime( '%b %e %H:%M:%S', _local_tm( _boot_epoch($dev) ) );    # der laufende Start (wie uptime, last)
+    $svc->{_boot} = [ map {"$st $host systemd-journald[231]: $_"} 'Journal started', _journald_msgs($dev) ];
+    return;
+}
+
+# journalctl --header: der Kopf jeder Journaldatei (die Felder, die eine Fachkraft liest: Pfad,
+# Zustand, Zeitraum, Groesse); IDs aus dem Pfad abgeleitet
+sub _journal_header {
+    my ( $dev, $host ) = @_;
+    require Digest::MD5;
+    my %t = map { $_->[2] => $_->[0] } _journal_file_lines( $dev, $host );
+    my @out;
+    for my $p ( grep {/\.journal~?\z/} _under( $dev, '/var/log/journal' ), _under( $dev, '/run/log/journal' ) ) {
+        my ($mid) = $p =~ m{/([0-9a-f]{32})/};
+        my $h = Digest::MD5::md5_hex($p);
+        my $size = _file_size( _file_entry( $dev, $p ) );
+        my $from = Langertha::Holmgang::Sim::Linux::Calendar::format_local( $p =~ m{\A/run/} ? _boot_epoch($dev) : $t{$p} // _dev_now($dev) );
+        my $to = Langertha::Holmgang::Sim::Linux::Calendar::format_local( _dev_now($dev) );
+        push @out, join( "\n", "File path: $p", 'File ID: ' . substr( $h, 0, 32 ), 'Machine ID: ' . ( $mid // '' ),
+            'Boot ID: 7f3e9c2b5a1d4e8f9b0c6a2d4e8f1a3c', 'Sequential number ID: ' . substr( Digest::MD5::md5_hex("seq$p"), 0, 32 ),
+            'State: ' . ( $p =~ /~\z/ ? 'OFFLINE' : 'ONLINE' ), 'Compatible flags: TAIL_ENTRY_BOOT_ID', 'Incompatible flags: COMPRESSED-ZSTD KEYED-HASH',
+            'Header size: 256', 'Arena size: ' . ( $size > 256 ? $size - 256 : 0 ), 'Rotate suggested: no',
+            "Head realtime timestamp: $from", "Tail realtime timestamp: $to", 'Disk usage: ' . _human($size) );
+    }
+    return ( 'No journal files were found.', 0 ) unless @out;
+    return ( join( "\n\n", @out ), 1 );
 }
 
 # Speichert journald dauerhaft? (Storage=persistent, oder auto mit /var/log/journal)
@@ -8896,7 +8978,10 @@ sub _restart_effect {
         # dauerhaft (Storage=persistent, oder auto mit /var/log/journal): legt das Verzeichnis
         # an und uebernimmt das Laufzeit-Journal aus /run/log/journal
         my ($st) = ( $t // '' ) =~ /^\s*Storage\s*=\s*(\S+)\s*$/m;
-        _journal_flush($dev) if ( $st // 'auto' ) eq 'persistent' || ( $st // 'auto' ) eq 'auto' && _is_dir( $dev, '/var/log/journal' );
+        _journald_boot( $dev, $svc, $CTX ? $CTX->{host} : undef );    # was beim Systemstart galt, vor dem Umzug
+        my $flush = ( $st // 'auto' ) eq 'persistent' || ( $st // 'auto' ) eq 'auto' && _is_dir( $dev, '/var/log/journal' );
+        _journal_flush($dev) if $flush;
+        $svc->{_journald_flushed} = $flush if $svc && $verb =~ /start/;    # Meldungen nach "Started" (_journald_started)
     }
     if ( $dev->{bind} && $name eq ( $dev->{bind}{service} // 'named' ) && !( $verb eq 'start' && $svc->{active} ) ) {
         _part('Dns');
