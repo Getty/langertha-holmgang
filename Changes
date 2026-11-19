@@ -1,6 +1,8 @@
 Revision history for Langertha-Holmgang
 
 {{$NEXT}}
+  - cpanfile declares the core modules the code loads but did not list:
+    Archive::Tar, File::Temp, JSON::PP, Text::ParseWords
   - Scenarios: a case may carry scenario (an id of [a-z0-9-]); cases with
     the same scenario are variants of one task. The report keeps the field,
     and every verdict of a suite with scenarios carries scenarios

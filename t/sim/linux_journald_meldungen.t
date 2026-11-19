@@ -19,10 +19,10 @@ use Holmgang::TestSim qw( run_command prepare clone );
 
 binmode Test::More->builder->$_, ':encoding(UTF-8)' for qw(output failure_output todo_output);
 
-my $id    = '5c1e7d2a9b8f4e3d8c6b4a2f0e1d3c5b';
+my $id    = '9e4b2c7a1f3d5e6b8a0c2d4f6e8a1b3c';
 my $conf  = "[Journal]\n#Storage=auto\n#SystemMaxUse=\n";
 my $start = {
-    app5 => {
+    srv7 => {
         type   => 'linux',
         clock  => 'Oct 21 10:30',
         mounts => { '/' => { dev => '/dev/vda1', size => '40G', used => '9G' } },
@@ -38,10 +38,10 @@ my $start = {
 };
 my $state = clone($start);
 prepare($state);
-sub sh { my ( $o, $ok, $gap ) = run_command( $state, 'app5', $_[0] ); return wantarray ? ( $o, $ok, $gap ) : $o }
+sub sh { my ( $o, $ok, $gap ) = run_command( $state, 'srv7', $_[0] ); return wantarray ? ( $o, $ok, $gap ) : $o }
 
 my $j = sh('journalctl -u systemd-journald --no-pager');
-like( $j, qr/\AOct 20 09:00:00 app5 systemd-journald\[231\]: Journal started\n/, 'Start: Journal started zur Startzeit' );
+like( $j, qr/\AOct 20 09:00:00 srv7 systemd-journald\[231\]: Journal started\n/, 'Start: Journal started zur Startzeit' );
 like( $j, qr{Runtime Journal \(/run/log/journal/$id\) is 24\.0M, max 195\.2M, 171\.2M free\.}, '... Runtime Journal in /run' );
 is( sh('journalctl -t systemd-journald --no-pager'), $j, '-t: dieselben Zeilen' );
 is( sh('journalctl SYSLOG_IDENTIFIER=systemd-journald --no-pager'), $j, 'SYSLOG_IDENTIFIER=' );

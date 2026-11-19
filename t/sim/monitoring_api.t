@@ -28,7 +28,7 @@ my $start = {
     mon => {
         type       => 'linux',
         clock      => 'Oct 24 09:12',
-        interfaces => { eth0 => { addr => ['10.20.0.93/24'], state => 'UP' } },
+        interfaces => { eth0 => { addr => ['10.20.0.50/24'], state => 'UP' } },
         files      => {
             '/etc/prometheus/prometheus.yml'   => $yml,
             '/etc/default/prometheus'          => qq{ARGS=""\n},
@@ -39,7 +39,7 @@ my $start = {
                 config => [ '/etc/prometheus/prometheus.yml', '/etc/default/prometheus' ], config_main => '/etc/prometheus/prometheus.yml',
                 config_check => 'prometheus', reload_config => ['/etc/prometheus/prometheus.yml'],
                 scrape_health => { '10.20.0.11:9100' => 'up', '10.20.0.12:9100' => 'dial tcp 10.20.0.12:9100: connect: connection refused' },
-                metrics => qq{# letzte Werte\nsicherung_letzter_erfolg_sekunden{instance="10.20.0.55:9100",job="sicherung"} 1792714660\n} },
+                metrics => qq{# letzte Werte\nbackup_last_success_seconds{instance="10.20.0.77:9100",job="backup"} 1792700000\n} },
             'prometheus-alertmanager' => { active => JSON::MaybeXS::true(), exec => 'prometheus-alertmanager',
                 config => ['/etc/prometheus/alertmanager.yml'], config_main => '/etc/prometheus/alertmanager.yml', config_check => 'alertmanager',
                 alert_targets => { db7 => { instance => 'db7:9100', team => 'db' } },
@@ -82,10 +82,10 @@ sub js { my $o = sh( $_[0] ); JSON::MaybeXS->new->decode($o) }
     is( $r->[0]{metric}{__name__}, 'up', '... Vergleich ohne bool behaelt den Namen' );
     $r = js(q{wget -qO- 'http://localhost:9090/api/v1/query?query=up%7Bjob%3D~%22no.*%22%7D'})->{data}{result};
     is( scalar @$r, 2, 'URL-kodiert, Regex-Matcher' );
-    $r = js('wget -qO- http://localhost:9090/api/v1/query?query=sicherung_letzter_erfolg_sekunden')->{data}{result};
-    is( $r->[0]{value}[1], '1792714660', 'Reihe aus metrics' );
-    $r = js(q{wget -qO- 'http://localhost:9090/api/v1/query?query=time() - sicherung_letzter_erfolg_sekunden'})->{data}{result};
-    is( $r->[0]{value}[1], $r->[0]{value}[0] - 1792714660, 'time() - x: Alter' );
+    $r = js('wget -qO- http://localhost:9090/api/v1/query?query=backup_last_success_seconds')->{data}{result};
+    is( $r->[0]{value}[1], '1792700000', 'Reihe aus metrics' );
+    $r = js(q{wget -qO- 'http://localhost:9090/api/v1/query?query=time() - backup_last_success_seconds'})->{data}{result};
+    is( $r->[0]{value}[1], $r->[0]{value}[0] - 1792700000, 'time() - x: Alter' );
     ok( !exists $r->[0]{metric}{__name__}, '... ohne Namen' );
     is_deeply( js('wget -qO- http://localhost:9090/api/v1/query?query=ALERTS')->{data}{result}, [], 'ALERTS leer wie /api/v1/alerts' );
     for my $q ( 'node_load1', 'rate(up[5m])', 'sum(up)' ) {
