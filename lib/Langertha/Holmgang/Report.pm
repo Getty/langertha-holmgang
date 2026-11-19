@@ -37,6 +37,7 @@ my %SPEC = (
   generator => { type => 'object', fields => {
     holmgang  => 'str',
     langertha => 'str',
+    sandbox   => { type => 'str', optional => 1, omit => 1 },
   } },
   run => { type => 'object', fields => {
     target  => 'target',
@@ -126,6 +127,7 @@ my %SPEC = (
     args      => 'any',
     succeeded => 'bool',
     sim_gap   => 'str',
+    sandbox   => { type => 'int', min => 0, optional => 1, omit => 1 },
   } },
   gap => { type => 'object', fields => {
     call => { type => 'int', min => 0 },
@@ -306,6 +308,7 @@ B<Result> — the per-repetition interface the runner produces, plain data:
         duration_ms, finish_reason, calls,                 # calls = tool calls of the turn
       }, … ],
       calls           => [ { tool, args, succeeded, sim_gap }, … ],   # in call order
+                         # + sandbox => N on a call whose programs ran for real (ADR 0011)
       forbidden_calls => 0,
       injection_held  => undef,             # undef without untrusted content
       transcript      => [ … ],             # messages; kept only with with_transcript
@@ -613,6 +616,8 @@ sub _shape {
     my %out;
     for my $f ( sort keys %{ $spec->{fields} } ) {
       my $fs = $spec->{fields}{$f};
+      # a field that exists only when it says something (sandbox): absent, not null
+      next if ref $fs && $fs->{omit} && !defined $value->{$f};
       croak __PACKAGE__.' '.$where.'.'.$f.' is missing'
         if $strict && !exists $value->{$f} && !( ref $fs && $fs->{optional} );
       $out{$f} = $self->_shape( $fs, $value->{$f}, $where.'.'.$f, $strict );

@@ -95,6 +95,25 @@ Optional. Class names to L</register> at construction.
 
 =cut
 
+has sandbox => ( is => 'rw', predicate => 'has_sandbox', clearer => 'clear_sandbox' );
+
+=attr sandbox
+
+Optional, read-write. An object with C<run> like
+L<Langertha::Holmgang::Sandbox::Docker>. With it, a simulator may run a real
+program it does not model instead of reporting a gap
+(L<Langertha::Holmgang::Sim::Linux/SANDBOX>); it reaches the simulator in the
+context of L</run_command> and L</write_file> as C<sandbox>. Unset in every
+registry a loader, lint or a test builds: without it no simulator leaves its
+state (ADR 0011).
+
+=cut
+
+sub _ctx {
+  my ( $self, $host, $state ) = @_;
+  return { host => $host, state => $state, ( $self->has_sandbox && $self->sandbox ? ( sandbox => $self->sandbox ) : () ) };
+}
+
 sub BUILD {
   my ( $self ) = @_;
   $self->register($_) for @{ $self->register_classes };
@@ -231,7 +250,7 @@ sub run_command {
   my $sim = $self->simulator( $dev->{type} );
   return ( 'ssh: connect to host '.$host.' port 22: Connection refused', 0 )
     unless $sim && $sim->can('run_command');
-  return $sim->run_command( $dev, $command // '', { host => $host, state => $state } );
+  return $sim->run_command( $dev, $command // '', $self->_ctx( $host, $state ) );
 }
 
 =method run_command
@@ -252,7 +271,7 @@ sub write_file {
   my $sim = $self->simulator( $dev->{type} );
   return ( 'scp: '.$host.': Datei schreiben auf diesem Gerät nicht möglich (nur Konsole über run_command)', 0 )
     unless $sim && $sim->can('write_file');
-  return $sim->write_file( $dev, $path // '', $content // '', { host => $host, state => $state } );
+  return $sim->write_file( $dev, $path // '', $content // '', $self->_ctx( $host, $state ) );
 }
 
 =method write_file

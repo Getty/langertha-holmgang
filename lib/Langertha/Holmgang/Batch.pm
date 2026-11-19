@@ -136,6 +136,21 @@ L</DESCRIPTION>).
 
 =cut
 
+has sandbox       => ( is => 'ro' );
+has sandbox_label => ( is => 'ro' );
+
+=attr sandbox
+
+Optional. A sandbox like L<Langertha::Holmgang::Sandbox::Docker>, handed to
+every runner (L<Langertha::Holmgang::Runner/sandbox>, ADR 0011).
+
+=attr sandbox_label
+
+Optional. What the report notes as C<generator.sandbox> when L</sandbox> is
+set: runtime, image and image id.
+
+=cut
+
 has on_event => ( is => 'ro' );
 
 =attr on_event
@@ -402,7 +417,7 @@ async sub _case_f {
     engine   => $self->_engine( $t, $job->{case}, $slot ),
     settings => $run->{variant}{settings},
   );
-  my $runner = $self->runner_class->new( target => $target );
+  my $runner = $self->runner_class->new( target => $target, ( $self->sandbox ? ( sandbox => $self->sandbox ) : () ) );
   return await $runner->run_case_f( $job->{case}, repetition => $job->{n}, no_vision => $no_vision );
 }
 
@@ -531,6 +546,7 @@ sub report {
       } @{ $suite->cases } ],
     );
   }
+  $report->generator->{sandbox} = $self->sandbox_label // ref $self->sandbox if $self->sandbox;
   $report->finish if $self->{_finished};
   return $report;
 }

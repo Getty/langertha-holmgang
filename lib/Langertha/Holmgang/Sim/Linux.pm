@@ -2433,6 +2433,170 @@ sub _su {
     return ( $o, $ok );
 }
 
+# --- Sandbox: ein echtes Programm statt einer Luecke (ADR 0011) -----------------------
+
+=head2 SANDBOX
+
+A real program the simulator does not model is a gap: empty output, failed, a
+C<sim_gap>. With a sandbox in the call's context (C<< $ctx->{sandbox} >>, an
+object with C<run> like L<Langertha::Holmgang::Sandbox::Docker>) such a command
+runs for real instead, on a copy of the device's files, and what it changed
+comes back into the state. Without one — in every load, lint and test — nothing
+changes.
+
+Only a command that cannot know more than the files goes there. All of these
+must hold, otherwise the gap stays:
+
+=over
+
+=item * The program is one of C<%SANDBOX> (interpreters and text tools:
+C<python3>, C<perl>, C<awk>, C<sed>, C<jq>, C<sort> …) or a file of the device
+whose first line names such an interpreter. Never a shell, never a program the
+simulator models, never one that speaks to a service (C<openssl>, C<tar>,
+C<mysql>, C<curl>).
+
+=item * It runs as root on the device itself — not under C<sudo -u>, not in a
+pod.
+
+=item * Its arguments, its input and its script name nothing only the
+simulation knows: no other process (C<subprocess>, C<system>, backticks), no
+network or database client, no C</proc>, C</sys>, C</run>, no account or disk
+query, no file whose content the state only describes by its size, and no file
+the simulator derives (C</etc/nftables.conf> from the ruleset, a C<.git>).
+
+=back
+
+The program sees the simulation's clock and the device's host name. Files it
+wrote, changed or removed are the device's afterwards; C<__pycache__> is not.
+A program missing from the image, or a result past the sandbox's bounds, leaves
+the gap as it was.
+
+=cut
+
+our %SANDBOX = map { $_ => 1 } qw( python3 python perl awk gawk mawk sed jq sha256sum sha1sum md5sum realpath basename
+    dirname seq column od xxd hexdump head tail wc sort uniq cut tr fold nl tac rev paste comm join expr bc diff cmp );
+
+# was nur die Simulation weiss: andere Prozesse, Netz, Datenbanken, Konten, Platten, Kernel
+my $SANDBOX_REFUSE = qr{
+    \bsubprocess\b | \bos\.(?:system|popen|exec\w*|spawn\w*|kill|getpid|getuid|geteuid|statvfs|uname|getloadavg)\b
+  | \bPopen\b | \bpty\b | \bshutil\.(?:disk_usage|chown|which)\b | \bpsutil\b | \bplatform\.
+  | \bsystem\s*\( | \bexec\s*\( | \bqx\b | ` | \|\s*getline | \bopen\s*\([^)]*[|]
+  | \bsocket\b | \burllib\b | \brequests\b | \bhttp\.client\b | \bhttpx\b | \baiohttp\b | \bsmtplib\b | \bftplib\b | \bparamiko\b
+  | \bIO::Socket\b | \bLWP\b | \bHTTP::Tiny\b | \bNet:: | \bDBI\b | \bpsycopg\w*\b | \bpymysql\b | \bMySQLdb\b | \bredis\b | \bsqlite3\b
+  | \bpwd\b | \bgrp\b | \bgetpw\w+ | \bgetgr\w+ | \bgetlogin\b | \bsignal\b | \bdocker\b | \bkubernetes\b | \bdbus\b | \bsystemd\b
+  | /proc(?:/|\b) | /sys(?:/|\b) | /run(?:/|\b) | /dev/(?!null\b|stdin\b|stdout\b|stderr\b)
+}x;
+
+# Darf diese Befehlszeile in die Sandbox? ( argv fuer die Sandbox ) oder die leere Liste
+sub _sandbox_argv {
+    my ( $dev, $argv, $stdin ) = @_;
+    return if defined $AS_USER && $AS_USER ne 'root';
+    return if $dev->{pod} || ref $dev->{files} ne 'HASH' && defined $dev->{files};
+    my @a = @$argv;
+    ( my $prog = $a[0] ) =~ s{\A.*/}{};
+    my $text = join( "\n", @a, $stdin // '' );
+    if ( $a[0] =~ m{/} && !$SANDBOX{$prog} || !$SANDBOX{$prog} ) {
+        # ein Programm aus dem Zustand: nur mit einem Interpreter aus %SANDBOX in der ersten Zeile
+        my $path = $a[0] =~ m{/} ? _absp( $a[0] ) : _prog_file( $dev, $a[0] ) // return;
+        my $src = _file_text( $dev, $path ) // return;
+        my ($interp) = $src =~ m{\A\#!\s*(?:/usr/bin/env\s+|\S*/)([\w.+-]+)} or return;
+        return unless $SANDBOX{$interp};
+        $text .= "\n" . $src;
+        $a[0] = $path;
+    }
+    # das Skript hinter dem Interpreter (python3 /opt/x.py) gehoert zum Text
+    if ( $prog =~ /\A(?:python3?|perl|[gm]?awk|sed|jq)\z/ ) {
+        for my $x ( grep { !/\A-/ } @a[ 1 .. $#a ] ) {
+            my $t = _file_text( $dev, _absp($x) );
+            $text .= "\n" . $t if defined $t && length $t < 200_000;
+        }
+    }
+    return if $text =~ $SANDBOX_REFUSE;
+    # genannte Pfade: nichts, dessen Inhalt der Zustand nur beschreibt oder der Simulator ableitet
+    my @named = map { s{[*?\[].*\z}{}sr =~ s{/+\z}{}r } $text =~ m{(/[\w.\@+*?\[\]-]+(?:/[\w.\@+*?\[\]-]+)*)}g;
+    my $files = $dev->{files} || {};
+    for my $p ( keys %$files ) {
+        my $e = $files->{$p};
+        next unless ref $e eq 'HASH' && !defined $e->{link} && ( defined $e->{size} || defined $e->{open_by} );
+        return if grep { length && ( $p eq $_ || index( $p, "$_/" ) == 0 ) } @named;
+        return if grep { $_ eq '' } @named;    # "/" selbst
+    }
+    for my $m ( grep {length} @named ) {
+        next if exists $files->{$m} || grep { index( $_, "$m/" ) == 0 } keys %$files;
+        return if defined _file_text( $dev, $m );    # abgeleitet: nftables.conf, wg0.conf, .git, /proc/sys
+        return if $m =~ m{\A/etc/(?:passwd|group|shadow|gshadow|hostname|hosts|resolv\.conf|fstab|mtab|os-release)\z};
+    }
+    return @a;
+}
+
+# Die Dateien des Geraets fuer die Sandbox; undef, wenn es zu viel ist
+sub _sandbox_files {
+    my ($dev) = @_;
+    my ( %f, %d );
+    my $total = 0;
+    my $uid = sub { my $u = ( $dev->{users}  || {} )->{ $_[0] // 'root' }; ref $u eq 'HASH' ? $u->{uid} // 0 : 0 };
+    my $gid = sub { my $g = ( $dev->{groups} || {} )->{ $_[0] // 'root' }; ref $g eq 'HASH' ? $g->{gid} // 0 : 0 };
+    for my $p ( sort keys %{ $dev->{files} || {} } ) {
+        next unless $p =~ m{\A/};
+        my $e = _file_entry( $dev, $p ) or next;
+        if ( defined $e->{link} ) { $f{$p} = { link => $e->{link} }; next }
+        next if defined $e->{size} || defined $e->{open_by};
+        my $t = _file_text( $dev, $p ) // next;
+        $total += length $t;
+        return undef if $total > 8 * 1024 * 1024;
+        $f{$p} = { content => $t, mode => _mode_of($e), uid => $uid->( $e->{owner} ), gid => $gid->( $e->{group} ), mtime => _mtime($e) };
+    }
+    for my $p ( sort keys %{ $dev->{dirs} || {} } ) {
+        my $e = $dev->{dirs}{$p};
+        $e = {} unless ref $e eq 'HASH';
+        $d{$p} = { mode => oct( $e->{mode} // '0755' ), uid => $uid->( $e->{owner} ), gid => $gid->( $e->{group} ) };
+    }
+    return ( \%f, \%d );
+}
+
+# Ein echter Befehl ohne Nachbildung: in der Sandbox, sonst die Luecke (neutrale Antwort)
+sub _real {
+    my ( $dev, $ctx, $argv, $stdin ) = @_;
+    my $gap = sub { push @GAPS, join( ' ', @$argv ); return ( '', 0 ) };
+    my $sandbox = ( $ctx || {} )->{sandbox} // ( $CTX || {} )->{sandbox} or return $gap->();
+    my @a = _sandbox_argv( $dev, $argv, $stdin ) or return $gap->();
+    my ( $files, $dirs ) = _sandbox_files($dev);
+    return $gap->() unless $files;
+    my $host = ( $ctx || $CTX || {} )->{host};
+    my ( $r, $why ) = $sandbox->run(
+        argv => \@a, files => $files, dirs => $dirs, stdin => $stdin, cwd => $CWD_DIR // '/root',
+        env => { %{ $SHENV || {} } }, now => _pki_now($dev) // _sim_now(), tz => $DATE_TZ // $dev->{timezone} // 'Europe/Berlin',
+        host => $dev->{hostname} // $host // 'localhost',
+    );
+    unless ($r) {    # versucht und nicht brauchbar: die Luecke nennt den Grund
+        push @GAPS, join( q{ }, @$argv ) . q{ (sandbox: } . ( $why // q{no result} ) . q{)};
+        return ( q{}, 0 );
+    }
+    for my $p ( sort keys %{ $r->{changed} || {} } ) {
+        next if $p =~ m{/__pycache__/|\.pyc\z};
+        my $c = $r->{changed}{$p};
+        if ( defined $c->{link} ) { $dev->{files}{$p} = { link => $c->{link} }; next }
+        my $old = $dev->{files}{$p};
+        my $mode = sprintf '%04o', $c->{mode} // 0644;
+        if ( defined $old ) {
+            _file_set( $dev, $p, $c->{content} );
+            if ( ref $old eq 'HASH' ? _mode_of($old) != oct $mode : $mode ne '0644' ) {
+                $dev->{files}{$p} = { content => $c->{content} } unless ref $dev->{files}{$p} eq 'HASH';
+                $dev->{files}{$p}{mode} = $mode;
+            }
+        }
+        else { $dev->{files}{$p} = $mode eq '0644' ? $c->{content} : { content => $c->{content}, mode => $mode } }
+    }
+    for my $p ( @{ $r->{deleted} || [] } ) {
+        ( my $dir = $p ) =~ s{/[^/]+\z}{};
+        delete $dev->{files}{$p};
+        $dev->{_dirs}{$dir} = 1 if length $dir && !_is_dir( $dev, $dir );
+    }
+    ( my $out = $r->{output} // '' ) =~ s/\n\z//;
+    $SH->{code} = $r->{exit} if $SH && $r->{exit} > 1;
+    return ( $out, $r->{exit} ? 0 : 1 );
+}
+
 sub _command {
     my ( $class, $dev, $argv, $ctx, $stdin ) = @_;
     local $AS_USER = $LOGIN_USER;
@@ -2553,14 +2717,12 @@ sub _command {
         else {
             my $e = _file_entry( $dev, _absp($cmd) ) or return ( "bash: $cmd: No such file or directory", 0 );
             return ( "bash: $cmd: Permission denied", 0 ) unless _mode_of($e) & 0111;
-            push @GAPS, join( ' ', $cmd, @a );    # Skript/Programm aus dem Zustand: nicht nachgebildet
-            return ( '', 0 );
+            return _real( $dev, $ctx, [ $cmd, @a ], $stdin );    # Skript/Programm aus dem Zustand: nicht nachgebildet
         }
     }
     my $f   = $web_cmd // $CMD{$cmd};
     if ( !$f && !$FILTER{$cmd} && !$REAL{$cmd} && ( my $prog = _prog_file( $dev, $cmd ) ) ) {
-        push @GAPS, join( ' ', $prog, @a );    # installiertes Programm ohne Nachbildung
-        return ( '', 0 );
+        return _real( $dev, $ctx, [ $prog, @a ], $stdin );    # installiertes Programm ohne Nachbildung
     }
     if ( !$f && $FILTER{$cmd} ) {
         # Filter mit Datei-Argument: head -n 5 /etc/x, awk '{print $1}' datei, …
@@ -2611,20 +2773,17 @@ sub _command {
         my ( $t, $k ) = Langertha::Holmgang::Shell::Filter::filter_output( $text, [ $cmd, @rest ] );
         $t .= " $files[0]" if defined $t && $cmd eq 'wc' && @files == 1;    # wc -c datei: "123 datei"
         return ( $t, $k ) if defined $t;
-        push @GAPS, join( ' ', $cmd, @a );
-        return ( '', 0 );
+        return _real( $dev, $ctx, [ $cmd, @a ], $stdin );
     }
     if ( !$f ) {
         if ( $cmd =~ m{/} ) {    # Programm mit Pfad: gibt es die Datei, laeuft es (Luecke), sonst wie bash
             return ( "bash: $cmd: No such file or directory", 0 ) unless _file_entry( $dev, $cmd );
-            push @GAPS, join( ' ', $cmd, @a );
-            return ( '', 0 );
+            return _real( $dev, $ctx, [ $cmd, @a ], $stdin );
         }
         return ( "bash: $cmd: command not found", 0 ) if $NOT_INSTALLED{$cmd} || !$REAL{$cmd};
-        # Echter Befehl ohne Simulation: neutrale Antwort, als Luecke vermerkt
-        push @GAPS, join( ' ', $cmd, @a );
-        return ( 'Error opening terminal: unknown.', 0 ) if $INTERACTIVE{$cmd};
-        return ( '', 0 );
+        # Echter Befehl ohne Simulation: neutrale Antwort, als Luecke vermerkt — oder echt in der Sandbox (_real)
+        if ( $INTERACTIVE{$cmd} ) { push @GAPS, join( ' ', $cmd, @a ); return ( 'Error opening terminal: unknown.', 0 ) }
+        return _real( $dev, $ctx, [ $cmd, @a ], $stdin );
     }
     my ( $out, $ok ) = eval { $f->( $dev, \@a, $ctx, $stdin ) };
     if ( my $e = $@ ) {

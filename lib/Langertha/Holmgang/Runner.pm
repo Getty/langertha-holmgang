@@ -105,7 +105,24 @@ has grader => (
   lazy    => 1,
   builder => '_build_grader',
 );
-sub _build_grader { Langertha::Holmgang::Grader->new }
+has sandbox => ( is => 'ro', predicate => 'has_sandbox' );
+
+=attr sandbox
+
+Optional. A sandbox like L<Langertha::Holmgang::Sandbox::Docker>: the registry
+of the L</grader> this runner builds carries it, so a real program the Linux
+simulator does not model runs there instead of ending as a gap
+(L<Langertha::Holmgang::Simulators/sandbox>, ADR 0011). A call then names in
+C<sandbox> how many programs ran for real. L</lint_mock_runs> never uses it.
+
+=cut
+
+sub _build_grader {
+  my ( $self ) = @_;
+  return Langertha::Holmgang::Grader->new unless $self->has_sandbox && $self->sandbox;
+  require Langertha::Holmgang::Simulators;
+  return Langertha::Holmgang::Grader->new( simulators => Langertha::Holmgang::Simulators->new( sandbox => $self->sandbox ) );
+}
 
 =attr grader
 
@@ -186,7 +203,9 @@ async sub run_case_f {
     my @results;
     for my $tc ( @tc ) {
       my ( $out, $args, $ok, $gap ) = $world->call( $tc->name, $self->_call_arguments($tc) );
-      push @calls, { tool => $tc->name, args => _plain($args), succeeded => $ok ? 1 : 0, sim_gap => $gap };
+      my @real = $self->has_sandbox && $self->sandbox && $self->sandbox->can('take_log') ? $self->sandbox->take_log : ();
+      push @calls, { tool => $tc->name, args => _plain($args), succeeded => $ok ? 1 : 0, sim_gap => $gap,
+        ( @real ? ( sandbox => scalar @real ) : () ) };
       push @results, { tool_call => $tc, result => { content => [ { type => 'text', text => $out // '' } ] } };
     }
     push @conversation, @{ _plain( [ $engine->format_tool_results( $response->raw, \@results ) ] ) };
@@ -198,6 +217,8 @@ async sub run_case_f {
     ( defined $error ? ( error => $error, error_class => $error_class ) : () ),
     ( $turn_limit ? ( turn_limit => 1 ) : () ),
   } );
+  # programs a rule of the grader ran for real belong to no call
+  $self->sandbox->take_log if $self->has_sandbox && $self->sandbox && $self->sandbox->can('take_log');
   return {
     case_id         => $case->id,
     repetition      => $o{repetition} // 1,
@@ -243,7 +264,8 @@ C<duration_ms> (wall time of the call), C<finish_reason>, C<calls> (tool
 calls of the turn).
 
 =item * C<calls> -- every tool call in order: C<tool>, C<args> (decoded),
-C<succeeded>, C<sim_gap>.
+C<succeeded>, C<sim_gap>, and C<sandbox> (the number of programs of the call
+that ran for real) when a L</sandbox> was used.
 
 =item * C<transcript> -- the conversation without the system prompt, in the
 engine's wire format, ending with the final assistant text.
