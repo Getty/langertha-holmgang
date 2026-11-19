@@ -7490,12 +7490,21 @@ sub _nft_verdict {
 # Netz, die kein Geraet des Zustands traegt und die der Zustand nirgends nennt (Datei, Route,
 # Nameserver, Gegenstelle), gibt es nicht: 'nohost'. Hinter einem Gateway weiss die Welt es
 # nicht (undef), ebenso bei einer Adresse, die irgendwo im Zustand steht.
+# Liegt die Adresse in einem Netz, an dem das Geraet selbst haengt? (auch ohne Eintrag in routes:
+# die Route des Kerns fuer das eigene Netz gibt es immer)
+sub _onlink {
+    my ( $dev, $ip ) = @_;
+    return scalar grep { m{/} && _in( $ip, $_ ) } map { @{ $_->{addr} || [] } } grep { ref eq 'HASH' && ( $_->{state} // 'UP' ) ne 'DOWN' } values %{ $dev->{interfaces} || {} };
+}
+
 sub _absent {
     my ( $dev, $ip ) = @_;
     return undef unless defined $ip && defined _ip2n($ip);
-    my ( $r ) = _lookup( $dev, $ip );
-    return 'unreach' unless $r;
-    return undef if defined $r->{via};
+    if ( !_onlink( $dev, $ip ) ) {
+        my ( $r ) = _lookup( $dev, $ip );
+        # keine Route, obwohl das Geraet Routen hat: nicht erreichbar; sonst weiss die Welt es nicht
+        return !$r && @{ $dev->{routes} || [] } ? 'unreach' : undef;
+    }
     my $state = $CTX ? $CTX->{state} : undef;
     return undef unless ref $state eq 'HASH';
     return undef if $CLONE_JSON->encode($state) =~ /(?<![0-9.])\Q$ip\E(?![0-9.])/;
@@ -7532,7 +7541,7 @@ sub _tcp_probe {
     }
     return _absent( $dev, $host ) unless $tgt;
     $ip //= _ip2n($host) ? $host : ( _own_addrs($tgt) )[0] // return undef;
-    return 'unreach' unless _lookup( $dev, $ip );
+    return 'unreach' unless _lookup( $dev, $ip ) || _onlink( $dev, $ip );
     my ($src) = grep { my $s = $_; grep { _in( $s, $_ ) } map { @{ $_->{addr} || [] } } values %{ $tgt->{interfaces} || {} } } @own;
     $src //= $own[0] // return undef;
     my ($iif) = grep { grep { m{/} && _in( $src, $_ ) } @{ $tgt->{interfaces}{$_}{addr} || [] } } sort keys %{ $tgt->{interfaces} || {} };
@@ -9503,7 +9512,7 @@ sub _ping {
     $count = 4 unless defined $count && $count =~ /\A\d+\z/ && $count > 0 && $count < 20;
     my $src = defined $from && defined _ip2n($from) ? $from : undef;
     my ($r) = _lookup( $dev, $to, $src );
-    return ( "ping: connect: Network is unreachable", 0 ) unless $r;
+    return ( "ping: connect: Network is unreachable", 0 ) unless $r || _onlink( $dev, $to );
     if ( ( _absent( $dev, $to ) // q{} ) eq 'nohost' ) {    # im eigenen Netz gibt es die Adresse nicht (ADR 0012)
         my ( $own ) = defined $src ? $src : map { s{/\d+\z}{}r } grep { m{/} && _in( $to, $_ ) } map { @{ $_->{addr} || [] } } values %{ $dev->{interfaces} || {} };
         $own //= ( _own_addrs($dev) )[0] // $to;

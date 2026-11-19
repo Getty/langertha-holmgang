@@ -6,7 +6,8 @@ Revision history for Langertha-Holmgang
     state names nowhere does not exist: /dev/tcp, nc, wget and curl fail
     with "No route to host" and ping with "Destination Host Unreachable",
     without a sim_gap. Named addresses and everything beyond a gateway
-    answer as before (ADR 0012)
+    answer as before. A device reaches its own networks even when the
+    case lists no routes (ADR 0012)
   - `holmgang run --sandbox docker|podman [--sandbox-image IMAGE]`: a real
     program the Linux simulator does not model (python3 -c, perl -e, an awk
     script past the filter grammar) runs in a locked-down container on a

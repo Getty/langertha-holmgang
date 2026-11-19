@@ -100,4 +100,18 @@ for my $t (
   ok( !defined $gap, '… ohne Luecke' );
 }
 
+# --- ein Geraet ohne eingetragene Routen: das eigene Netz gibt es trotzdem ------------------------
+{
+  my $s = world();
+  delete $s->{$_}{routes} for qw( app1 db2 );
+  my ( $o, $ok, $gap ) = $sims->run_command( $s, 'app1', 'nc -zv 10.40.0.72 22' );
+  is( $o, 'Connection to 10.40.0.72 22 port [tcp/ssh] succeeded!', 'ohne routes: der Nachbar im eigenen Netz ist erreichbar' );
+  ( $o, $ok, $gap ) = $sims->run_command( $s, 'app1', 'ping -c 1 10.40.0.72' );
+  ok( $ok, '… und pingbar' );
+  ( $o, $ok, $gap ) = $sims->run_command( $s, 'app1', 'nc -zv 10.40.0.7 22' );
+  like( $o, qr/No route to host/, 'ohne routes: eine unbekannte Nachbaradresse gibt es nicht' );
+  ( $o, $ok, $gap ) = $sims->run_command( $s, 'app1', 'echo > /dev/tcp/192.0.2.9/443' );
+  ok( defined $gap, 'ohne routes: ausserhalb des eigenen Netzes weiss die Welt es nicht (Luecke)' );
+}
+
 done_testing;
