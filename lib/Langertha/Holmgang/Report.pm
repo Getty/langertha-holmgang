@@ -70,6 +70,7 @@ my %SPEC = (
     tags        => { type => 'array', of => 'str' },
     tier        => 'str',
     difficulty  => { type => 'str', optional => 1 },
+    scenario    => { type => 'str', optional => 1, omit => 1 },
     weight      => { type => 'num', min => 0 },
     hard        => 'bool',
     untrusted   => 'bool',
@@ -237,7 +238,8 @@ sub add_run {
       unless ref $c eq 'HASH' && defined $c->{case_id};
     croak __PACKAGE__.'->add_run '.$where.': case '.$c->{case_id}.' listed twice'
       if $case{ $c->{case_id} };
-    $case{ $c->{case_id} } = { ( map { $_ => $c->{$_} } qw( case_id title tags tier difficulty weight hard untrusted ) ), repetitions => [] };
+    $case{ $c->{case_id} } = { ( map { $_ => $c->{$_} } qw( case_id title tags tier difficulty weight hard untrusted ) ),
+      ( defined $c->{scenario} ? ( scenario => $c->{scenario} ) : () ), repetitions => [] };
     push @order, $c->{case_id};
   }
   my %seen;
@@ -756,6 +758,7 @@ sub from_cai_platform {
             title       => $c->{title},
             difficulty  => defined $c->{difficulty} ? $c->{difficulty} : $cm->{difficulty},
             ( map { $_ => $cm->{$_} } qw( tags tier weight hard untrusted ) ),
+            ( defined( $c->{scenario} // $cm->{scenario} ) ? ( scenario => $c->{scenario} // $cm->{scenario} ) : () ),
             repetitions => [],
           };
           push @case_order, $id;

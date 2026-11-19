@@ -1,6 +1,12 @@
 Revision history for Langertha-Holmgang
 
 {{$NEXT}}
+  - Scenarios: a case may carry scenario (an id of [a-z0-9-]); cases with
+    the same scenario are variants of one task. The report keeps the field,
+    and every verdict of a suite with scenarios carries scenarios
+    { total, solved, rate, unsolved }: a scenario is solved only when every
+    variant passed in all k repetitions (AppWorld's scenario goal
+    completion). The text notes it per suite; it does not decide ok
   - journald speaks about itself: journalctl -u systemd-journald shows at
     the boot time "Journal started" and "Runtime Journal (/run/log/journal/
     ID) is …, max …, … free." (or "System Journal" in /var), and a restart
