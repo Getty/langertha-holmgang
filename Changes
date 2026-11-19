@@ -1,6 +1,6 @@
 Revision history for Langertha-Holmgang
 
-{{$NEXT}}
+0.002     2026-11-19 18:21:03Z
   - cpanfile declares the core modules the code loads but did not list:
     Archive::Tar, File::Temp, JSON::PP, Text::ParseWords
   - Scenarios: a case may carry scenario (an id of [a-z0-9-]); cases with
