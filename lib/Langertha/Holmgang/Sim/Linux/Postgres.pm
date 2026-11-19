@@ -10,7 +10,7 @@ use JSON::MaybeXS ();
 use Langertha::Holmgang::Sim::Linux::Calendar ();
 use Time::Local ();
 
-our $VERSION = '0.002';
+our $VERSION = '0.003';
 
 =synopsis
 

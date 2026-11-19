@@ -10,7 +10,7 @@ use Text::Xslate ();
 use Langertha::Holmgang::Expectation qw( same_scalar );
 use Langertha::Holmgang::Simulators;
 
-our $VERSION = '0.002';
+our $VERSION = '0.003';
 
 our @EXPORT_OK = qw( render );
 

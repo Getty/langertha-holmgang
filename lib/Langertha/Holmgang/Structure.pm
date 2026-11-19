@@ -19,7 +19,7 @@ use Langertha::Holmgang::Target ();
 use Langertha::Holmgang::ToolSchema qw( check_schema );
 use Langertha::Holmgang::World;
 
-our $VERSION = '0.002';
+our $VERSION = '0.003';
 
 # true constants: the vocabulary of format 2
 our @RULE_KINDS = qw( state unchanged_except calls not_called only_tools check packet login );

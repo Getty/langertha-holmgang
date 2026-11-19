@@ -14,7 +14,7 @@ use Langertha::Holmgang::Target ();
 use Langertha::Holmgang::Template ();
 use Langertha::Holmgang::ToolSchema qw( schema_errors );
 
-our $VERSION = '0.002';
+our $VERSION = '0.003';
 
 # the state changes of a handler's apply, in format 2; a true constant
 our @OPS = qw( set push insert delete remove move );

@@ -9,7 +9,7 @@ use Langertha::Holmgang::Expectation qw( condition );
 use Langertha::Holmgang::Simulators;
 use Langertha::Holmgang::World;
 
-our $VERSION = '0.002';
+our $VERSION = '0.003';
 
 # the rule kinds of format 2, in the order the kind is looked up; a true constant
 our @RULE_KINDS = qw( state unchanged_except calls not_called only_tools check packet login );

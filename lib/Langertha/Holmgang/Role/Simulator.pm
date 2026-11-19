@@ -3,7 +3,7 @@ package Langertha::Holmgang::Role::Simulator;
 
 use Moose::Role;
 
-our $VERSION = '0.002';
+our $VERSION = '0.003';
 
 requires qw( device_type run_command );
 

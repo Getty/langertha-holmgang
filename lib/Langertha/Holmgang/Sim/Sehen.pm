@@ -10,7 +10,7 @@ use Unicode::Normalize qw( NFC );
 
 with 'Langertha::Holmgang::Role::AnswerWorld';
 
-our $VERSION = '0.002';
+our $VERSION = '0.003';
 
 =synopsis
 

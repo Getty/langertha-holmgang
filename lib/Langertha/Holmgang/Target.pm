@@ -13,7 +13,7 @@ use Langertha::Holmgang::Error;
 use Langertha::Role::HTTP ();
 use Scalar::Util qw( blessed );
 
-our $VERSION = '0.002';
+our $VERSION = '0.003';
 
 =synopsis
 

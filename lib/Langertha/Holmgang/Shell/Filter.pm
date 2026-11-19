@@ -7,7 +7,7 @@ use utf8;
 
 use Encode ();
 
-our $VERSION = '0.002';
+our $VERSION = '0.003';
 
 =synopsis
 

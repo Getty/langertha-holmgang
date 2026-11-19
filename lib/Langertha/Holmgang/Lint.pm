@@ -11,7 +11,7 @@ use Langertha::Holmgang::Grader;
 use Langertha::Holmgang::Template ();
 use Langertha::Holmgang::World ();
 
-our $VERSION = '0.002';
+our $VERSION = '0.003';
 
 =synopsis
 

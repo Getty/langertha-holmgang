@@ -16,7 +16,7 @@ use Langertha::Holmgang::Report;
 use Langertha::Holmgang::Runner;
 use Langertha::Holmgang::Target;
 
-our $VERSION = '0.002';
+our $VERSION = '0.003';
 
 =synopsis
 

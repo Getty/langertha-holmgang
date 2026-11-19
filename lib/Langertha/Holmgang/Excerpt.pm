@@ -10,7 +10,7 @@ use Encode ();
 use Path::Tiny qw( path );
 use Langertha::Holmgang::Error;
 
-our $VERSION = '0.002';
+our $VERSION = '0.003';
 
 # the file of an excerpt, relative to the suite directory; a true constant
 my $FILE_RE = qr{\Aquellen/[a-z0-9][a-z0-9-]*\.txt\z};

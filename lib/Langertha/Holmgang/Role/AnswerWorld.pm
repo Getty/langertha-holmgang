@@ -3,7 +3,7 @@ package Langertha::Holmgang::Role::AnswerWorld;
 
 use Moose::Role;
 
-our $VERSION = '0.002';
+our $VERSION = '0.003';
 
 requires qw( device_type tools tool );
 

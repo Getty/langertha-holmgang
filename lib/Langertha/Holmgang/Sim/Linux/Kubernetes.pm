@@ -12,7 +12,7 @@ use JSON::MaybeXS ();
 use MIME::Base64 ();
 use YAML::XS ();
 
-our $VERSION = '0.002';
+our $VERSION = '0.003';
 
 =synopsis
 

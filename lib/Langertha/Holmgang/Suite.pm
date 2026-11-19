@@ -4,7 +4,7 @@ package Langertha::Holmgang::Suite;
 use Moose;
 use namespace::autoclean;
 
-our $VERSION = '0.002';
+our $VERSION = '0.003';
 
 =synopsis
 

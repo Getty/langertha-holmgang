@@ -17,7 +17,7 @@ use Moose::Util ();
 use Scalar::Util qw( blessed );
 use Time::HiRes ();
 
-our $VERSION = '0.002';
+our $VERSION = '0.003';
 
 my $JSON = JSON::MaybeXS->new( utf8 => 0, canonical => 1, allow_nonref => 1 );
 

@@ -8,7 +8,7 @@ use utf8;
 use Digest::SHA ();
 use JSON::MaybeXS ();
 
-our $VERSION = '0.002';
+our $VERSION = '0.003';
 
 =synopsis
 

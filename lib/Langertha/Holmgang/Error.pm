@@ -7,7 +7,7 @@ use Scalar::Util qw( blessed );
 use overload '""' => sub { $_[0]->field.': '.$_[0]->reason }, fallback => 1;
 use namespace::autoclean;
 
-our $VERSION = '0.002';
+our $VERSION = '0.003';
 
 has field => ( is => 'ro', required => 1 );
 

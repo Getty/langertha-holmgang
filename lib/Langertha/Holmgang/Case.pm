@@ -13,7 +13,7 @@ use Langertha::Content::Image;
 use Langertha::Holmgang::Haystack;
 use Langertha::Holmgang::Simulators;
 
-our $VERSION = '0.002';
+our $VERSION = '0.003';
 
 # built-in fallbacks of the settings, below the suite's defaults; a true constant
 my %DEFAULT = ( temperature => 0, max_tokens => 2000, max_turns => 12, system => '' );
