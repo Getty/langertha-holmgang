@@ -235,9 +235,12 @@ between devices>: C<nc -z>, C</dev/tcp>, C<wget> and C<curl> (where installed) c
 a connection to a device in the state against its firewall (nft, chains with hook
 input: first matching rule, else policy; drop: timed out, reject: refused) and its
 listeners (C<listen>, defaults per program like sshd 22, postgres 5432); a device with
-services on unknown ports, a target outside the state or a rule that is not modelled
-are a gap; a name the resolver does not know (like C<getent hosts>) does
-not resolve.
+services on unknown ports or a rule that is not modelled are a gap; a name the resolver
+does not know (like C<getent hosts>) does not resolve. B<A target outside the state>
+(ADR 0012): an address in a directly connected network that the state names nowhere
+does not exist — C<No route to host>, and C<ping> reports C<Destination Host
+Unreachable>; an address the state names somewhere (a file, a gateway, a name server)
+or one beyond a gateway is a gap for TCP and answers C<ping>.
 
 B<Round 4>: C<flock [-n] FD|FILE [-c COMMAND|COMMAND]> (succeeds, creates the lock file),
 C<exec NE<gt>file> (only opens), C<${PIPESTATUS[@]}>, C<done E<lt> E<lt>( … )> also over
@@ -7255,7 +7258,7 @@ sub _dev_tcp {
     return ( '', 1 ) if $st eq 'open';
     return ( "bash: $h: Name or service not known\nbash: $path: Invalid argument", 0 ) if $st eq 'noname';
     if ( $st eq 'timeout' && $IN_TIMEOUT ) { $SH->{code} = 124 if $SH; return ( '', 0 ) }
-    my $m = { refused => 'Connection refused', timeout => 'Connection timed out', unreach => 'Network is unreachable' }->{$st};
+    my $m = { refused => 'Connection refused', timeout => 'Connection timed out', unreach => 'Network is unreachable', nohost => 'No route to host' }->{$st};
     return ( "bash: connect: $m\nbash: $path: $m", 0 );
 }
 
@@ -7483,8 +7486,25 @@ sub _nft_verdict {
     return 'accept';
 }
 
-# Neue TCP-Verbindung von diesem Geraet zu HOST:PORT (beide im Zustand): 'open', 'refused',
-# 'timeout', 'unreach' oder undef (Ziel oder Regel nicht nachgebildet)
+# Geschlossene Welt im eigenen Netz (ADR 0012): Eine Adresse in einem direkt angeschlossenen
+# Netz, die kein Geraet des Zustands traegt und die der Zustand nirgends nennt (Datei, Route,
+# Nameserver, Gegenstelle), gibt es nicht: 'nohost'. Hinter einem Gateway weiss die Welt es
+# nicht (undef), ebenso bei einer Adresse, die irgendwo im Zustand steht.
+sub _absent {
+    my ( $dev, $ip ) = @_;
+    return undef unless defined $ip && defined _ip2n($ip);
+    my ( $r ) = _lookup( $dev, $ip );
+    return 'unreach' unless $r;
+    return undef if defined $r->{via};
+    my $state = $CTX ? $CTX->{state} : undef;
+    return undef unless ref $state eq 'HASH';
+    return undef if $CLONE_JSON->encode($state) =~ /(?<![0-9.])\Q$ip\E(?![0-9.])/;
+    return 'nohost';
+}
+
+# Neue TCP-Verbindung von diesem Geraet zu HOST:PORT: 'open', 'refused', 'timeout',
+# 'unreach', 'nohost' (im eigenen Netz gibt es die Adresse nicht, _absent) oder undef (Ziel
+# oder Regel nicht nachgebildet)
 sub _tcp_probe {
     my ( $dev, $host, $port ) = @_;
     my $state = $CTX ? $CTX->{state} || {} : {};
@@ -7507,10 +7527,10 @@ sub _tcp_probe {
     if ( !$tgt && !_ip2n($host) ) {    # Name: wie getent hosts (/etc/hosts, Nameserver); unbekannt: nicht aufloesbar
         my ($r) = _resolve( $dev, $host );
         return 'noname' unless defined $r;
-        $tgt = $find->($r) or return undef;
+        $tgt = $find->($r) or return _absent( $dev, $r );
         $ip = $r;
     }
-    return undef unless $tgt;
+    return _absent( $dev, $host ) unless $tgt;
     $ip //= _ip2n($host) ? $host : ( _own_addrs($tgt) )[0] // return undef;
     return 'unreach' unless _lookup( $dev, $ip );
     my ($src) = grep { my $s = $_; grep { _in( $s, $_ ) } map { @{ $_->{addr} || [] } } values %{ $tgt->{interfaces} || {} } } @own;
@@ -7549,7 +7569,7 @@ sub _nc {
         if ( $st eq 'open' ) { $any = 1; push @out, "Connection to $host $p port [tcp/" . ( $svc{$p} // '*' ) . '] succeeded!' if $v; next }
         if ( $st eq 'noname' ) { push @out, qq{nc: getaddrinfo for host "$host" port $p: Name or service not known}; last }
         push @out, "nc: connect to $host port $p (tcp) "
-            . { refused => 'failed: Connection refused', timeout => 'timed out: Operation now in progress', unreach => 'failed: Network is unreachable' }->{$st};
+            . { refused => 'failed: Connection refused', timeout => 'timed out: Operation now in progress', unreach => 'failed: Network is unreachable', nohost => 'failed: No route to host' }->{$st};
     }
     return ( join( "\n", @out ), $any ? 1 : 0 );
 }
@@ -7580,6 +7600,7 @@ sub _curl {
     if ( $st ne 'open' ) {
         my ( $code, $msg ) = $st eq 'noname' ? ( 6, "Could not resolve host: $h" ) : $st eq 'timeout' ? ( 28, "Failed to connect to $h port $port after 130000 ms: Couldn't connect to server" )
             : $st eq 'unreach' ? ( 7, "Failed to connect to $h port $port after 0 ms: Couldn't connect to server" )
+            : $st eq 'nohost' ? ( 7, "Failed to connect to $h port $port after 3066 ms: Couldn't connect to server" )
             : ( 7, "Failed to connect to $h port $port after 0 ms: Couldn't connect to server" );
         $SH->{code} = $code if $SH;
         my @o;
@@ -7687,7 +7708,7 @@ sub _wget {
         if ( defined $st && $st ne 'open' ) {
             require POSIX;
             my $stamp = POSIX::strftime( '%Y-%m-%d %H:%M:%S', _local_tm( _dev_now($dev) ) );
-            my $why = { refused => 'Connection refused', timeout => 'Connection timed out', unreach => 'Network is unreachable' }->{$st};
+            my $why = { refused => 'Connection refused', timeout => 'Connection timed out', unreach => 'Network is unreachable', nohost => 'No route to host' }->{$st};
             $SH->{code} = 4 if $SH;
             return ( '', 0 ) if $quiet || $st eq 'timeout' && $IN_TIMEOUT;
             return ( "wget: unable to resolve host address '$h80'", 0 ) if $st eq 'noname';
@@ -9483,6 +9504,14 @@ sub _ping {
     my $src = defined $from && defined _ip2n($from) ? $from : undef;
     my ($r) = _lookup( $dev, $to, $src );
     return ( "ping: connect: Network is unreachable", 0 ) unless $r;
+    if ( ( _absent( $dev, $to ) // q{} ) eq 'nohost' ) {    # im eigenen Netz gibt es die Adresse nicht (ADR 0012)
+        my ( $own ) = defined $src ? $src : map { s{/\d+\z}{}r } grep { m{/} && _in( $to, $_ ) } map { @{ $_->{addr} || [] } } values %{ $dev->{interfaces} || {} };
+        $own //= ( _own_addrs($dev) )[0] // $to;
+        my @l = ( "PING " . ( $name // $to ) . " ($to) 56(84) bytes of data." );
+        push @l, "From $own icmp_seq=$_ Destination Host Unreachable" for 1 .. $count;
+        push @l, q{}, "--- $to ping statistics ---", "$count packets transmitted, 0 received, +$count errors, 100% packet loss, time " . ( $count - 1 ) . '057ms';
+        return ( join( "\n", @l ), 0 );
+    }
     my @l = ( "PING " . ( $name // $to ) . " ($to) 56(84) bytes of data." );
     push @l, "64 bytes from $to: icmp_seq=$_ ttl=64 time=0.4" . $_ . ' ms' for 1 .. $count;
     push @l, '', "--- $to ping statistics ---", "$count packets transmitted, $count received, 0% packet loss, time " . ( $count - 1 ) . '003ms';

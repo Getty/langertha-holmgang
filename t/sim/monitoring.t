@@ -176,7 +176,8 @@ my $P = sub { $state->{mon}{services}{prometheus} };
     is_deeply( JSON::MaybeXS::decode_json( sh('wget -qO- http://localhost:9090/api/v1/alerts') ), { status => 'success', data => { alerts => [] } }, 'alerts: keine feuernde Regel' );
     sh('systemctl stop prometheus');
     like( ( sh('wget -qO- http://localhost:9090/-/healthy') )[0], qr/Connection refused/, 'gestoppt: abgelehnt' );
-    like( ( sh('wget -qO- http://10.9.9.9:9090/-/healthy') )[2], qr/wget/, 'fremde Maschine: Luecke' );
+    my @far = sh('wget -qO- http://10.9.9.9:9090/-/healthy');
+    ok( !$far[1] && !defined $far[2], 'Adresse, die der Zustand weder traegt noch nennt: gescheitert, keine Luecke (ADR 0012)' );
 }
 
 # --- Alertmanager: Routen, Stummschaltungen, date ------------------------------

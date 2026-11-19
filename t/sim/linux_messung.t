@@ -167,7 +167,11 @@ subtest '/dev/tcp: keine Datei, neutrale Luecke' => sub {
     # kennt, eine Luecke, wo nicht: srv faehrt den Dienst app mit unbekannten Ports)
     my ( $lo, $lok, $lgap ) = sh(q{timeout 2 bash -c '</dev/tcp/127.0.0.1/22'});
     ok( $lok && !defined $lgap, 'lokal auf 22 (sshd): offen' );
-    for my $c ( q{bash -c 'echo > /dev/tcp/10.40.0.27/9100'}, 'echo > /dev/tcp/127.0.0.1/9100' ) {
+    # eine Adresse, die der Zustand weder traegt noch nennt: es gibt sie nicht (ADR 0012), keine Luecke
+    my ( $no, $nok, $ngap ) = sh(q{bash -c 'echo > /dev/tcp/10.40.0.27/9100'});
+    like( $no, qr/No route to host|Network is unreachable/, 'unbekannte Adresse: nicht erreichbar' );
+    ok( !$nok && !defined $ngap, '… gescheitert, ohne Luecke' );
+    for my $c ( 'echo > /dev/tcp/127.0.0.1/9100' ) {
         my ( $o, $ok, $gap ) = sh($c);
         unlike( $o // '', qr/No such file or directory/, "$c: keine falsche Meldung" );
         ok( defined $gap, "$c: als Luecke vermerkt" );
@@ -326,7 +330,7 @@ subtest '2>/dev/null: Fehlermeldungen des Befehls verschwinden' => sub {
 # Runde 2: ping -c1 schickt ein Paket, nicht vier
 subtest 'ping -cN zusammengeschrieben' => sub {
     $state = { h => { type => 'linux', interfaces => { eth0 => { addr => ['10.0.0.2/24'], state => 'UP' } },
-        routes => [ { dst => '10.0.0.0/24', dev => 'eth0', proto => 'kernel', scope => 'link', src => '10.0.0.2' } ] } };
+        routes => [ { dst => 'default', via => '10.0.0.1', dev => 'eth0' }, { dst => '10.0.0.0/24', dev => 'eth0', proto => 'kernel', scope => 'link', src => '10.0.0.2' } ] } };
     like( sh( 'ping -c1 -W2 10.0.0.1', 'h' ), qr/^1 packets transmitted, 1 received/m, 'ping -c1' );
     like( sh( 'ping -c 2 10.0.0.1', 'h' ), qr/^2 packets transmitted/m, 'ping -c 2' );
     my ( $o, $ok ) = sh( 'nft list ruleet', 'h' );
@@ -439,7 +443,8 @@ subtest 'TCP-Probe: nc, /dev/tcp, wget, curl zwischen Geraeten' => sub {
     ( $o, $ok ) = sh( 'nc -z 10.0.0.4 22', 'a' );
     ok( $ok && $o eq '', 'nc -z ohne -v: still' );
     ( $o, $ok, $gap ) = sh( 'nc -zv 10.0.0.99 22', 'a' );
-    ok( defined $gap, 'unbekannter Rechner: Luecke' );
+    like( $o, qr/failed: (?:No route to host|Network is unreachable)\z/, 'unbekannter Rechner im eigenen Netz: es gibt ihn nicht (ADR 0012)' );
+    ok( !$ok && !defined $gap, '… gescheitert, ohne Luecke' );
     ( $o, $ok, $gap ) = sh( 'nc -zv 10.0.0.5 4711', 'a' );
     ok( defined $gap, 'Rechner mit Dienst unbekannter Ports: Luecke' );
     ( $o, $ok, $gap ) = sh( 'nc -zv 10.0.0.3 22', 'c' );
@@ -510,7 +515,8 @@ subtest 'TCP-Probe: Name nicht aufloesbar' => sub {
     like( scalar sh(q{bash -c 'echo > /dev/tcp/registrar.example.invalid/443'}), qr/\Abash: registrar\.example\.invalid: Name or service not known\n/, '/dev/tcp' );
     ok( !( sh('getent hosts registrar.example.invalid') )[1], '... wie getent hosts' );
     my ( $o, $ok, $gap ) = sh('wget -O- http://10.40.0.2/');
-    ok( defined $gap, 'Adresse ohne Geraet im Zustand: Luecke (es kann ihn geben)' );
+    like( $o, qr/No route to host|Network is unreachable/, 'Adresse, die der Zustand weder traegt noch nennt: es gibt sie nicht (ADR 0012)' );
+    ok( !$ok && !defined $gap, '… gescheitert, ohne Luecke' );
 };
 
 # Runde 3: Shell-Funktionen, ! befehl, #!/usr/bin/env bash,
