@@ -1,6 +1,11 @@
 Revision history for Langertha-Holmgang
 
 {{$NEXT}}
+  - PostgreSQL simulator: the near relatives of the slot query answer truly
+    instead of ending as a gap -- plugin, database and confirmed_flush_lsn
+    of a physical slot are NULL, a WAL difference to a NULL LSN is NULL,
+    pg_stat_replication is empty while no slot is active, DROP REPLICATION
+    SLOT is the syntax error of an SQL session, and psql takes -Atc
   - A wget that no observation matches is answered from the case's curl
     observation for the same request, in wget's words, when the document
     goes to standard output (wget -qO- URL). Before, such a call fell
