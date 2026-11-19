@@ -7730,11 +7730,12 @@ sub _wget {
     if ( !$local || ( $out // '' ) ne '-' ) { push @GAPS, join( ' ', 'wget', @$av ); return ( '', 0 ) }
     _part('Monitoring');
     my ( $body, $st ) = Langertha::Holmgang::Sim::Linux::Monitoring::http( $dev, $post ? 'POST' : 'GET', $port, $path // '/',
-        sub { my ( $o, $k ) = __PACKAGE__->_run_inner( $dev, $_[0], $ctx ); return ( $o, $k ) } );
+        sub { my ( $o, $k ) = __PACKAGE__->_run_inner( $dev, $_[0], $ctx ); return ( $o, $k ) },
+        sub { _tcp_probe( $dev, @_ ) } );
     if ( !defined $st ) { push @GAPS, join( ' ', 'wget', @$av ); return ( '', 0 ) }
     return ( "failed: Connection refused.", 0 ) if !$st;
     return ( $body, 1 ) if $st == 200;
-    my %reason = ( 403 => 'Forbidden', 405 => 'Method Not Allowed', 500 => 'Internal Server Error' );
+    my %reason = ( 400 => 'Bad Request', 403 => 'Forbidden', 405 => 'Method Not Allowed', 500 => 'Internal Server Error' );
     return ( "ERROR $st: " . ( $reason{$st} // 'Error' ) . '.', 0 );
 }
 

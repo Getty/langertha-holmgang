@@ -1,6 +1,16 @@
 Revision history for Langertha-Holmgang
 
 {{$NEXT}}
+  - Monitoring simulator: Prometheus answers /api/v1/targets (static
+    targets of the running configuration; health from the service's
+    scrape_health or the connection probe) and /api/v1/query for a single
+    selector, optionally with time() - before and a comparison after it
+    (up from the targets, other series only from the service's metrics).
+    Alertmanager answers /api/v2/alerts, /api/v2/silences and
+    /api/v2/receivers from the same data amtool uses. Anything else stays
+    a gap
+  - Shell filters: python3 -m json.tool behind a pipe formats JSON like
+    the real module (key order kept, indent 4, \uXXXX), without a sandbox
   - PostgreSQL simulator: the near relatives of the slot query answer truly
     instead of ending as a gap -- plugin, database and confirmed_flush_lsn
     of a physical slot are NULL, a WAL difference to a NULL LSN is NULL,
