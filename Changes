@@ -1,6 +1,11 @@
 Revision history for Langertha-Holmgang
 
 {{$NEXT}}
+  - A wget that no observation matches is answered from the case's curl
+    observation for the same request, in wget's words, when the document
+    goes to standard output (wget -qO- URL). Before, such a call fell
+    through to the simulator and could get "Connection refused" for a
+    service the case describes as running (ADR 0013)
   - Linux simulator: the world is closed on a device's own network. An
     address in a directly connected network that no device carries and the
     state names nowhere does not exist: /dev/tcp, nc, wget and curl fail
