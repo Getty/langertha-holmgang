@@ -122,17 +122,44 @@ subtest 'on an event loop the repeats wait, twice as long each time' => sub {
   is $turn->{retries}, 2, 'two repeats';
   is $turn->{error_class}, undef, 'answered on the third attempt';
   cmp_ok $s, '>=', 0.55, 'waited 0.2 + 0.4 s';
+
+  # the doubling stops at retry_delay_max
+  ( $engine, $n ) = flaky( ( error( 503, 'busy' ) ) x 3 );
+  $t = Langertha::Holmgang::Target->new( engine => $engine, retry_delay => 0.1, retry_delay_max => 0.15, retries => 5 );
+  $t0 = Time::HiRes::time();
+  $turn = $t->chat_turn_f( messages => $USER )->get;
+  $s = Time::HiRes::time() - $t0;
+  is $turn->{retries}, 3, 'three repeats';
+  cmp_ok $s, '>=', 0.39, 'waited 0.1 + 0.15 + 0.15 s';
+  cmp_ok $s, '<', 0.65, '... not 0.1 + 0.2 + 0.4 s';
 };
 
-subtest 'variant setting retries' => sub {
+subtest 'retries => endless asks until the target answers' => sub {
+  my ( $engine, $n ) = flaky( ( error( 502, 'Bad Gateway' ) ) x 25 );
+  my $turn = turn( Langertha::Holmgang::Target->new( engine => $engine, retries => 'endless' ) );
+  is $turn->{error_class}, undef, 'answered at last';
+  is $turn->{retries}, 25, 'twenty-five repeats';
+  ( $engine, $n ) = flaky( error( 502, 'Bad Gateway' ), error( 500, 'broken' ) );
+  $turn = turn( Langertha::Holmgang::Target->new( engine => $engine, retries => 'endless' ) );
+  is $turn->{error_class}, 'error', 'but a lasting failure still ends it';
+  is $turn->{retries}, 1, '... after one repeat';
+};
+
+subtest 'variant settings retries, retry_delay, retry_delay_max' => sub {
   my $T = 'Langertha::Holmgang::Target';
   is_deeply $T->check_variant( { retries => '0' } ), { retries => 0 }, '0 is a value';
-  is_deeply $T->check_variant( { retries => 5 } ),   { retries => 5 }, 'five is a value';
-  ok exception { $T->check_variant( { retries => 11 } ) }, 'at most 10';
-  ok exception { $T->check_variant( { retries => 'x' } ) }, 'a number';
+  is_deeply $T->check_variant( { retries => 50 } ), { retries => 50 }, 'fifty is a value';
+  is_deeply $T->check_variant( { retries => 'endless' } ), { retries => 'endless' }, 'endless';
+  ok exception { $T->check_variant( { retries => 1_000_001 } ) }, 'at most 1000000';
+  ok exception { $T->check_variant( { retries => 'x' } ) }, 'a number or endless';
+  is_deeply $T->check_variant( { retry_delay => '2.5', retry_delay_max => 600 } ), { retry_delay => 2.5, retry_delay_max => 600 }, 'delays';
+  ok exception { $T->check_variant( { retry_delay => -1 } ) }, 'no negative delay';
+  ok exception { $T->check_variant( { retry_delay_max => 86401 } ) }, 'at most a day';
   my $engine = Langertha::Engine::Virtual->new( rules => [ qr/./ => answer('ok') ] );
-  is $T->for_variant( engine => $engine, settings => { retries => 0 } )->retries, 0, 'for_variant passes it on';
-  is $T->for_variant( engine => $engine, settings => {} )->retries, 2, 'default 2';
+  my $t = $T->for_variant( engine => $engine, settings => { retries => 'endless', retry_delay => 1, retry_delay_max => 60 } );
+  is_deeply [ $t->retries, $t->retry_delay, $t->retry_delay_max ], [ 'endless', 1, 60 ], 'for_variant passes them on';
+  $t = $T->for_variant( engine => $engine, settings => {} );
+  is_deeply [ $t->retries, $t->retry_delay, $t->retry_delay_max ], [ 2, 10, 300 ], 'defaults 2, 10, 300';
   ok exception { $T->new( engine => $engine, retries => -1 ) }, 'constructor refuses -1';
 };
 

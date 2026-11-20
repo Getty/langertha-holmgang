@@ -5,8 +5,9 @@ Revision history for Langertha-Holmgang
     refused, reset or closed connection) is sent again, by default twice,
     after 10 and 20 seconds; never when the error names a broken GPU (CUDA,
     out of memory, device lost, HIP/ROCm), never on the variant's deadline.
-    Variant setting retries=N (0 to 10, 0 = off); each turn that was asked
-    again carries retries in the report.
+    Variant settings retries=N (0 to 1000000, endless, 0 = off),
+    retry_delay=S and retry_delay_max=S (first and longest pause, default 10
+    and 300 s); each turn that was asked again carries retries in the report.
 
 0.002     2026-11-19 18:21:03Z
   - cpanfile declares the core modules the code loads but did not list:

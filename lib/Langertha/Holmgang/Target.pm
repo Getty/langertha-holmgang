@@ -113,9 +113,11 @@ has retries => (
 
 Optional, default C<2>. How often L</chat_turn_f> asks again when a turn
 fails for a passing reason (L</retryable>): a proxy's 502, 503 or 504, a 429,
-a dropped or refused connection. C<0> turns it off. A failure that lasts -- a
-400, a 500, a broken GPU, the variant's own L</deadline> -- is never asked
-again. The repeats are counted on the turn (C<retries>).
+a dropped or refused connection. A whole number from 0 to 1000000, or
+C<endless>: ask again until it answers or fails for good. C<0> turns it off.
+A failure that lasts -- a 400, a 500, a broken GPU, the variant's own
+L</deadline> -- is never asked again. The repeats are counted on the turn
+(C<retries>).
 
 =cut
 
@@ -126,11 +128,28 @@ has retry_delay => (
 
 =attr retry_delay
 
-Optional, default C<10>. Seconds before the first repeat; each further one
-waits twice as long (10, 20, 40 ...). The pause needs the engine's event loop
-(C<async_loop>); without one the repeat follows at once.
+Optional, default C<10>. Seconds before the first repeat, 0 or more; each
+further one waits twice as long (10, 20, 40 ...), up to L</retry_delay_max>.
+The pause needs the engine's event loop (C<async_loop>); without one the
+repeat follows at once.
 
 =cut
+
+has retry_delay_max => (
+  is      => 'ro',
+  default => 300,
+);
+
+=attr retry_delay_max
+
+Optional, default C<300>. The longest pause between two repeats in seconds;
+the doubling stops there (with C<retries=endless> every further attempt waits
+this long). Never below L</retry_delay>.
+
+=cut
+
+sub _retries_ok { my ($x) = @_; return !ref $x && ( $x eq 'endless' || ( $x =~ /\A[0-9]{1,7}\z/ && $x <= 1_000_000 ) ) }
+sub _seconds_ok { my ($x) = @_; return !ref $x && $x =~ /\A[0-9]+(?:\.[0-9]+)?\z/ && $x <= 86400 }
 
 sub BUILD {
   my ( $self ) = @_;
@@ -140,17 +159,19 @@ sub BUILD {
     unless ref $self->variant eq 'HASH';
   croak __PACKAGE__.'->new: deadline must be a number of seconds above 0'
     if $self->has_deadline && !( defined $self->deadline && $self->deadline =~ /\A[0-9]+(?:\.[0-9]+)?\z/ && $self->deadline > 0 );
-  croak __PACKAGE__.'->new: retries must be a whole number from 0 to 10'
-    unless defined $self->retries && $self->retries =~ /\A(?:[0-9]|10)\z/;
-  croak __PACKAGE__.'->new: retry_delay must be a number of seconds, 0 or more'
-    unless defined $self->retry_delay && $self->retry_delay =~ /\A[0-9]+(?:\.[0-9]+)?\z/;
+  croak __PACKAGE__.'->new: retries must be a whole number from 0 to 1000000 or endless'
+    unless defined $self->retries && _retries_ok( $self->retries );
+  for my $k (qw( retry_delay retry_delay_max )) {
+    croak __PACKAGE__."->new: $k must be a number of seconds from 0 to 86400"
+      unless defined $self->$k && _seconds_ok( $self->$k );
+  }
   return;
 }
 
 #### Variants
 
 # The settings a variant may name, in the order a message lists them.
-my @VARIANT_KEYS = qw( enable_thinking reasoning_effort max_tokens temperature deadline retries );
+my @VARIANT_KEYS = qw( enable_thinking reasoning_effort max_tokens temperature deadline retries retry_delay retry_delay_max );
 my %VARIANT_KEY  = map { $_ => 1 } @VARIANT_KEYS;
 
 # Langertha's reasoning_effort values (Langertha::Role::Chat)
@@ -163,7 +184,8 @@ sub variant_keys { @VARIANT_KEYS }
   my @keys = Langertha::Holmgang::Target->variant_keys;
 
 The settings a variant may name: C<enable_thinking>, C<reasoning_effort>,
-C<max_tokens>, C<temperature>, C<deadline>, C<retries>.
+C<max_tokens>, C<temperature>, C<deadline>, C<retries>, C<retry_delay>,
+C<retry_delay_max>.
 
 =cut
 
@@ -201,7 +223,11 @@ sub check_variant {
       $v{$k} = 0 + $x;
     }
     elsif ( $k eq 'retries' ) {
-      $no->( 'variant.retries' => 'a whole number from 0 to 10' ) unless !ref $x && $x =~ /\A(?:[0-9]|10)\z/;
+      $no->( 'variant.retries' => 'a whole number from 0 to 1000000, or endless' ) unless _retries_ok($x);
+      $v{$k} = $x eq 'endless' ? 'endless' : 0 + $x;
+    }
+    elsif ( $k eq 'retry_delay' || $k eq 'retry_delay_max' ) {
+      $no->( 'variant.'.$k => 'seconds, a number from 0 to 86400' ) unless _seconds_ok($x);
       $v{$k} = 0 + $x;
     }
     else {   # deadline
@@ -252,7 +278,12 @@ medium high xhigh max>.
 (L</deadline>).
 
 =item * C<retries> -- how often a turn that failed for a passing reason is
-asked again, a whole number from 0 to 10 (L</retries>; without it 2).
+asked again, a whole number from 0 to 1000000 or C<endless> (L</retries>;
+without it 2).
+
+=item * C<retry_delay>, C<retry_delay_max> -- seconds, 0 to 86400: the first
+pause and the longest one (L</retry_delay>, L</retry_delay_max>; without them
+10 and 300).
 
 =back
 
@@ -278,7 +309,7 @@ sub for_variant {
     engine  => $engine,
     variant => \%opts,
     ( exists $s->{deadline} ? ( deadline => $s->{deadline} ) : () ),
-    ( exists $s->{retries}  ? ( retries  => $s->{retries} )  : () ),
+    ( map { exists $s->{$_} ? ( $_ => $s->{$_} ) : () } qw( retries retry_delay retry_delay_max ) ),
   );
 }
 
@@ -291,7 +322,7 @@ sub for_variant {
 
 A target for one variant: the settings checked against the engine
 (L</check_variant>) and turned into L</variant> (the C<chat_f> options),
-L</deadline> and L</retries>.
+L</deadline>, L</retries>, L</retry_delay> and L</retry_delay_max>.
 
 =cut
 
@@ -642,8 +673,12 @@ sub _attempt_f {
   my ( $self, $n, %opts ) = @_;
   return $self->_one_turn_f(%opts)->then( sub {
     my ( $turn, $raw ) = @_;
-    if ( defined $turn->{error_class} && $turn->{error_class} eq 'error' && $n < $self->retries && $self->retryable($raw) ) {
-      my $wait = $self->retry_delay * 2**$n;
+    my $more = $self->retries eq 'endless' || $n < $self->retries;
+    if ( defined $turn->{error_class} && $turn->{error_class} eq 'error' && $more && $self->retryable($raw) ) {
+      my ( $base, $cap ) = ( $self->retry_delay, $self->retry_delay_max );
+      $cap = $base if $cap < $base;
+      my $wait = $n >= 30 ? $cap : $base * 2**$n;
+      $wait = $cap if $wait > $cap;
       my $loop = $self->engine->can('async_loop') ? $self->engine->async_loop : undef;
       my $pause = $loop && $wait > 0 ? $loop->delay_future( after => $wait ) : Future->done;
       return $pause->then( sub { $self->_attempt_f( $n + 1, %opts ) } );
