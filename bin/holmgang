@@ -151,6 +151,11 @@ deadline (S s)>. Needs the engine on an event loop (IO::Async and
 Net::Async::HTTP installed). A timeout without data is the engine's
 C<user_agent_timeout>: C<--option user_agent_timeout=900>.
 
+=item * C<retries=N> -- 0 to 10, default 2: how often a request that failed
+for a passing reason (a 429, 502, 503 or 504, a dropped connection; never a
+broken GPU) is sent again, after 10, 20, 40 ... seconds. C<retries=0> turns it
+off. Each turn counts its repeats in the report (C<retries>).
+
 =back
 
 Anything else is refused, and so is a setting the engine would drop.

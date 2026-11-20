@@ -189,6 +189,7 @@ async sub run_case_f {
       duration_ms      => $ms,
       finish_reason    => $response ? $response->finish_reason : undef,
       calls            => scalar @tc,
+      ( $turn->{retries} ? ( retries => $turn->{retries} ) : () ),
     };
     if ( defined $turn->{error_class} ) {
       ( $error, $error_class ) = @{$turn}{qw( error error_class )};
@@ -260,8 +261,9 @@ its text never goes back to the model.
 =item * C<turns> -- one entry per model call that reached the target, the
 failed one included: C<input_tokens>, C<output_tokens>, C<reasoning_tokens>
 (from L<Langertha::Usage>, C<undef> when the target sent none),
-C<duration_ms> (wall time of the call), C<finish_reason>, C<calls> (tool
-calls of the turn).
+C<duration_ms> (wall time of the call, repeats included), C<finish_reason>,
+C<calls> (tool calls of the turn), and C<retries> when the target asked again
+(L<Langertha::Holmgang::Target/retries>).
 
 =item * C<calls> -- every tool call in order: C<tool>, C<args> (decoded),
 C<succeeded>, C<sim_gap>, and C<sandbox> (the number of programs of the call

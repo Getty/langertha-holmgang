@@ -104,6 +104,34 @@ to race; L</check_variant> refuses a deadline for such an engine.
 
 =cut
 
+has retries => (
+  is      => 'ro',
+  default => 2,
+);
+
+=attr retries
+
+Optional, default C<2>. How often L</chat_turn_f> asks again when a turn
+fails for a passing reason (L</retryable>): a proxy's 502, 503 or 504, a 429,
+a dropped or refused connection. C<0> turns it off. A failure that lasts -- a
+400, a 500, a broken GPU, the variant's own L</deadline> -- is never asked
+again. The repeats are counted on the turn (C<retries>).
+
+=cut
+
+has retry_delay => (
+  is      => 'ro',
+  default => 10,
+);
+
+=attr retry_delay
+
+Optional, default C<10>. Seconds before the first repeat; each further one
+waits twice as long (10, 20, 40 ...). The pause needs the engine's event loop
+(C<async_loop>); without one the repeat follows at once.
+
+=cut
+
 sub BUILD {
   my ( $self ) = @_;
   croak __PACKAGE__.'->new: engine must be a Langertha engine with chat_f'
@@ -112,13 +140,17 @@ sub BUILD {
     unless ref $self->variant eq 'HASH';
   croak __PACKAGE__.'->new: deadline must be a number of seconds above 0'
     if $self->has_deadline && !( defined $self->deadline && $self->deadline =~ /\A[0-9]+(?:\.[0-9]+)?\z/ && $self->deadline > 0 );
+  croak __PACKAGE__.'->new: retries must be a whole number from 0 to 10'
+    unless defined $self->retries && $self->retries =~ /\A(?:[0-9]|10)\z/;
+  croak __PACKAGE__.'->new: retry_delay must be a number of seconds, 0 or more'
+    unless defined $self->retry_delay && $self->retry_delay =~ /\A[0-9]+(?:\.[0-9]+)?\z/;
   return;
 }
 
 #### Variants
 
 # The settings a variant may name, in the order a message lists them.
-my @VARIANT_KEYS = qw( enable_thinking reasoning_effort max_tokens temperature deadline );
+my @VARIANT_KEYS = qw( enable_thinking reasoning_effort max_tokens temperature deadline retries );
 my %VARIANT_KEY  = map { $_ => 1 } @VARIANT_KEYS;
 
 # Langertha's reasoning_effort values (Langertha::Role::Chat)
@@ -131,7 +163,7 @@ sub variant_keys { @VARIANT_KEYS }
   my @keys = Langertha::Holmgang::Target->variant_keys;
 
 The settings a variant may name: C<enable_thinking>, C<reasoning_effort>,
-C<max_tokens>, C<temperature>, C<deadline>.
+C<max_tokens>, C<temperature>, C<deadline>, C<retries>.
 
 =cut
 
@@ -166,6 +198,10 @@ sub check_variant {
     elsif ( $k eq 'temperature' ) {
       $no->( 'variant.temperature' => 'a number from 0 to 2' )
         unless !ref $x && $x =~ /\A[0-9]+(?:\.[0-9]+)?\z/ && $x <= 2;
+      $v{$k} = 0 + $x;
+    }
+    elsif ( $k eq 'retries' ) {
+      $no->( 'variant.retries' => 'a whole number from 0 to 10' ) unless !ref $x && $x =~ /\A(?:[0-9]|10)\z/;
       $v{$k} = 0 + $x;
     }
     else {   # deadline
@@ -215,6 +251,9 @@ medium high xhigh max>.
 =item * C<deadline> -- seconds per turn, above 0 and at most 86400
 (L</deadline>).
 
+=item * C<retries> -- how often a turn that failed for a passing reason is
+asked again, a whole number from 0 to 10 (L</retries>; without it 2).
+
 =back
 
 An empty value names nothing and is left out. With an C<$engine> the settings
@@ -239,6 +278,7 @@ sub for_variant {
     engine  => $engine,
     variant => \%opts,
     ( exists $s->{deadline} ? ( deadline => $s->{deadline} ) : () ),
+    ( exists $s->{retries}  ? ( retries  => $s->{retries} )  : () ),
   );
 }
 
@@ -250,8 +290,8 @@ sub for_variant {
   );
 
 A target for one variant: the settings checked against the engine
-(L</check_variant>) and turned into L</variant> (the C<chat_f> options) and
-L</deadline>.
+(L</check_variant>) and turned into L</variant> (the C<chat_f> options),
+L</deadline> and L</retries>.
 
 =cut
 
@@ -564,7 +604,56 @@ C<no_vision>).
 
 #### The turn
 
+# A failure that may pass: a proxy or server that is busy or timed out
+# upstream, a dropped connection. Never one that names a broken GPU.
+my $RETRY_RE = qr{
+    request \s+ failed: \s+ (?: 429 | 502 | 503 | 504 ) \b
+  | Connection \s+ (?: refused | reset | closed )
+  | Server \s+ closed \s+ connection
+  | Can't \s+ connect
+}xi;
+my $BROKEN_RE = qr{ cuda | out \s+ of \s+ memory | device \s+ lost | hipError | rocm \s+ error }xi;
+
+sub retryable {
+  my ( $self, $text ) = @_;
+  return 0 unless defined $text && length $text;
+  return $text =~ $RETRY_RE && $text !~ $BROKEN_RE ? 1 : 0;
+}
+
+=method retryable
+
+  $target->retryable($error_text);   # 1 or 0, also callable on the class
+
+Whether a failed turn may pass when asked again (L</retries>): a status 429,
+502, 503 or 504 in Langertha's C<request failed:> text, or a refused, reset or
+closed connection. Never when the text names a broken GPU (C<CUDA>,
+C<CudaFailed>, C<out of memory>, C<device lost>, C<hipError>, C<ROCm error>):
+asking a sick machine again only keeps it busy. The variant's own deadline
+(C<timeout: deadline>) and every other status are not retried either.
+
+=cut
+
 sub chat_turn_f {
+  my ( $self, %opts ) = @_;
+  return $self->_attempt_f( 0, %opts );
+}
+
+sub _attempt_f {
+  my ( $self, $n, %opts ) = @_;
+  return $self->_one_turn_f(%opts)->then( sub {
+    my ( $turn, $raw ) = @_;
+    if ( defined $turn->{error_class} && $turn->{error_class} eq 'error' && $n < $self->retries && $self->retryable($raw) ) {
+      my $wait = $self->retry_delay * 2**$n;
+      my $loop = $self->engine->can('async_loop') ? $self->engine->async_loop : undef;
+      my $pause = $loop && $wait > 0 ? $loop->delay_future( after => $wait ) : Future->done;
+      return $pause->then( sub { $self->_attempt_f( $n + 1, %opts ) } );
+    }
+    $turn->{retries} = $n;
+    return Future->done($turn);
+  } );
+}
+
+sub _one_turn_f {
   my ( $self, %opts ) = @_;
   my $f;
   {
@@ -594,7 +683,7 @@ sub chat_turn_f {
       $text =~ s/\s+\z//;
       # classified on the raw text, scrubbed before it leaves (k38)
       my $class = $self->classify_error($text);
-      return Future->done( { response => undef, error => $self->scrub($text), error_class => $class } );
+      return Future->done( { response => undef, error => $self->scrub($text), error_class => $class }, $text );
     },
   );
 }
@@ -625,11 +714,16 @@ without the trailing whitespace, through L</scrub>), C<undef> otherwise.
 C<no_vision>, C<context_exceeded> or C<error> (L</classify_error>); the
 runner ends the case with that status.
 
+=item * C<retries> -- how often the turn was asked again (L</retries>), C<0>
+when the first attempt stood. C<response> or C<error> are those of the last
+attempt.
+
 =back
 
 With a L</deadline>, a request still running after that many seconds is
 cancelled and the turn fails with C<timeout: deadline (N s)> (class
-C<error>).
+C<error>); the deadline holds for each attempt, and such a turn is not asked
+again.
 
 Anything C<chat_f> throws or fails with counts as a failed turn, including
 a croak before the request (a capability exclusion, a malformed tool). What

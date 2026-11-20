@@ -116,6 +116,7 @@ my %SPEC = (
     duration_ms      => { type => 'int', min => 0 },
     finish_reason    => 'str',
     calls            => { type => 'int', min => 0 },
+    retries          => { type => 'int', min => 1, optional => 1, omit => 1 },
   } },
   tokens => { type => 'object', null => 0, fields => {
     input     => { type => 'int', min => 0 },
@@ -308,6 +309,7 @@ B<Result> — the per-repetition interface the runner produces, plain data:
       turns           => [ {                # one per model call that reached the target
         input_tokens, output_tokens, reasoning_tokens,     # undef when not sent
         duration_ms, finish_reason, calls,                 # calls = tool calls of the turn
+        retries,                                           # only when the turn was asked again
       }, … ],
       calls           => [ { tool, args, succeeded, sim_gap }, … ],   # in call order
                          # + sandbox => N on a call whose programs ran for real (ADR 0011)

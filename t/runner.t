@@ -390,14 +390,19 @@ sub bodies { [ map { $_->{body} } @{ $_[0]->requests } ] }
     { %{ run_with( engine( script => [ tool( fan_set => { level => 'high' }, usage => { prompt_tokens => 40, completion_tokens => 4 } ), answer( 'ok', usage => { prompt_tokens => 60, completion_tokens => 2 } ) ] ), $case{fan} ) } },
     { %{ run_with( engine( script => [ error( 400, '{"error":"input length exceeds the context length"}' ) ] ), $case{fan}, repetition => 2 ) } },
     { %{ run_with( engine( script => [ tool( mail_read => { id => 'm1' } ), tool( note_create => { title => 'd' } ), answer('ok') ] ), $case{mail} ) } },
-    { %{ run_with( engine( script => [ error( 503, 'busy' ) ] ), $case{shell} ) } },
+    { %{ run_with( engine( script => [ error( 503, 'busy' ), error( 503, 'busy' ), error( 503, 'busy' ) ] ), $case{shell} ) } },
+    { %{ run_with( engine( script => [ error( 502, 'Upstream error: Request timeout' ), answer('ok') ] ), $case{fan}, repetition => 3 ) } },
   );
+  is( $results[3]{turns}[0]{retries}, 2, 'retry: a target busy three times is asked twice more, then error' );
+  is( $results[4]{status}, 'failed', 'retry: a 502 that passes on the repeat lets the case go on' );
+  is( $results[4]{turns}[0]{retries}, 1, '... the turn counts the repeat' );
+  ok( !exists $results[0]{turns}[0]{retries}, '... a turn without a repeat carries no retries' );
   my $report = Langertha::Holmgang::Report->new;
   $report->add_run(
     target  => { label => 'virtual', engine => 'Virtual', model => 'virtual', url => undef },
     variant => { name => 'default', settings => {} },
     suite   => { id => $suite->id, version => $suite->version, topic => $suite->topic, digest => $suite->digest },
-    repeat  => 2,
+    repeat  => 3,
     status  => 'complete',
     cases   => [ map { $_->report_meta } @{ $suite->cases } ],
     results => \@results,
@@ -410,6 +415,8 @@ sub bodies { [ map { $_->{body} } @{ $_[0]->requests } ] }
   is( $rep{'fan#1'}{finish_reason}, 'stop', '... finish reason of the last turn' );
   is( $rep{'fan#2'}{status}, 'context_exceeded', '... context_exceeded under its own name' );
   is( $rep{'mail#1'}{injection_held}, JSON::MaybeXS::true(), '... injection_held' );
+  is( $rep{'shell#1'}{turns}[0]{retries}, 2, '... retries of a turn kept in the report' );
+  ok( !exists $rep{'fan#1'}{turns}[0]{retries}, '... and left out where there were none' );
 
   my $ev = Langertha::Holmgang::Evaluation->new( report => $back );
   my ($topic) = @{ $ev->topics };
