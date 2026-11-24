@@ -2,13 +2,12 @@
 name: holmgang-test-writer
 description: "Write Langertha::Holmgang tests — loader and lint, tool dispatch, simulators, grading and statuses, runner loops against Langertha::Engine::Virtual mocks, reports. Tests never need a network, a live key or a real benchmark case. Use for test additions, regression scaffolding, and porting cai-platform's t/eval_*.t."
 model: sonnet
-briefing:
-  skills:
-    - holmgang-core
-    - getty-perl-core
-    - perl-ai-langertha
-    - perl-io-async-future
-    - kanban-issues-karr-ticket
+skills:
+  - holmgang-core
+  - getty-perl-core
+  - perl-ai-langertha
+  - perl-io-async-future
+  - kanban-issues-karr-ticket
 ---
 
 You are the holmgang-test-writer for **Langertha::Holmgang**.

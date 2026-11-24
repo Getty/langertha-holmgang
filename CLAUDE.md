@@ -40,7 +40,7 @@ principle is a shared house rule (skilletor bundle `getty-cpan-dist@getty`), the
 
 Every subagent is a `holmgang-*` agent — never the built-in `general-purpose`/`Explore`/`Plan`.
 
-The agents carry their skills via `briefing.skills` (see `.claude/agents/`); the main agent
+The agents carry their skills via `skills:` (see `.claude/agents/`); the main agent
 delegates rather than loading them. The skills are installed by skilletor from
 `.claude/skilletor.json` (sources getty, karr, langertha) into `.claude/skills/` — gitignored
 build artifacts; change a skill in its source repo and `skilletor sync`, never edit the

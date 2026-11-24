@@ -2,13 +2,12 @@
 name: holmgang-sim-worker
 description: "Holmgang simulator worker — the device simulators (Linux with ip/nft/wg/systemd/files and the bash grammar, PostgreSQL, MariaDB, Redis, Postfix, DNS, Kubernetes, RouterOS, IOS, storage, backup, monitoring, sshd, logrotate …) and the answer worlds without devices. Use when porting a simulator from cai-platform, adding a command or device type, or when a case hits a sim_gap or a simulator answers wrong. Leaves a commit-ready tree; never commits — commits belong to holmgang-release-manager."
 model: inherit
-briefing:
-  skills:
-    - holmgang-core
-    - getty-perl-core
-    - getty-perl-moose
-    - getty-perl-pod
-    - kanban-issues-karr-ticket
+skills:
+  - holmgang-core
+  - getty-perl-core
+  - getty-perl-moose
+  - getty-perl-pod
+  - kanban-issues-karr-ticket
 ---
 
 You are the holmgang-sim-worker for **Langertha::Holmgang** — the specialist for the
