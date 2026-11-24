@@ -1,0 +1,56 @@
+---
+claimed_at: 2026-11-24T21:07:53Z
+claimed_by: ct-1124
+class: standard
+completed: 2026-11-24T21:07:53Z
+created: 2026-11-24T18:49:46Z
+id: 75
+priority: critical
+started: 2026-11-24T21:07:53Z
+status: done
+tags:
+- cpantesters
+- tests
+- bug
+title: 'CPAN Testers: fix the 21 FAIL reports of 0.002'
+updated: 2026-11-24T21:15:44Z
+---
+
+Langertha::Holmgang 0.002 on CPAN Testers (2026-11-24): 21 FAIL, 27 PASS, 5 NA. Many on perl
+5.24.4 and on i686.
+
+1. t/share_suites.t (17 reports): "the same suite.pl twice: no sub redefined" and "the same
+   digest in three processes with different hash seeds".
+2. t/sim/sehen.t (16), t/dsl/loader.t (15), t/runner.t (13): "demo-lamp loads (lint
+   included)", "demo-sehen loads (lint included)", "demo-lamp: no typed entry, a world
+   without devices"; also "no warning (temperature is not sent to an engine that takes
+   none)".
+3. t/cli/errors.t (8 reports: GNU/Hurd, NetBSD, Windows, DragonFly).
+4. 32-bit IV (i686-linux-thread-multi): t/haystack.t, t/cli/seed.t, t/sim/linux_messung.t,
+   t/dsl/export.t, t/random.t.
+5. Windows (2 reports): about 20 further files under t/sim/, t/evaluation/, t/report/.
+
+Sample reports (GUID): 91726574-e44a-11f1-87fc-a8c635f2de92 (1, 2; Linux 5.24.4).
+
+Done: each cause fixed with a test red before, or skipped with the reason where the
+platform cannot do it; full suite green; Changes entry for each lib fix.
+
+2026-11-24 19:10 Cause 1 (booleans; t/share_suites.t, t/sim/sehen.t): JSON::MaybeXS::is_bool sees a YAML true/false (core boolean from YAML::XS) and a Perl !!0 only through builtin::is_bool, i.e. perl 5.36+, and only from JSON::MaybeXS 1.004006 on. On 5.24-5.34 demo-lamp/demo-sehen fail lint ($.on: erwartet boolean). Decision (mine, per brief): raise the floor to perl 5.036 and JSON::MaybeXS 1.004006 instead of a fallback. Considered: loading YAML booleans as JSON::PP::Boolean only on old perls makes the state differ per perl (blessed refs; false renders 0 instead of empty in templates) - no longer deterministic across perls; a flag heuristic (dualvar empty/0 with public IOK/NOK) misreads a float 1.0 that was used as an integer as true. Perl < 5.36 has no boolean apart from empty/1, so the floor is the honest declaration; those perls get NA instead of FAIL. Test t/booleans.t: red against the old cpanfile, green after. Measuring on perl:5.36 in docker.
+
+2026-11-24 19:28 Cause 2 (t/sim/sehen.t, t/dsl/loader.t, t/runner.t: demo-lamp/demo-sehen do not load; 'no warning (temperature …)'): moot with the 5.036 floor of cause 1. The load failures are the boolean lint of cause 1; the warning is Langertha's Role/HTTP.pm testing 'scalar %args > 0', which yields '5/8' on perl < 5.26 ('Argument "5/8" isn't numeric', in the 5.24 reports). No own commit. Also found: that line in Langertha (Role/HTTP.pm, around line 169) warns on perl < 5.26; Langertha's own board, not fixed here. Also found: t/dsl/loader.t runs its warning checks through IPC::Open3 with undef as the error handle, so stderr is mixed into stdout.
+
+2026-11-24 19:29 Cause 3 (t/cli/errors.t, 'a directory as report file'): on the BSDs and Hurd read(2) on a directory returns its entries (the report read as garbage JSON), on Windows sysopen fails with 'Permission denied'. Fix in lib: Report->read refuses a directory itself with EISDIR's text (POSIX::strerror) as a Path::Tiny::Error, so every system says 'Is a directory'. Test: t/cli/errors.t replays both answers by wrapping Path::Tiny::slurp_raw; red before (tests 21, 27, the messages of the reports), green after.
+
+2026-11-24 19:30 Cause 4 (32-bit IV, i686): on ivsize=4 a sum or product past 2**32-1 becomes a double and the bit operators clamp it to 2**32-1 (U_V). Random's _mul32/splitmix32 and Haystack's seed mix overflowed, so every draw was 4294967295 and every seed gave the same cases/text. Fix: Random::_mul32 on 16-bit limbs, new _add32, every intermediate below 2**32; Haystack's seed mix uses them. 64-bit output unchanged (pinned values in t/random.t, 'same bytes as cai-platform' in t/haystack.t). Test t/random_32bit.t with t/lib/Holmgang/UV32.pm, a number that computes as a 32-bit-IV perl does; against the old lib it reproduces the reports exactly (seed 4711 -> 4294967295, seed 0 dice 1 1 …, pick reaches 5 of 8), green after. awk (t/sim/linux_messung.t): Shell::Filter formatted computed values with sprintf '%d', which wraps past 2**31-1 on 32 bit; now '%d' only where it round-trips, else '%.0f' (64-bit output byte-identical). Test t/sim/awk_int32.t emulates 32-bit '%d' via CORE::GLOBAL::sprintf; red before with the report's '-0.5 GB', green after.
+
+2026-11-24 19:33 Cause 5 (Windows; 5.42 and 5.24 reports): (a) Loader->list/locate split search directories at ':', so 'C:/…' fell apart (t/loader.t 'locate', t/dsl/loader.t). Fix: split at $Config{path_sep} (';' on Windows), as PATH does; POD says so. Test in t/loader.t: path_sep replaced by ';' and a root with ':' in its name; red before (locate undef), green after; the existing tests join with path_sep. (b) t/haystack.t ran its child as a multi-line -e, which a Windows command line breaks ('syntax error at -e line 1'); the program now goes into a file (test fix only). (c) The ~20 further files on the 5.24 box: JSON::MaybeXS without true/false (floor 1.004006, cause 1) and an old YAML::XS refusing '2001:db8::2' in a flow mapping ('found unexpected :', t/grader_rules.t). Measured in docker perl:5.36: YAML::XS 0.76 fails with the reports' message, 0.77 parses -> requires YAML::XS 0.77; t/yaml_flow_colon.t checks the parse and the floor, red before (floor), green after. (d) t/cli/errors.t: cause 3.
+
+2026-11-24 19:34 Also found (not fixed, outside k75): (1) Shell.pm around line 812 computes $(( )) under 'use integer', i.e. 32-bit wraparound on a 32-bit-IV perl where bash has 64 bits. (2) Shell/Filter.pm line ~306: the model's awk printf '%d'/'%i' wraps past 2**31-1 on 32 bit (emulated: 3758096384 -> -536870912); line ~139 int() >= 1e15 would print 1e+15 on 32 bit (derived from the perl source, not reproduced). (3) awk already differs from mawk on 64 bit for 2**53+1 and for 1e16 ('1e+16'). (4) Encoding core booleans as true/false depends on the JSON backend's version (JSON::PP 4.11, Cpanel::JSON::XS 4.38), which the cpanfile does not pin. (5) Loader.pm keeps branches for perls without builtin::is_bool, dead under the 5.036 floor.
+
+2026-11-24 20:04 Commits on branch ct-1124 (local, not pushed): cause 1 -> 90a7511 (perl 5.036, JSON::MaybeXS 1.004006, t/booleans.t); cause 2 -> no own commit, moot by 90a7511; cause 3 -> 2ff645e (Report->read refuses a directory, t/cli/errors.t); cause 4 -> cd7d6a3 (Random/Haystack 32-bit-safe, awk, t/random_32bit.t, t/sim/awk_int32.t); cause 5 -> fedc909 (Loader path_sep, YAML::XS 0.77, t/haystack.t child as file, t/yaml_flow_colon.t; t/cli/errors.t by 2ff645e). Full suite on the combined tree: prove -lr t/ Files=112 Tests=3597 PASS (skipped by env: acceptance_dsl, acceptance_load, acceptance_mock_runs, sandbox_docker, sim/denken_vectors). perl:5.36 in docker with current deps: PASS. dzil build: Makefile.PL 'use 5.036', MIN_PERL_VERSION 5.036. Run on 5.36 with JSON::MaybeXS 1.004006 and YAML::XS 0.77 running.
+
+2026-11-24 20:12 Floors measured: perl:5.36 in docker with JSON::MaybeXS 1.004006 and YAML::XS 0.77 (backend Cpanel::JSON::XS): prove -lr t Files=112 Tests=3597 PASS, same five env skips. YAML::XS 0.76 refuses '2001:db8::2' in a flow mapping with the reports' message, 0.77 parses it. main has not moved (3619db6), no rebase needed. Ready for review and bin/smoke.
+
+2026-11-24 21:07 Merged to main (90a7511, 2ff645e, cd7d6a3, fedc909) and pushed. bin/smoke on main: perl 5.36, 5.40 and a 32-bit-IV perl PASS. Floor perl 5.036 accepted by the coordinator: booleans need builtin::is_bool.
+
+2026-11-24 21:15 Correction: the push above had not happened yet. origin/main carried two commits from 2026-11-20 (8164dcc, 8f0e5dc, retries); the four k75 commits were rebased onto them (now 733d3e8, 57c1c28, 6ec940b, 1a95849; Changes keeps both entries). Full suite on the rebased main: Files=113, Tests=3612, PASS. Pushed.
