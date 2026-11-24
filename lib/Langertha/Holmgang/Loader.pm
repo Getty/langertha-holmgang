@@ -6,6 +6,7 @@ use namespace::autoclean;
 use utf8;
 
 use B ();
+use Config ();
 use Digest::SHA ();
 use Encode ();
 use Path::Tiny qw( path );
@@ -549,9 +550,14 @@ sub _suite_file {
   return ( -f $dir.'/suite.yaml' || -f $dir.'/suite.pl' ) ? 1 : 0;
 }
 
+# search directories in one string are separated as in PATH: ":", on Windows
+# ";" (a drive letter carries a ":")
+sub _path_sep { $Config::Config{path_sep} }
+
 sub _roots {
   my ( $self, @roots ) = @_;
-  return grep { length } map { split /:/ } grep { defined } @roots;
+  my $sep = $self->_path_sep;
+  return grep { length } map { split /\Q$sep\E/ } grep { defined } @roots;
 }
 
 # A suite.yaml whose format is a name rather than a number (cai-platform's
@@ -607,8 +613,9 @@ sub list {
 
   my $list = $loader->list( '/srv/suites:/data/suites', $more_root );
 
-All suites under the search directories (separated by C<:>; each
-subdirectory with a F<suite.yaml> or a F<suite.pl>), sorted by id, as a short overview:
+All suites under the search directories (separated as in C<PATH>: by C<:>,
+on Windows by C<;>; each subdirectory with a F<suite.yaml> or a
+F<suite.pl>), sorted by id, as a short overview:
 C<id>, C<version>, C<title>, C<description>, C<topic>, C<cases> and C<tools>
 (counts), C<digest>, C<error>. A suite that does not load is listed with
 C<error> (the refusal as text) instead of stopping the list; an id found in
@@ -632,7 +639,8 @@ sub locate {
 
   my $dir = $loader->locate( '/srv/suites:/data/suites', 'demo-lamp' );
 
-The directory of suite C<$id> in the search directories, or C<undef>. The
+The directory of suite C<$id> in the search directories (separated as for
+L</list>), or C<undef>. The
 same id in more than one of them is a refusal (field C<suite>) — which one is
 meant would be a guess.
 

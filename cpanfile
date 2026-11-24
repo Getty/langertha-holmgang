@@ -34,7 +34,7 @@ requires 'Time::HiRes';
 requires 'Time::Local';
 requires 'Unicode::Normalize';
 requires 'URI';
-requires 'YAML::XS';
+requires 'YAML::XS', '0.77';
 
 # a deadline and concurrent requests need the engine on an event loop, as
 # Langertha's _f methods do; without them requests run one after another

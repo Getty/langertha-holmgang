@@ -16,6 +16,7 @@ use utf8;
 use FindBin;
 use lib "$FindBin::Bin/lib";
 use Test::More;
+use Config;
 use Digest::SHA ();
 use Encode ();
 use Path::Tiny ();
@@ -239,8 +240,9 @@ refused( $CASE, qr/threshold\.runs/, qr/unknown key/, 'threshold: unknown key',
   suite_dir( root => $root_a, id => 'broken', cases => { 'c1.yaml' => $CASE."bogus: 1\n" } );
   suite_dir( root => $root_b, id => 'alpha' );
   suite_dir( root => $root_b, id => 'gamma', head => $HEAD =~ s/^(version: 1\n)/${1}topic: netz\n/mr );
+  my $roots = join $Config{path_sep}, "$root_a", "$root_b";
   my $L = loader();
-  my $list = $L->list("$root_a:$root_b");
+  my $list = $L->list($roots);
   is_deeply( [ map { $_->{id} } @$list ], [qw( alpha beta broken gamma )], 'list: sorted by id' );
   my %by = map { $_->{id} => $_ } @$list;
   like( $by{alpha}{error}, qr/more than one search directory/, 'list: id in two roots is an error' );
@@ -251,11 +253,24 @@ refused( $CASE, qr/threshold\.runs/, qr/unknown key/, 'threshold: unknown key',
   is( $by{beta}{topic}, 'netz', '... topic' );
   like( $by{beta}{digest}, qr/\A[0-9a-f]{64}\z/, '... digest' );
 
-  is( $L->locate( "$root_a:$root_b", 'beta' ), "$root_a/beta", 'locate' );
-  is( $L->locate( "$root_a:$root_b", 'nope' ), undef, 'locate: unknown' );
-  is( $L->locate( "$root_a:$root_b", '../x' ), undef, 'locate: no paths' );
-  my $e = Langertha::Holmgang::Error->caught( eval { $L->locate( "$root_a:$root_b", 'alpha' ) } // $@ );
+  is( $L->locate( $roots, 'beta' ), "$root_a/beta", 'locate' );
+  is( $L->locate( $roots, 'nope' ), undef, 'locate: unknown' );
+  is( $L->locate( $roots, '../x' ), undef, 'locate: no paths' );
+  my $e = Langertha::Holmgang::Error->caught( eval { $L->locate( $roots, 'alpha' ) } // $@ );
   ok( $e && $e->field eq 'suite' && $e->reason =~ /more than one/, 'locate: id in two roots refused' );
+
+  # as on Windows (k75): ";" separates, and the ":" of a drive letter stays
+  # in its root
+  {
+    no warnings 'redefine';
+    local *Langertha::Holmgang::Loader::_path_sep = sub { ';' };
+    my $tmp   = Path::Tiny->tempdir;
+    my $drive = $tmp->child('C:');
+    suite_dir( root => $drive, id => 'delta' );
+    is( $L->locate( "$drive;$root_b", 'delta' ), "$drive/delta", 'locate: roots separated by ";" as on Windows, a ":" in a root' );
+    is_deeply( [ map { [ $_->{id}, $_->{error} ] } @{ $L->list("$drive;$root_b") } ],
+      [ [ 'alpha', undef ], [ 'delta', undef ], [ 'gamma', undef ] ], 'list: the same' );
+  }
 
   is_deeply( [ $L->select_suites( $list, topics => ['netz'] ) ], [qw( beta gamma )], 'select: topic' );
   is_deeply( [ $L->select_suites( $list, suites => ['gamma'], topics => ['netz'] ) ], [qw( beta gamma )], 'select: no duplicates' );

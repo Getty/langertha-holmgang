@@ -14,6 +14,7 @@ use strict;
 use warnings;
 use FindBin;
 use lib "$FindBin::Bin/../lib";
+use Config;
 use IPC::Open3 ();
 use Path::Tiny qw( path );
 use Test::More;
@@ -133,11 +134,12 @@ wrong_solutions: [ { title: off, calls: [ { tool: fan_set, args: { level: off } 
 Y
 }
 {
-  my $list = $loader->list( "$root:$yaml_root" );
+  my $roots = join $Config{path_sep}, "$root", "$yaml_root";
+  my $list = $loader->list($roots);
   is_deeply( [ map { [ $_->{id}, $_->{error} ] } @$list ], [ [ 'dsl-sums', undef ], [ 'fmt-two', undef ] ], 'list: a DSL suite beside a format 2 suite' );
   is( $list->[0]{digest}, $s->digest, '... with its digest' );
   is( $list->[0]{cases}, 3, '... and its cases' );
-  is( $loader->locate( "$root:$yaml_root", 'dsl-sums' ), "$root/dsl-sums", 'locate finds a suite.pl directory' );
+  is( $loader->locate( $roots, 'dsl-sums' ), "$root/dsl-sums", 'locate finds a suite.pl directory' );
   my ( $code, $out ) = cli( 'lint', "$root" );
   is( $code, 0, 'holmgang lint on a directory with a DSL suite' ) or diag $out;
   like( $out, qr/^ok   dsl-sums \(3 cases\)$/m, '... lints it' );

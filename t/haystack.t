@@ -17,6 +17,7 @@ use Digest::SHA qw( sha256_hex );
 use Encode qw( encode );
 use File::Spec ();
 use FindBin ();
+use Path::Tiny ();
 
 use Langertha::Holmgang::Error;
 use Langertha::Holmgang::Haystack;
@@ -80,11 +81,15 @@ for my $kind ( $h->kinds ) {
   print $kind, ' ', sha256_hex( encode( 'UTF-8', $h->generate($s) ) ), "\n";
 }
 PERL
+  # a file, not -e: Windows passes a command line, and the lines of -e break it
+  my $tmp  = Path::Tiny->tempdir;
+  my $prog = $tmp->child('child.pl');
+  $prog->spew_raw($code);
   my @runs;
   for my $seed ( 1, 2, 977 ) {
     local $ENV{PERL_HASH_SEED}    = $seed;
     local $ENV{PERL_PERTURB_KEYS} = 2;
-    open my $fh, '-|', $^X, '-I'.$lib, '-e', $code or die 'cannot run '.$^X.': '.$!;
+    open my $fh, '-|', $^X, '-I'.$lib, "$prog" or die 'cannot run '.$^X.': '.$!;
     push @runs, do { local $/; <$fh> };
     close $fh;
     is( $?, 0, 'PERL_HASH_SEED='.$seed.': child ran' );

@@ -8,6 +8,12 @@ Revision history for Langertha-Holmgang
     Variant settings retries=N (0 to 1000000, endless, 0 = off),
     retry_delay=S and retry_delay_max=S (first and longest pause, default 10
     and 300 s); each turn that was asked again carries retries in the report.
+  - Loader->list and Loader->locate split search directories as PATH does:
+    at ":", on Windows at ";", so a drive letter no longer cuts a
+    directory in two
+  - Needs YAML::XS 0.77: an older libyaml refused a ":" in a plain scalar
+    inside a flow collection, such as an IPv6 address in { ... }, and the
+    case did not load
   - Random and Haystack keep every intermediate value below 2**32, so a
     perl with 32-bit integers draws the same numbers, cases and texts as
     one with 64-bit integers; there every draw was 4294967295 and every
