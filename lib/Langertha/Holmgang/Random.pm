@@ -29,8 +29,8 @@ module's use of C<rand> or C<srand> can move it.
 The algorithm is fixed: xoshiro128** (Blackman and Vigna) over four 32-bit
 words, seeded by splitmix32 from the seed. Changing it changes every generated
 suite, so it never changes without a version raised in every suite that
-generates. Pure Perl; it needs a perl with 64-bit integers, as
-L<Langertha::Holmgang::Haystack> does.
+generates. Pure Perl, and every intermediate value stays below 2**32, so a
+perl with 32-bit integers draws the same numbers as one with 64-bit integers.
 
 Never C<srand>/C<rand> in a generator: the global generator is shared with
 every other module, so the cases would depend on what ran before.
@@ -66,10 +66,20 @@ sub BUILD {
   return;
 }
 
-# a * b mod 2**32 without leaving 48 bits
+# x + y and x * y mod 2**32 for x, y below 2**32. No bit operator sees a value
+# of 2**32 or more: on a perl with 32-bit integers that is a float, and the
+# bit operators clamp it to 2**32 - 1.
+sub _add32 {
+  my ( $x, $y ) = @_;
+  my $sum = $x + $y;
+  return $sum >= 4294967296 ? $sum - 4294967296 : $sum;
+}
+
 sub _mul32 {
   my ( $x, $y ) = @_;
-  return ( ( $x * ( $y & 0xFFFF ) ) + ( ( ( $x * ( $y >> 16 ) ) & 0xFFFF ) << 16 ) ) & $M32;
+  my ( $xh, $xl, $yh, $yl ) = ( $x >> 16, $x & 0xFFFF, $y >> 16, $y & 0xFFFF );
+  my $cross = ( ( ( $xh * $yl ) & 0xFFFF ) + ( ( $xl * $yh ) & 0xFFFF ) ) & 0xFFFF;
+  return _add32( $xl * $yl, $cross << 16 );
 }
 
 sub _rotl { my ( $x, $k ) = @_; return ( ( $x << $k ) | ( $x >> ( 32 - $k ) ) ) & $M32 }
@@ -79,7 +89,7 @@ sub _build_s {
   my $x = $self->seed & $M32;
   my @s;
   for ( 1 .. 4 ) {    # splitmix32
-    $x = ( $x + 0x9E3779B9 ) & $M32;
+    $x = _add32( $x, 0x9E3779B9 );
     my $z = $x;
     $z = _mul32( $z ^ ( $z >> 16 ), 0x85EBCA6B );
     $z = _mul32( $z ^ ( $z >> 13 ), 0xC2B2AE35 );

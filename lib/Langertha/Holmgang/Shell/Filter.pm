@@ -95,7 +95,12 @@ sub _awk {
     my ( $or, $cmp, $prim, $concat, $sum );
     # Zahlwert wie awk (fuehrende Zahl, sonst 0) und Ausgabe einer Rechnung (OFMT %.6g)
     my $num = sub { ( $_[0] // '' ) =~ /\A\s*([-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?)/ ? $1 + 0 : 0 };
-    my $fmt = sub { my ($v) = @_; $v == int($v) && abs($v) < 1e16 ? sprintf( '%d', $v ) : sprintf( '%.6g', $v ) };
+    my $fmt = sub {    # %d nur, wo es den Wert traegt: mit 32-Bit-IV kippt es ab 2**31, dann %.0f
+        my ($v) = @_;
+        return sprintf( '%.6g', $v ) unless $v == int($v) && abs($v) < 1e16;
+        my $d = sprintf( '%d', $v );
+        return $d == $v ? $d : sprintf( '%.0f', $v );
+    };
     # Werte: Zahl oder Text wie awk (strnum: Felder, die wie Zahlen aussehen)
     $prim = sub {
         my $k = $t[$i] or die "awk\n";

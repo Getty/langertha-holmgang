@@ -6,6 +6,7 @@ use namespace::autoclean;
 use utf8;
 use JSON::MaybeXS ();
 use Langertha::Holmgang::Error;
+use Langertha::Holmgang::Random ();
 use Scalar::Util qw( blessed );
 use Time::Local ();
 
@@ -47,7 +48,7 @@ C<< { generate => { ... } } >> in a message content or in a file content of
 the state, and this module turns it into text.
 
 B<Deterministic:> the same spec gives the same text, byte for byte, on every
-perl with 64-bit integers and independent of C<PERL_HASH_SEED> (its own
+perl and independent of C<PERL_HASH_SEED> (its own
 xorshift32 random source, never C<rand>). The algorithm and its vocabulary
 are those of cai-platform's C<CAI::Platform::Eval::Haystack>, and the text is
 the same as there, so a case measures the same input on both. When the
@@ -180,10 +181,11 @@ rounded. As a class method it uses the default 3.5. Undefined text is 0.
 
 #### Random
 
-# xorshift32: the same on every perl with 64-bit integers
+# xorshift32: the same on every perl; the seed (below 2**32) is mixed in
+# 32-bit steps, as a perl with 32-bit integers clamps a larger value
 sub _rng {
   my ( $self, $seed ) = @_;
-  my $s = ( ( $seed * 2654435761 ) + 0x9E3779B9 ) & 0xFFFFFFFF;
+  my $s = Langertha::Holmgang::Random::_add32( Langertha::Holmgang::Random::_mul32( $seed, 2654435761 ), 0x9E3779B9 );
   $s ||= 0x12345678;
   my $r = sub {
     $s ^= ( $s << 13 ) & 0xFFFFFFFF;

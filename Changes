@@ -8,6 +8,13 @@ Revision history for Langertha-Holmgang
     Variant settings retries=N (0 to 1000000, endless, 0 = off),
     retry_delay=S and retry_delay_max=S (first and longest pause, default 10
     and 300 s); each turn that was asked again carries retries in the report.
+  - Random and Haystack keep every intermediate value below 2**32, so a
+    perl with 32-bit integers draws the same numbers, cases and texts as
+    one with 64-bit integers; there every draw was 4294967295 and every
+    seed gave the same suite
+  - Shell filters: awk prints a whole number above 2**31 - 1 that a
+    calculation yields with all its digits on a perl with 32-bit integers
+    too; there a sum wrapped into the negative
   - Report->read, and with it holmgang report, refuses a directory with
     "Is a directory" on every system; some systems read it as a broken
     report, others answered "Permission denied"
