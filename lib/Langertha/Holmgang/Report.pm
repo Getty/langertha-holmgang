@@ -500,12 +500,18 @@ not know are ignored and not kept.
 sub read {
   my ( $class, $file ) = @_;
   croak __PACKAGE__.'->read needs a file' unless defined $file;
-  return $class->from_json( path($file)->slurp_raw, source => ''.$file );
+  my $p = path($file);
+  # the BSDs and Hurd read a directory's entries, Windows refuses to open it
+  Path::Tiny::Error->throw( 'read', ''.$file, POSIX::strerror( POSIX::EISDIR() ) ) if $p->is_dir;
+  return $class->from_json( $p->slurp_raw, source => ''.$file );
 }
 
 =method read
 
     my $report = Langertha::Holmgang::Report->read('/data/reports/run.json');
+
+A file that does not read throws a L<Path::Tiny::Error>; a directory does on
+every system, with the error of C<EISDIR> ("Is a directory").
 
 =cut
 

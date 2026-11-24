@@ -44,6 +44,23 @@ clean_error( 'a directory as report file',
   [ report => "$dir" ],
   qr/^holmgang: report \Q$dir\E does not read: Is a directory$/m, "$dir" );
 
+# The same words where the system answers otherwise (k75): on the BSDs and Hurd
+# read(2) hands out a directory's entries, on Windows opening it is refused.
+{
+  no warnings 'redefine';
+  my $slurp = \&Path::Tiny::slurp_raw;
+  for my $os (
+    [ 'BSD',     sub { "\x17m\x19\x00\f\x00\x04\x01." } ],
+    [ 'Windows', sub { Path::Tiny::Error->throw( 'sysopen', $_[0], 'Permission denied' ) } ],
+  ) {
+    my ( $name, $dir_read ) = @$os;
+    local *Path::Tiny::slurp_raw = sub { -d $_[0] ? $dir_read->(@_) : $slurp->(@_) };
+    clean_error( 'a directory as report file, read as on '.$name,
+      [ report => "$dir" ],
+      qr/^holmgang: report \Q$dir\E does not read: Is a directory$/m, "$dir" );
+  }
+}
+
 {
   my $bad = $dir->child('bad.json');
   $bad->spew_utf8('{nope');

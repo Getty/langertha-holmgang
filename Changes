@@ -8,6 +8,9 @@ Revision history for Langertha-Holmgang
     Variant settings retries=N (0 to 1000000, endless, 0 = off),
     retry_delay=S and retry_delay_max=S (first and longest pause, default 10
     and 300 s); each turn that was asked again carries retries in the report.
+  - Report->read, and with it holmgang report, refuses a directory with
+    "Is a directory" on every system; some systems read it as a broken
+    report, others answered "Permission denied"
   - Needs perl 5.36 and JSON::MaybeXS 1.004006: a YAML true/false in a case
     and a Perl !!1/!!0 in a suite.pl are booleans only where
     builtin::is_bool tells them from the text "1" and "". On older perls a
