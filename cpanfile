@@ -1,4 +1,4 @@
-requires 'perl', '5.020';
+requires 'perl', '5.036';
 
 requires 'Archive::Tar';
 requires 'B';
@@ -15,7 +15,7 @@ requires 'Future::AsyncAwait';
 requires 'Getopt::Long';
 requires 'IO::Compress::Gzip';
 requires 'IO::Uncompress::Gunzip';
-requires 'JSON::MaybeXS';
+requires 'JSON::MaybeXS', '1.004006';
 requires 'JSON::PP';
 requires 'Langertha', '0.504';
 requires 'Math::BigInt';
