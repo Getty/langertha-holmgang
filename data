@@ -1,0 +1,27 @@
+---
+claimed_at: 2026-11-25T06:03:16Z
+claimed_by: main
+class: standard
+completed: 2026-11-25T06:03:08Z
+created: 2026-11-25T05:41:46Z
+id: 78
+priority: high
+started: 2026-11-25T05:44:19Z
+status: done
+tags:
+- entkopplung
+- doku
+title: Projektdoku und Agentenaufbau ohne CAI; Tarball ohne Agentendateien
+updated: 2026-11-25T06:03:16Z
+---
+
+CLAUDE.md, CONTEXT.md, README.md, .claude/agents/*, .claude/rules/holmgang-rules.md, Skill holmgang-core, ADRs, Changes erzählen Holmgang als Auslagerung aus cai-platform (Migrationsplan, CitiAI-Ziele, agent-lab, ~/cai-platform als Quelle). Umschreiben auf: generischer Motor über Langertha. ADRs: Herkunft neutral oder raus, ADR 0001 umbenennen. Changes: künftige Einträge ohne CAI; ob alte Einträge umgeschrieben werden, entscheidet Getty.
+Tarball: 0.001 enthält CLAUDE.md, CONTEXT.md, .claude/ (14 Einträge), .worktreeinclude -> in dist.ini ausschließen (Agentendateien gehören nicht auf CPAN). Ob CONTEXT.md/ADRs mitgehen: Getty.
+
+Bestätigt 2026-11-25: 0.001 und 0.002 auf CPAN enthalten .claude/ samt skills/holmgang-core/SKILL.md (Quellkarte ~/cai-platform mit Modulpfaden und Zeilenzahlen), rules/holmgang-rules.md (CitiAI, agent-lab, GPU-Ziele), agents/*. Keine Fälle, Schlüssel oder Hostnamen darin. Ziel: sauberes 0.003 mit dist.ini-Ausschluss (.claude, CLAUDE.md, .worktreeinclude); Löschen von 0.001/0.002 über PAUSE entscheidet Getty (BackPAN behält sie).
+
+Warum nur ein Skill im Tarball: die installierten Skills schließt .git/info/exclude aus (.claude/skills/*), holmgang-core ist bewusst versioniert; Git::GatherDir nimmt nur versionierte Dateien mit. Das Ausschließen ist richtig; der Fehler ist, dass .claude/ überhaupt mitgeht. Gehört vermutlich in [@Author::GETTY] (gilt für alle Getty-Distributionen mit Agententeam: .claude/, CLAUDE.md, AGENTS.md, .worktreeinclude nie in den Tarball); sonst lokal in dist.ini.
+
+Tarball/.claude-im-Release und skilletor-Ausschluss: nicht Teil dieser Karte, klärt Getty mit einem anderen Agenten (2026-11-25).
+
+Committed b59093d
