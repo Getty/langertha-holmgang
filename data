@@ -1,0 +1,24 @@
+---
+claimed_at: 2026-11-25T06:03:36Z
+claimed_by: holmgang-worker
+class: standard
+completed: 2026-11-25T06:03:27Z
+created: 2026-11-25T05:41:37Z
+id: 77
+priority: high
+started: 2026-11-25T05:44:11Z
+status: done
+tags:
+- entkopplung
+- doku
+title: 'Kein CAI in der POD: Herkunftsverweise durch Beschreibung ersetzen'
+updated: 2026-11-25T06:03:36Z
+---
+
+Rund 50 Module in lib/ und bin/ verweisen auf cai-platform (Port of …, cai-platform docs/entwurf-evals.md §…, ModelTester::check_variant, $CONTEXT_RE …). Das ging auf CPAN. Jede Stelle: sagen, was der Code tut, ohne Herkunft. Prüfung: git grep -i -E "cai-|CAI::|entwurf-evals" -- lib bin leer.
+
+2026-11-25 05:55 POD and comments in 34 lib modules rewritten: provenance clauses dropped or replaced by what the code does (digest order, Target context-exceeded phrasings, variant precedence, ToolSchema const/null, Excerpt byte-for-byte, Haystack determinism). No code change. Test comments in t/ likewise (haystack.t subtest renamed 'same bytes as pinned', loader.t test name 'digest over file names and bytes', target.t scrub test name). Skill .claude/skills/holmgang-core/SKILL.md: source map replaced by a map of Holmgang's own modules, Tests section generic, ADR 0003 kept as 'real benchmark cases live outside this repository'. Remaining hits of the verification grep: only Pki.pm's PEM marker (5 lines), see k76.
+
+2026-11-25 05:55 Done: provenance references removed from POD/comments in lib, bin, t and the holmgang-core skill; behaviour unchanged. prove -lr t PASS (3 env-gated skips), lint ~/cai-bench/suites 36/36. Only remaining grep hits: the Pki.pm PEM marker, blocked on k76.
+
+Committed df4ab57
