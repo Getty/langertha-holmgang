@@ -1,0 +1,15 @@
+---
+class: standard
+created: 2026-11-25T05:42:02Z
+id: 79
+priority: medium
+status: backlog
+tags:
+- entkopplung
+- entscheidung
+title: 'Entscheidung: CAI-Fachwelten (Denken, Schichtfehler, Uebersetzung, Kueche)
+  im Motor oder als Plugins in cai-bench'
+updated: 2026-11-25T05:42:02Z
+---
+
+Antwortwelten für die Themen der privaten CAI-Suites, mit deutschen Werkzeugnamen (antwort_abgeben …). Kein cai im Namen, aber CAI-Fachlogik im öffentlichen Motor. Format-2-Felder (auszug, quellen/, difficulty leicht) bleiben wegen ADR 0004. Offen bis Getty entscheidet; bei Umzug: Plugin-Mechanismus (Simulators-Register) muss Welten von außen laden, cai-bench-Lint bleibt 36/36.
