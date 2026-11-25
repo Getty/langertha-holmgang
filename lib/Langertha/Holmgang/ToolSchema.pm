@@ -41,16 +41,14 @@ L<Langertha::Holmgang::Error>. L</schema_errors> checks the arguments of one
 call; its texts go to the model (after C<Fehler: Argumente passen nicht zum
 Schema:>) and are therefore German, as the suites expect them. Integers and
 numbers may arrive as text (C<"3">), as many models send them. C<enum> and
-C<const> compare like the expectations do. Unlike cai-platform, which accepts
-C<const> but never checks it, C<const> holds per call: the schema the model
-sees means what it says.
+C<const> compare like the expectations do. C<const> holds per call: the
+schema the model sees means what it says.
 
 C<type> may be a list of types, as JSON Schema has it
 (C<< type: [string, "null"] >>): the value fits when it fits one of them,
 and the model reads C<erwartet string oder null>. The other keys apply as
 they stand: an C<enum> beside C<"null"> has to list C<null> for a null to
-pass, as in JSON Schema, and a null in C<enum> matches a null (in
-cai-platform it matches nothing). cai-platform refuses a type list at load.
+pass, as in JSON Schema, and a null in C<enum> matches a null.
 
 =cut
 

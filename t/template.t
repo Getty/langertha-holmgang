@@ -1,6 +1,5 @@
 #!/usr/bin/env perl
-# Langertha::Holmgang::Template, with cai-platform t/eval_world_cap.t ported onto
-# invented data (ADR 0003). Claims: plain text and no template pass through;
+# Langertha::Holmgang::Template, on invented data (ADR 0003). Claims: plain text and no template pass through;
 # $state and $args render; re, cap, has, pad compute as documented (cap gives the
 # first capture group, empty without a hit); nft_verdict asks the device's
 # simulator through the registry and is empty where it cannot answer; a template

@@ -55,7 +55,7 @@ C<log …>, C<tcp option maxseg size set …>, C<limit rate …> (matches; C<ove
 Verdicts: C<accept>, C<drop>, C<reject [with …]>, C<jump>, C<goto>,
 C<return>, C<continue>. Everything else is B<not evaluable>: the verdict is
 then C<undef> with a reason, and the Linux simulator records a gap in the
-simulation when such a rule is added (cai-platform F<docs/entwurf-evals.md> §3.3.2).
+simulation when such a rule is added.
 
 B<Named sets> live per table in the state:
 

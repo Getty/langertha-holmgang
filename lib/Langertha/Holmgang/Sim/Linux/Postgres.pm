@@ -20,7 +20,7 @@ our $VERSION = '0.003';
 =description
 
 A PostgreSQL cluster (Debian 12, version 15) on a device of type
-C<linux> (cai-platform F<docs/entwurf-evals.md> §3.3.1): the state lives under
+C<linux>: the state lives under
 C<postgres> of the device, configuration files under C<files>, the service under
 C<services> (name in C<postgres.service>).
 

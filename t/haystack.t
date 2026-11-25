@@ -1,12 +1,12 @@
 #!/usr/bin/env perl
-# Langertha::Holmgang::Haystack, ported from cai-platform t/eval_haystack.t.
+# Langertha::Holmgang::Haystack.
 # Claims: same spec -> same bytes (also across processes with different
-# PERL_HASH_SEED, and the same bytes as cai-platform's Eval::Haystack); the
+# PERL_HASH_SEED, and pinned digests per spec); the
 # size follows the characters -> tokens estimate; inserts stand at their
 # position with their neighbours' timestamp; the filler never contains the
 # needle patterns (exclude); bad specs are refused with the field path.
-# The loader parts of the original (generate in messages and files, digest)
-# belong to the loader's tests; the suite parts to the acceptance run.
+# The loader parts (generate in messages and files, digest) belong to the
+# loader's tests.
 # Every spec here is invented (ADR 0003).
 use strict;
 use warnings;
@@ -50,9 +50,9 @@ subtest 'every kind: deterministic, size, German' => sub {
   }
 };
 
-# The digests were taken from cai-platform's CAI::Platform::Eval::Haystack
-# (snapshot af7561a5): the same spec gives the same input on both.
-subtest 'same bytes as cai-platform' => sub {
+# Pinned digests: a change to the generator changes the text a case measures,
+# and must show up here.
+subtest 'same bytes as pinned' => sub {
   my %sha = (
     journal         => '77c611d5ffe77e8708f6844d93e0a2c14773627def1ad8e48b24006c5a0e00c8',
     syslog          => '7344089e0b5832f4ce549df93da6e633cb197de0e6d2209ea89d42701fa59781',

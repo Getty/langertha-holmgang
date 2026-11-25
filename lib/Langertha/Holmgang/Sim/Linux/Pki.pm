@@ -24,7 +24,7 @@ our $VERSION = '0.003';
 =description
 
 Certificates are B<data in the state>; their PEM text in files only refers to
-them (cai-platform F<docs/entwurf-evals.md> §3.3). The catalog lives under C<pki> of one
+them. The catalog lives under C<pki> of one
 or more devices (merged):
 
   pki:

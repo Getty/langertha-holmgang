@@ -81,7 +81,7 @@ has variant => (
 Optional, default C<{}>. The variant's settings as C<chat_f> options
 (C<max_tokens>, C<temperature>, C<reasoning_effort>, C<chat_template_kwargs>
 ...). They are added to every turn and win over the turn's own options of the
-same name, as cai-platform's variant C<max_tokens> beats the case's. A plain
+same name, so a variant's C<max_tokens> beats the case's. A plain
 HashRef, passed through unchecked: this is the wire-level form. The named
 and checked settings of a variant go through L</for_variant>, which builds
 this HashRef from them.
@@ -197,7 +197,7 @@ sub check_variant {
   for my $k ( sort keys %$settings ) {
     my $x = $settings->{$k};
     $no->( 'variant.'.$k => 'unknown setting (known: '.join( ', ', @VARIANT_KEYS ).')' ) unless $VARIANT_KEY{$k};
-    # an empty value names nothing (cai-platform check_variant)
+    # an empty value names nothing
     next if !defined $x || ( !ref $x && !length $x );
     if ( $k eq 'enable_thinking' ) {
       my $on = JSON::MaybeXS::is_bool($x) ? ( $x ? 1 : 0 )
@@ -258,7 +258,7 @@ sub check_variant {
   my $settings = Langertha::Holmgang::Target->check_variant( \%settings, $engine );
 
 Checks the settings of a variant and returns them normalised. A variant names
-only these, each checked (cai-platform C<ModelTester::check_variant>):
+only these, each checked:
 
 =over
 
@@ -358,9 +358,9 @@ my $NO_VISION_RE = qr{
   | not \s+ a \s+ multimodal \s+ model
 }xi;
 
-# The request exceeds the context window -- cai-platform's $CONTEXT_RE
-# (Eval::Runner, af7561a5), unchanged: OpenAI, vLLM, llama.cpp, SGLang, TGI,
-# LiteLLM, Ollama, Anthropic, and the generic "context window" phrasing.
+# The request exceeds the context window: the phrasings of OpenAI, vLLM,
+# llama.cpp, SGLang, TGI, LiteLLM, Ollama, Anthropic, and the generic
+# "context window" one.
 my $CONTEXT_RE = qr{
     context_length_exceeded | exceed_context_size | ContextWindowExceeded
   | maximum \s+ context \s+ length | maximum \s+ model \s+ length | max_model_len
@@ -401,7 +401,7 @@ available context size"), SGLang ("longer than the model's context length"),
 TGI ("C<inputs> tokens + C<max_new_tokens> must be <= N"), LiteLLM
 (C<ContextWindowExceededError>), Ollama ("input length exceeds the context
 length"), Anthropic ("prompt is too long"), and "context window exceeded" /
-"is too small". The expression is cai-platform's C<$CONTEXT_RE> unchanged.
+"is too small".
 
 =item * C<error> -- everything else, an empty text included: a 500 without a
 hint, a timeout, a refused connection, a croak before the request.
@@ -433,7 +433,7 @@ sub _strip_location { my ( $class, $text ) = @_; return $text =~ s/$LOCATION\.?/
 sub scrub {
   my ( $self, $text ) = @_;
   return $text unless defined $text;
-  # the engine's own key, of whatever shape (cai-platform ModelTester::scrub)
+  # the engine's own key, of whatever shape
   if ( ref $self ) {
     my $engine = $self->engine;
     my $key = $engine->can('api_key') ? eval { $engine->api_key } : undef;

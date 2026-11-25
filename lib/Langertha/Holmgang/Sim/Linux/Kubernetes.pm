@@ -22,8 +22,7 @@ our $VERSION = '0.003';
 =description
 
 A Kubernetes cluster (v1.30) as state of a Linux device (the device is the
-admin host with C<kubectl>, cai-platform F<docs/entwurf-evals.md> §3.3.1). The
-state is under C<kubernetes>:
+admin host with C<kubectl>). The state is under C<kubernetes>:
 
   kubernetes:
     context: prod

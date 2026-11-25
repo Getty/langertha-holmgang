@@ -3,7 +3,7 @@
 # (ADR 0007) loads and gives what its format 2 original gives. Runs only against
 # copies kept outside this checkout (ADR 0003): HOLMGANG_ACCEPTANCE_DSL is a search
 # directory of DSL suites (<id>/suite.pl), HOLMGANG_ACCEPTANCE_SUITES the search
-# directories of the format 2 originals (as in acceptance_load.t). Skips without
+# directories of the format 2 originals (several separated by the path separator). Skips without
 # both. Nothing of the cases is printed -- test names carry suite and case ids only.
 #
 # Claims, per DSL suite and its original of the same id:

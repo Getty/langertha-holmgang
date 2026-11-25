@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
-# Langertha::Holmgang::Grader, ported from cai-platform t/eval_grader.t onto
-# invented cases (ADR 0003), with the statuses of ADR 0006.
+# Langertha::Holmgang::Grader, on invented cases (ADR 0003), with the statuses
+# of ADR 0006.
 # Claims: rules on the state, "nothing else changed", calls in order and
 # forbidden calls compute right; passed only when every required rule is met
 # (an optional rule decides nothing); a missed case with a sim_gap is

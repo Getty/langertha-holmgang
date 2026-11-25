@@ -74,8 +74,7 @@ How often a run repeats the suite by default (1..100), or C<undef>.
 =attr digest
 
 SHA-256 (hex) over the file names and bytes of F<suite.yaml> and every case
-file, plus the generated texts — the same value, under the same name, that
-cai-platform computes as its C<digest>, and the C<suite.digest> of a report.
+file, plus the generated texts — the C<suite.digest> of a report.
 
 =cut
 

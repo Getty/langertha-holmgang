@@ -19,8 +19,7 @@ our $VERSION = '0.003';
 
 =description
 
-A MariaDB server (Debian 12, MariaDB 10.11) on a device of type C<linux>
-(cai-platform F<docs/entwurf-evals.md> §3.3.1). The state lives under C<mariadb> of
+A MariaDB server (Debian 12, MariaDB 10.11) on a device of type C<linux>. The state lives under C<mariadb> of
 the device, the option files under C<files>, the service under C<services> (name in
 C<mariadb.service>):
 

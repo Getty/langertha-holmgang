@@ -11,7 +11,7 @@ use Holmgang::TestSim qw( sims clone diff );
 
 binmode Test::More->builder->$_, ':encoding(UTF-8)' for qw(output failure_output todo_output);
 
-# Denken als Welt ohne Geraet (ported from cai-platform t/eval_sim_denken.t).
+# Denken als Welt ohne Geraet.
 # Behauptet wird: antwort_abgeben antwortet immer neutral, bewertet sofort und
 # schreibt antwort/abgaben/ergebnis/befund in den Zustand; ein erneuter Aufruf
 # ersetzt; ein gescheiterter Aufruf aendert nichts; prepare weist unbekannte

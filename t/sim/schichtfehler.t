@@ -11,8 +11,7 @@ use Holmgang::TestSim qw( sims clone );
 
 binmode Test::More->builder->$_, ':encoding(UTF-8)' for qw(output failure_output todo_output);
 
-# Web-Anwendung als Welt ohne Geraet (ported from cai-platform
-# t/eval_sim_schichtfehler.t). Behauptet wird: Dateien kommen mit
+# Web-Anwendung als Welt ohne Geraet. Behauptet wird: Dateien kommen mit
 # Zeilennummern (auch ein Ausschnitt), Abrufe und Konsole kommen aus der
 # Aufzeichnung — Parameter in beliebiger Reihenfolge und Kodierung —,
 # statische Dateien liefert der Server selbst, ein unbekannter Pfad ist 404,

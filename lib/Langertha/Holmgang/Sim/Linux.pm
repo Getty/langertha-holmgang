@@ -23,7 +23,7 @@ our $VERSION = '0.003';
   my ( $out, $ok, $gap, $exit ) = $sims->run_command( $state, 'gw-a', 'ip route add 10.2.0.0/24 via 10.1.0.2' );
   my ( $out, $ok, $gap )        = $sims->write_file( $state, 'gw-a', '/etc/dnsmasq.conf', $text );
 
-  # inside the simulator and its parts (Sim::Linux::<Part>), as in cai-platform:
+  # inside the simulator and its parts (Sim::Linux::<Part>), on the device:
   my ( $out, $ok, $gap ) = Langertha::Holmgang::Sim::Linux->run( $dev, $command_line, $ctx );
 
 =description

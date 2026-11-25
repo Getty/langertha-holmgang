@@ -1,11 +1,10 @@
 #!/usr/bin/env perl
-# Excerpts from statute texts under quellen/ (k52), ported from cai-platform
-# t/eval_vertragscheck.t (the Auszug block) and t/eval_suite_auszug_digest.t, on
-# an invented statute (ADR 0003).
+# Excerpts from statute texts under quellen/ (k52), on an invented statute
+# (ADR 0003).
 # Claims: a fixture parses into head, provisions and their ranges; an excerpt is
 # the fixture's title, range and Stand, then the blocks from the first to the last
-# provision named, headings in front included -- byte for byte as cai-platform
-# writes it; bad specs and bad fixtures are refused with their field path; the
+# provision named, headings in front included -- byte for byte; bad specs and
+# bad fixtures are refused with their field path; the
 # file is confined to quellen/ inside the suite (links resolved), as images are;
 # expand sets excerpts in and leaves text and generate parts. Through the loader:
 # a part (in a list, or alone) is set in before the shape checks and lint; the

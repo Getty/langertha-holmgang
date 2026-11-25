@@ -56,8 +56,7 @@ my $TOOL_RE = qr/\A[A-Za-z_][A-Za-z0-9_-]{0,63}\z/;
 
 =description
 
-The strict shape checks of suite format 2 (cai-platform
-C<docs/entwurf-evals.md> §3): an unknown key, a wrong type, a bad id or
+The strict shape checks of suite format 2: an unknown key, a wrong type, a bad id or
 regular expression, a call of a tool the suite does not offer — each is a
 L<Langertha::Holmgang::Error> naming the field (C<cases/c1.yaml:
 rules[0].regex>). Both front ends call this module, so the DSL cannot build
@@ -440,7 +439,7 @@ The generated contents of a case — message contents, then file contents of
 the state by device and path — each with its field and its text, in the order
 the digest takes them. A message content with an excerpt
 (C<< { auszug => … } >>, L<Langertha::Holmgang::Excerpt>) counts as generated:
-the excerpts are set in from C<dir> first, as cai-platform does. Refuses a
+the excerpts are set in from C<dir> first. Refuses a
 broken generate spec or excerpt with its field.
 
 =cut

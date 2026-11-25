@@ -1,6 +1,5 @@
 #!/usr/bin/env perl
-# Langertha::Holmgang::Expectation, with the expectation part of cai-platform
-# t/eval_world.t ported onto invented data (ADR 0003). Claims: every matcher
+# Langertha::Holmgang::Expectation, on invented data (ADR 0003). Claims: every matcher
 # holds and fails where it should, all named matchers must hold, and the reason
 # says why; paths take dotted text, segment lists, list indices and {arg};
 # argument filters split, int and lc; same_scalar compares numbers numerically,

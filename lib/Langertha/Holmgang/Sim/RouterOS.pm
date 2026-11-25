@@ -14,7 +14,7 @@ our $VERSION = '0.003';
   my $sims = Langertha::Holmgang::Simulators->new;
   my ( $out, $ok, $gap ) = $sims->run_command( $state, 'r1', '/ip firewall filter print' );
 
-  # directly, as in cai-platform:
+  # directly, on the device:
 
   my $dev = {
       type     => 'routeros',

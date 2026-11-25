@@ -1,6 +1,6 @@
 package Holmgang::TestSim;
-# Test helpers for the simulator tests: one registry, the call shapes of
-# cai-platform's Eval::Sim, and the state helpers the ported tests use.
+# Test helpers for the simulator tests: one registry, the call shapes the
+# simulator tests use, and their state helpers.
 use strict;
 use warnings;
 use Exporter qw( import );

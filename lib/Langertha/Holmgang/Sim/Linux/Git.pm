@@ -18,7 +18,7 @@ our $VERSION = '0.003';
 
 =description
 
-git 2.39 (Debian 12) on a Linux device (cai-platform F<docs/entwurf-evals.md> §3.3.1).
+git 2.39 (Debian 12) on a Linux device.
 A working copy is under the device's C<git.repos>; its files are the device's
 files under the repo's path:
 

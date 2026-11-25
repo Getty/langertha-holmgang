@@ -8,8 +8,7 @@ use Test::More;
 use Langertha::Holmgang::Sim::Roost;
 use Holmgang::TestSim qw( sims clone diff );
 
-# Roost as an answer world without a device (k43, new, no model in
-# cai-platform). Claims: it is a built-in answer world with three tools;
+# Roost as an answer world without a device (k43). Claims: it is a built-in answer world with three tools;
 # survey_roost shows dragons, perches (free or taken) and larder and changes
 # nothing; feed_dragon takes one basket out of the larder and appends it to
 # the dragon's meals, whatever the dragon eats; move_dragon sets the perch,

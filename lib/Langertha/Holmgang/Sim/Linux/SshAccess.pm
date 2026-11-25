@@ -23,7 +23,7 @@ our $VERSION = '0.003';
 =description
 
 A user's login to the OpenSSH server of a simulated
-Linux device (cai-platform F<docs/entwurf-evals.md> §3.3.1), built on
+Linux device, built on
 L<Langertha::Holmgang::Sim::Linux::Sshd>. Checked in the order in which
 sshd sees it:
 

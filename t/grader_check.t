@@ -1,6 +1,5 @@
 #!/usr/bin/env perl
-# The rule kind check, ported from cai-platform t/eval_grader_check.t onto an
-# invented world (ADR 0003): a command run after the run on a COPY of the end
+# The rule kind check, on an invented world (ADR 0003): a command run after the run on a COPY of the end
 # state in the simulator. Claims: (1) met only when exit status and output (text
 # or lines) fit, and the reason names what does not; (2) the command changes no
 # graded state and is no call; (3) when it hits a gap of the simulation the rule

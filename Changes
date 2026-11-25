@@ -1,6 +1,9 @@
 Revision history for Langertha-Holmgang
 
 {{$NEXT}}
+  - Report: the import of another runner's report format for acceptance
+    comparisons is removed; POD describes each module's behaviour instead of
+    its origin; a test keeps names of private users out of the shipped tree
   - Retry: a turn that fails for a passing reason (429, 502, 503, 504, a
     refused, reset or closed connection) is sent again, by default twice,
     after 10 and 20 seconds; never when the error names a broken GPU (CUDA,
@@ -159,20 +162,19 @@ Revision history for Langertha-Holmgang
   - New Langertha::Holmgang::Random: a seeded random source in pure Perl for generators, the same on every perl and platform (k18)
   - Cases and suites in a Perl DSL (use Langertha::Holmgang, ADR 0007): a suite.pl in a suite directory loads, lints and runs like a format 2 suite; it covers images, tolerance, tiers, weights and tags; generate seed => N gives the same cases for the same seed, and the loader can override the seed per suite (k18)
   - holmgang lint and holmgang run take a directory with suite.pl (k18)
-  - New answer world denken (Langertha::Holmgang::Sim::Denken): one tool antwort_abgeben, a checker per Reasoning Gym task, only the full score counts as right; cai-platform's suite denken loads unchanged (k53)
+  - New answer world denken (Langertha::Holmgang::Sim::Denken): one tool antwort_abgeben, a checker per Reasoning Gym task, only the full score counts as right (k53)
   - Answer world uebersetzung (Langertha::Holmgang::Sim::Uebersetzung): hand in segments, report ambiguity, look up the glossary; hand-ins normalised and analysed (numbers in the target format, codes, placeholders, what is missing, length class) into the state (k54)
   - New answer world schichtfehler (Langertha::Holmgang::Sim::Schichtfehler): sources, recorded page fetches and browser console, reported findings matched to causes by file and line overlap; answers only from the state (k55)
   - holmgang export-yaml / Loader->export write a DSL suite as suite format 2 (canonical YAML, images copied); a DSL suite's digest is now its export's digest; DSL cases run in file-name order of their export (k19)
   - --seed ID=N on lint, run and export-yaml overrides a DSL suite's generate seeds (k51)
   - New example suite demo-beacons: the case DSL, cases from a seeded generate block (k50)
-  - Format 2 takes the message part auszug: { datei, von, bis }: a range of a statute text under the suite's quellen/, inserted at load and digested as cai-platform does; the DSL constructor excerpt; the YAML export copies the fixtures (k52)
+  - Format 2 takes the message part auszug: { datei, von, bis }: a range of a statute text under the suite's quellen/, inserted at load and digested; the DSL constructor excerpt; the YAML export copies the fixtures (k52)
   - A code reference or other non-data value in a case's state is refused at load with its field path (k59)
   - A ctx-<N>k tag is no length tier: it names a context window, not an input length (k56)
   - Reports carry each case's difficulty; reports without it still read and merge (k57)
   - The evaluation shows curves per difficulty next to the tier curves, in text, Markdown and JSON (k57)
   - Simulators: restic answers for snapshots without paths and no longer adds them on --path; von_liste_nehmen no longer creates an empty liste (k58)
-  - Verdicts carry unfinished (a cancelled or aborted run is never ok) and repetitions_error (repetitions where the target answered nothing; next to a measured repetition only reported, not deciding ok, ADR 0009 k42; a suite with none measured is never ok, k73), ported from cai-platform's verdicts (k58)
-  - Acceptance 1 and 2 pass against cai-platform origin/main 993637ab: 36 suites, 708 cases, mock runs identical (k58)
+  - Verdicts carry unfinished (a cancelled or aborted run is never ok) and repetitions_error (repetitions where the target answered nothing; next to a measured repetition only reported, not deciding ok, ADR 0009 k42; a suite with none measured is never ok, k73) (k58)
   - New acceptance test t/acceptance_dsl.t: a suite written in the case DSL loads, matches its format 2 original case by case, gives identical mock runs, and its export-yaml does too (k20)
   - A suite.pl is compiled as UTF-8 source whether or not it says "use utf8", so non-ASCII text reaches the model as written instead of as Latin-1 mojibake; a suite.pl that is not valid UTF-8 is refused (k60, ADR 0007)
   - A suite in which no repetition reached the target (every result error, or none) gets a verdict that is never ok, shown NOT MEASURED, with or without a threshold; holmgang report now exits 1 for it as holmgang run does. Unmeasured repetitions next to a measured one are still only noted; context_exceeded and no_vision count as measured (k73, ADR 0008)

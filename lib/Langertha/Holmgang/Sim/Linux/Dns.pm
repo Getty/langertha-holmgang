@@ -18,7 +18,7 @@ our $VERSION = '0.003';
 =description
 
 An authoritative BIND 9.18 (Debian 12, service C<named>) on a device of type
-C<linux> (cai-platform F<docs/entwurf-evals.md> §3.3.1). Configuration and zones are
+C<linux>. Configuration and zones are
 files under C<files>; what is B<loaded> is under C<bind.zones>:
 
   bind:

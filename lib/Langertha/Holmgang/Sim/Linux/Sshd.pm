@@ -18,8 +18,7 @@ our $VERSION = '0.003';
 
 =description
 
-The OpenSSH server of a Debian 12 device of type C<linux>
-(cai-platform F<docs/entwurf-evals.md> §3.3.1). Active only when F</etc/ssh/sshd_config> is in
+The OpenSSH server of a Debian 12 device of type C<linux>. Active only when F</etc/ssh/sshd_config> is in
 the state; otherwise the service C<ssh> stays an ordinary service.
 
   files:

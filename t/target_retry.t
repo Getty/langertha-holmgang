@@ -95,7 +95,7 @@ subtest 'retryable: the signatures' => sub {
     'Connection refused',
     'Connection reset by peer',
     'Server closed connection without sending any data back',
-    "Can't connect to cortex.ai.citilan.de:8888",
+    "Can't connect to llm.example.invalid:8888",
   );
   ok !$T->retryable($_), $_ for (
     'timeout: deadline (1800 s)',

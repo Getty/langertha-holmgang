@@ -18,8 +18,7 @@ our $VERSION = '0.003';
 
 =description
 
-Accounts of a Debian 12 device of type C<linux> (cai-platform F<docs/entwurf-evals.md>
-§3.3.1) and the sudo rules from F</etc/sudoers> with F</etc/sudoers.d/>.
+Accounts of a Debian 12 device of type C<linux> and the sudo rules from F</etc/sudoers> with F</etc/sudoers.d/>.
 
   users:
     mmeier: { uid: 1004, groups: [ mmeier, sudo, docker ], shell: /bin/bash,

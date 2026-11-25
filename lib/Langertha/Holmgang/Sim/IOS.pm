@@ -16,7 +16,7 @@ our $VERSION = '0.003';
   my $sims = Langertha::Holmgang::Simulators->new;
   my ( $out, $ok, $gap ) = $sims->run_command( $state, 'sw-core', 'show vlan brief' );
 
-  # directly, as in cai-platform:
+  # directly, on the device:
 
   my ( $output, $ok ) = Langertha::Holmgang::Sim::IOS->run( $state->{'sw-core'},
       "configure terminal\ninterface Gi1/0/24\nswitchport trunk allowed vlan add 30\nend",

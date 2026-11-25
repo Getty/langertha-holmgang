@@ -57,7 +57,6 @@ __PACKAGE__->meta->make_immutable;
 =description
 
 The refusal the loader, the structure checks and lint throw: not a program
-error but input that does not hold, named by its field. Ported from
-cai-platform's C<CAI::Platform::Refusal>.
+error but input that does not hold, named by its field.
 
 =cut

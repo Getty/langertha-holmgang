@@ -11,7 +11,7 @@ use Langertha::Holmgang::Target;
 # k16: a target that rejects a request because it exceeds its context window
 # is its own status (context_exceeded), one that cannot see an image is
 # no_vision (k27), every other failure is error (ADR 0006). The signatures and
-# negatives are cai-platform's t/eval_context_exceeded.t (af7561a5), here as
+# negatives are the error texts of the servers named in Target's POD, here as
 # real failed requests of a Virtual engine; network-free.
 
 my $USER = [ { role => 'user', content => 'Bitte pruefen.' } ];
@@ -172,7 +172,7 @@ subtest 'scrub: what goes and what stays (k38)' => sub {
     engine => Langertha::Engine::Virtual->new( rules => [], api_key => 'odd-FAKE-key' ) );
   is $t->scrub('echo odd-FAKE-key and odd-FAKE-key'), 'echo *** and ***', 'the engine\'s own key, of any shape';
   is +Langertha::Holmgang::Target->new( engine => Langertha::Engine::Virtual->new( rules => [], api_key => 'abc' ) )
-    ->scrub('abc def'), 'abc def', 'a key under 4 characters is not hunted (cai-platform)';
+    ->scrub('abc def'), 'abc def', 'a key under 4 characters is not hunted';
 
   my $turn = turn( Langertha::Holmgang::Target->new(
     engine => Langertha::Engine::Virtual->new( api_key => 'odd-FAKE-key', rules => [ qr/./ => error( 400,

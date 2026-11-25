@@ -15,7 +15,7 @@ use Holmgang::TestSim qw( sims clone );
 
 binmode Test::More->builder->$_, ':encoding(UTF-8)' for qw(output failure_output todo_output);
 
-# Sehen als Antwortwelt ohne Geraet (k27, neu, kein Vorbild in cai-platform).
+# Sehen als Antwortwelt ohne Geraet (k27).
 # Behauptet wird: jedes Werkzeug legt seine Abgabe roh und normalisiert ab; ein
 # erneuter Aufruf ersetzt die fruehere Abgabe desselben Werkzeugs ganz, ein
 # abgelehnter Aufruf aendert nichts; Text wird NFC, casefold, ss/Umlaute

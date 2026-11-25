@@ -25,8 +25,8 @@ our $VERSION = '0.003';
 
 =description
 
-A case checks itself (cai-platform C<docs/entwurf-evals.md> §3.5) after the
-shape check, on every load from either front end:
+A case checks itself after the shape check, on every load from either front
+end:
 
 =over 4
 

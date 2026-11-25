@@ -46,8 +46,8 @@ L<Langertha::Holmgang::Error> naming the field — C<format>, C<id>,
 C<suite.yaml: tools[0].name>, C<cases/c1.yaml: rules[0].regex>.
 
 The suite's digest is SHA-256 over C<suite.yaml>, each case file (name and
-bytes) and each generated text (an excerpt from F<quellen/> included, k52) — computed exactly as cai-platform computes its
-C<digest>, so a suite has the same value in both — and, for a case with
+bytes) and each generated text (an excerpt from F<quellen/> included, k52) —
+in a fixed order, so the same files give the same value everywhere — and, for a case with
 images, each image's file, SHA-256, width and height (k27). A suite without
 images has the digest it had before images existed.
 
@@ -187,8 +187,8 @@ sub load {
   return Langertha::Holmgang::Suite->new( %suite, cases => \@cases, digest => $sha->hexdigest );
 }
 
-# the generated texts of a case file, by field, as cai-platform's digest takes
-# them -- excerpts from quellen/ (k52) set in first
+# the generated texts of a case file, by field, in the digest's fixed order --
+# excerpts from quellen/ (k52) set in first
 sub _digest_generated {
   my ( $self, $sha, $data, $f, $dir ) = @_;
   for my $g ( $self->structure->generated( $data, $f, dir => $dir ) ) {
@@ -560,8 +560,8 @@ sub _roots {
   return grep { length } map { split /\Q$sep\E/ } grep { defined } @roots;
 }
 
-# A suite.yaml whose format is a name rather than a number (cai-platform's
-# pii-1 corpus) is another kind of corpus, not a broken suite (k33).
+# A suite.yaml whose format is a name rather than a number (a corpus such as
+# corpus-1) is another kind of corpus, not a broken suite (k33).
 sub _foreign {
   my ( $self, $dir ) = @_;
   my ( $head ) = eval { $self->_read_yaml( $dir.'/suite.yaml', 'suite.yaml' ) };
@@ -621,7 +621,7 @@ C<id>, C<version>, C<title>, C<description>, C<topic>, C<cases> and C<tools>
 C<error> (the refusal as text) instead of stopping the list; an id found in
 more than one search directory is listed once, with an error. A directory
 whose F<suite.yaml> names its C<format> with something other than a number
-(cai-platform's C<pii-1> corpus, say) is another kind of corpus and is left
+(C<corpus-1>, say) is another kind of corpus and is left
 out; a numeric format other than 2 (C<1>, C<3>) or none at all is a suite
 that does not load and is listed with its error. L</load> refuses either.
 

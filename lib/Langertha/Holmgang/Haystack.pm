@@ -49,10 +49,8 @@ the state, and this module turns it into text.
 
 B<Deterministic:> the same spec gives the same text, byte for byte, on every
 perl and independent of C<PERL_HASH_SEED> (its own
-xorshift32 random source, never C<rand>). The algorithm and its vocabulary
-are those of cai-platform's C<CAI::Platform::Eval::Haystack>, and the text is
-the same as there, so a case measures the same input on both. When the
-generator changes, the text changes — the loader therefore puts the generated
+xorshift32 random source, never C<rand>), so a case measures the same input on
+every run. When the generator changes, the text changes — the loader therefore puts the generated
 text into the suite digest.
 
 B<Content:> plausible German operational data — messages of invented

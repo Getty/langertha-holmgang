@@ -20,8 +20,7 @@ our $VERSION = '0.003';
 
 =description
 
-Helm 3 (v3.15) against the cluster under C<kubernetes> of a Linux device
-(cai-platform F<docs/entwurf-evals.md> §3.3.1). The state is under C<kubernetes.helm>:
+Helm 3 (v3.15) against the cluster under C<kubernetes> of a Linux device. The state is under C<kubernetes.helm>:
 
   helm:
     repos: { example: https://charts.example.com }

@@ -19,8 +19,7 @@ our $VERSION = '0.003';
 
 =description
 
-A Redis server (Debian 12, Redis 7.0) on a device of type C<linux>
-(cai-platform F<docs/entwurf-evals.md> §3.3.1). The state lives under C<redis> of the device,
+A Redis server (Debian 12, Redis 7.0) on a device of type C<linux>. The state lives under C<redis> of the device,
 the configuration file under C<files>, the service under C<services> (name in
 C<redis.service>):
 

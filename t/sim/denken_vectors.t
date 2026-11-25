@@ -1,9 +1,8 @@
 #!/usr/bin/env perl
-# The checkers of the answer world denken against the judgement of Python
-# (ported from cai-platform t/eval_sim_denken.t): every answer in cai-platform's
-# t/data/denken-pruefer.json (written by its tools/denken/erzeuge.py with
-# score_answer of reasoning-gym 0.1.25) is graded the same here — right only
-# at the full score. The file holds the suite's own puzzles, so it never enters
+# The checkers of the answer world denken against the judgement of Python:
+# every answer in a vectors file (JSON, graded by score_answer of
+# reasoning-gym 0.1.25) is graded the same here — right only
+# at the full score. The file holds a suite's own puzzles, so it never enters
 # this repo (ADR 0003): it runs only against a copy kept outside this checkout,
 # named by HOLMGANG_DENKEN_VECTORS, and skips without it. A mismatch names the
 # task and the grade, not the answer.
@@ -17,7 +16,7 @@ use Path::Tiny qw( path );
 use Langertha::Holmgang::Sim::Denken;
 
 my $file = $ENV{HOLMGANG_DENKEN_VECTORS};
-plan skip_all => 'set HOLMGANG_DENKEN_VECTORS to a copy of cai-platform t/data/denken-pruefer.json' unless $file;
+plan skip_all => 'set HOLMGANG_DENKEN_VECTORS to a vectors file of graded answers' unless $file;
 
 my $D = 'Langertha::Holmgang::Sim::Denken';
 my $data = JSON::MaybeXS->new( utf8 => 1 )->decode( path($file)->slurp_raw );

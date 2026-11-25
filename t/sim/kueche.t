@@ -11,7 +11,7 @@ use Holmgang::TestSim qw( sims clone diff );
 
 binmode Test::More->builder->$_, ':encoding(UTF-8)' for qw(output failure_output todo_output);
 
-# Kueche als Welt ohne Geraet (ported from cai-platform t/eval_sim_kueche.t).
+# Kueche als Welt ohne Geraet.
 # Behauptet wird: Mengen kommen in jeder Form der Masstabelle an ("2 EL" wie
 # "30 g", "0,5 l", "2 Eier") und stehen danach in der Grundeinheit der Zutat;
 # Gewicht und Raum werden nie ineinander umgerechnet; auf_liste_setzen addiert,
@@ -164,9 +164,9 @@ subtest 'Sammlung, Vorrat, Plan' => sub {
 };
 
 subtest 'Lesen aendert nichts' => sub {
-  # regression: cai-platform legte beim Lesen zutaten.<name> bzw. rezepte.<id>
-  # als leeren Hash an, sobald eine Zutat der Liste oder ein Rezept des Plans
-  # dort fehlte — ein Lesebefehl erschien so als Aenderung im Endzustand.
+  # Regression: ein Lesebefehl legt zutaten.<name> bzw. rezepte.<id> nicht
+  # als leeren Hash an, wenn eine Zutat der Liste oder ein Rezept des Plans
+  # dort fehlt — sonst erschiene er als Aenderung im Endzustand.
   my $sparse = { kueche => {
     type  => 'kueche',
     liste => { Zucker => 100 },

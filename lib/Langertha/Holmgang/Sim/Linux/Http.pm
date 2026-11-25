@@ -24,7 +24,7 @@ our $VERSION = '0.003';
 
 =description
 
-The seam between devices that speak HTTP (cai-platform F<docs/entwurf-evals.md> §3.3).
+The seam between devices that speak HTTP.
 A request goes to the device that owns the target address (name through
 F</etc/hosts> and the nameservers of the asking device, then the device's
 name in the state), and there to whoever listens on the port:

@@ -19,8 +19,7 @@ our $VERSION = '0.003';
 
 =description
 
-nginx 1.22 (Debian 12) as state of a Linux device (cai-platform F<docs/entwurf-evals.md>
-§3.3). The configuration lives in the device's files (F</etc/nginx/nginx.conf>
+nginx 1.22 (Debian 12) as state of a Linux device. The configuration lives in the device's files (F</etc/nginx/nginx.conf>
 with C<include>, links in F<sites-enabled> as C<files: { link: … }>). The service
 is called C<nginx>. Under C<nginx>:
 

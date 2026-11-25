@@ -1,7 +1,6 @@
 #!/usr/bin/env perl
 # Values per topic, overall as the mean of the topics, length-tier curves
-# (ADR 0008). The topic part is ported from cai-platform t/db/eval_batch.t
-# ("nacheinander, Werte je Thema") without the database. Claimed: (1) per row
+# (ADR 0008). Claimed: (1) per row
 # (target and variant) and topic the results, every status under its own name
 # and the weighted share passed; (2) overall is the mean of the topic rates,
 # never one share over all cases; (3) curves per tier, in tier order, keep
@@ -21,7 +20,7 @@ sub run_of {
   return { target => $target, suite => $suite, topic => $topic, results => [ map { [ split /:/ ] } @res ] };
 }
 
-subtest 'per topic, as cai-platform by_topic' => sub {
+subtest 'per topic' => sub {
   # two topics: licht (two suites) and wetter (one); each model solves c1, not c2
   my @runs = map {
     my $m = $_;

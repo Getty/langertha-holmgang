@@ -19,7 +19,7 @@ For devices without the Redis state C<redis> (that one is modelled by
 L<Langertha::Holmgang::Sim::Linux::Redis>); then everything Redis currently
 uses is in the service itself.
 
-Redis of a Debian 12 device of type C<linux> (cai-platform F<docs/entwurf-evals.md> §3.3.1):
+Redis of a Debian 12 device of type C<linux>:
 the service C<redis-server> with C<config> (F</etc/redis/redis.conf>); what it
 currently uses is in its C<running> (read at start/restart).
 

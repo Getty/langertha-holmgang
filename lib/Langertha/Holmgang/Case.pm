@@ -151,8 +151,8 @@ has tools => ( is => 'ro', default => sub { [] } );
 
 =attr tools
 
-The suite's tools, in the order they are offered to the model (by name, as in
-cai-platform). Context, not a value of the case.
+The suite's tools, in the order they are offered to the model (by name).
+Context, not a value of the case.
 
 =cut
 

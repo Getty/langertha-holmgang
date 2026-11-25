@@ -23,8 +23,7 @@ our $VERSION = '0.003';
 
 =description
 
-Prometheus and Alertmanager on a device of type C<linux>
-(cai-platform F<docs/entwurf-evals.md> §3.3.1). The services live under C<services> with
+Prometheus and Alertmanager on a device of type C<linux>. The services live under C<services> with
 several files in C<config> (C<running> is then C<{ path => text }>) and
 C<config_check: prometheus|alertmanager>; C<config_main> names the main file.
 

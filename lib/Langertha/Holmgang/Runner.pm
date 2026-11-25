@@ -53,8 +53,7 @@ my $JSON = JSON::MaybeXS->new( utf8 => 0, canonical => 1, allow_nonref => 1 );
 
 =description
 
-The runner plays one case against a model (cai-platform C<Eval::Runner::run_case>,
-here over Langertha instead of C<ModelTester>). Per case: a fresh
+The runner plays one case against a model over Langertha. Per case: a fresh
 L<Langertha::Holmgang::World> from the case's initial state, then turns
 against the L</target>. A turn sends the system prompt, the conversation and
 the suite's tool schemas through L<Langertha::Holmgang::Target/chat_turn_f>;
@@ -306,8 +305,7 @@ sub run_case {
 
 # what the world gets for a call: the decoded hash; for arguments that did not
 # decode (Langertha keeps no raw text, only {} and the flag) a text that is no
-# JSON object, so the world answers with its own refusal, as cai-platform's did
-# for the model's raw string
+# JSON object, so the world answers with its own refusal
 sub _call_arguments {
   my ( $self, $tc ) = @_;
   return $tc->arguments_undecodable ? '{' : $tc->arguments;
@@ -342,8 +340,7 @@ answers C<Done.>; C<text> answers with text only, at once. For a case with
 images it claims C<image_input> (L<Langertha::Role::ImageInput>), answers
 C<OK> once its script is done (which a case never reaches) and reports no
 token usage, so L<Langertha::Holmgang::Target/vision_check_f> lets it through
-unmeasured. It replaces
-cai-platform's C<Eval::FakeTarget> (ADR 0005); unlike that one it estimates
+unmeasured (ADR 0005). It estimates
 no tokens and emulates no context window (the target's error path is tested
 with L<Langertha::Virtual::Rules/error> reactions instead).
 
@@ -396,7 +393,7 @@ sub lint_mock_runs {
   my $lint = Langertha::Holmgang::Lint->new( mock_runs => Langertha::Holmgang::Runner->lint_mock_runs );
 
 The code reference for L<Langertha::Holmgang::Lint/mock_runs>: the two mock
-runs of the lint (cai-platform C<docs/entwurf-evals.md> §3.5), each a real
+runs of the lint, each a real
 L</run_case> over a L</mock_engine>, graded with the lint's grader.
 
 =over

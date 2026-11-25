@@ -1,5 +1,5 @@
 #!/usr/bin/env perl
-# Lint's two mock runs (cai-platform docs/entwurf-evals.md §3.5) through
+# Lint's two mock runs through
 # Langertha::Holmgang::Runner->lint_mock_runs, on invented cases (ADR 0003).
 # Claims: the default loader runs them; replaying the reference solution
 # against a mock model must pass (a solution that cannot finish within

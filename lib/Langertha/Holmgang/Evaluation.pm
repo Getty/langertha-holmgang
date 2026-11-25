@@ -382,7 +382,7 @@ sub _build_verdicts {
       unfinished => defined $run->{status} && $run->{status} ne 'complete'
         ? { status => $run->{status}, error => $run->{error} } : undef };
     for my $c ( @{ $run->{cases} } ) {
-      # a repetition with any result but error reached the target (cai-platform runs_error)
+      # a repetition with any result but error reached the target
       $v->{measured}{ $_->{repetition} } = 1 for grep { $_->{status} ne 'error' } @{ $c->{repetitions} };
       my @reps = @{ $c->{repetitions} };
       next unless @reps;
@@ -477,8 +477,7 @@ C<context_exceeded>, C<no_vision> and every other status count as reached, so
 a suite all C<context_exceeded> is a measurement and can be C<ok>. When every
 repetition measured nothing the verdict is not C<ok>; when some did and at
 least one was measured, it is reported and noted in the text but does not
-decide C<ok> (ADR 0008, k73 amendment; cai-platform's C<runs_error> decides
-for any count). C<ok> false with C<repetitions_error> equal to C<k> is what
+decide C<ok> (ADR 0008, k73 amendment). C<ok> false with C<repetitions_error> equal to C<k> is what
 the text shows as C<NOT MEASURED>.
 
 B<Reliability:> C<k> is the run's C<repeat>; C<pass_k> is the weighted share
@@ -717,9 +716,7 @@ cases; an overall value only as the mean of the topics; case weights
 (cluster size / representatives); curves per length tier with hits,
 C<context_exceeded> and errors apart, and the same per difficulty; the verdict
 per suite against its threshold and its hard cases, with pass^k over the repetitions; the comparison
-of targets as text, Markdown and JSON. Port of cai-platform's
-C<Eval::Batch::by_topic> and C<Eval::Batch::verdicts>; the decisions are ADR
-0008.
+of targets as text, Markdown and JSON. The decisions are ADR 0008.
 
 B<Rates.> Every rate is a weighted share over B<all> results, whatever their
 status: a result that was not measured (C<no_vision>, C<context_exceeded>,

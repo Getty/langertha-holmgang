@@ -1,7 +1,6 @@
 #!/usr/bin/env perl
-# Verdicts per target, variant and suite (ADR 0008), ported from cai-platform
-# t/eval_batch_verdicts.t and the verdict subtest of t/db/eval_batch.t. What
-# cai-platform calls one run per round is one run with repetitions here.
+# Verdicts per target, variant and suite (ADR 0008); the rounds of a run are
+# its repetitions.
 # Claimed: (1) k is the run's repeat, pass_k the share of cases passed in ALL
 # k repetitions, pass_any (pass@k) in at least one; (2) a repetition that is
 # missing or ended in any status but passed has not passed; (3) case_results
@@ -9,7 +8,7 @@
 # not ok; (5) a hard case with one forbidden call in any repetition is not ok
 # whatever the rate, a soft one only lowers the rate; (6) weights weigh rate
 # and pass_k; (7) a run that did not complete is never ok, with or without a
-# threshold (cai-platform Eval::Batch::verdicts runs_aborted, ported in k58);
+# threshold (k58);
 # repetitions without any result but error (target not reached) are counted;
 # a suite in which no repetition was measured at all is not ok, with or
 # without a threshold, shown NOT MEASURED, while some unmeasured repetitions

@@ -1,6 +1,5 @@
 #!/usr/bin/env perl
-# Langertha::Holmgang::World, ported from cai-platform t/eval_world.t and
-# t/eval_world_observe_error.t onto invented worlds (ADR 0003).
+# Langertha::Holmgang::World, on invented worlds (ADR 0003).
 # Claims: tools read and CHANGE the state, a change is visible to the next read;
 # the first fitting handler wins (match, when, named captures); arguments go
 # against the schema; a failing change leaves the state untouched; apply

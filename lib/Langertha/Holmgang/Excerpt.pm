@@ -45,8 +45,7 @@ first and the last provision, such as C<§ 305> or C<Artikel 28>). The loader
 sets the text in before the shape checks and lint
 (L<Langertha::Holmgang::Structure/case>); its SHA-256 goes into the suite's
 digest as a generated text does (L<Langertha::Holmgang::Loader>). Nothing is
-read at run time. Ported from cai-platform C<CAI::Platform::Eval::Auszug>
-(origin/main); the text set in is the same, byte for byte.
+read at run time.
 
 B<The fixture> (UTF-8): head lines C<Key: value> (C<Titel>, C<Stand>,
 C<Quelle>, C<Lizenz> …), a line C<--->, then blocks separated by an empty
@@ -175,7 +174,7 @@ The excerpt as text (above). Refuses with C<$field> (C<…auszug>) and below:
 an unknown key, C<datei> (path, missing, outside, not a plain file, a
 fixture that does not parse), C<von>/C<bis> (no label, not in the file),
 C<bis> before C<von>. The lines C<Auszug: … bis …> and C<Stand: …> are
-written as cai-platform writes them, so the model sees the same text.
+written exactly so, byte for byte, so the model always sees the same text.
 
 =cut
 

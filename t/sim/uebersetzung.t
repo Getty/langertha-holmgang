@@ -11,7 +11,7 @@ use Holmgang::TestSim qw( sims clone diff );
 
 binmode Test::More->builder->$_, ':encoding(UTF-8)' for qw(output failure_output todo_output);
 
-# Uebersetzung als Welt ohne Geraet (ported from cai-platform t/eval_sim_uebersetzung.t).
+# Uebersetzung als Welt ohne Geraet.
 # Behauptet wird: die Welt normalisiert jede Abgabe (NFC, Anfuehrungszeichen,
 # Leerzeichen) und legt Zahlen nach dem Format der Zielsprache, Codes, Platzhalter,
 # Fehlendes gegen die Quelle und die Laengenklasse in den Zustand; eine erneute Abgabe

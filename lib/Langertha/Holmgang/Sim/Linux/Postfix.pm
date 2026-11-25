@@ -14,8 +14,7 @@ our $VERSION = '0.003';
 
 =description
 
-Postfix 3.7 (Debian 12, service C<postfix>) on a device of type C<linux>
-(cai-platform F<docs/entwurf-evals.md> §3.3.1). F</etc/postfix/main.cf> and the tables
+Postfix 3.7 (Debian 12, service C<postfix>) on a device of type C<linux>. F</etc/postfix/main.cf> and the tables
 are files under C<files>; the state lives under C<postfix>:
 
   postfix:

@@ -19,8 +19,7 @@ our $VERSION = '0.003';
 
 =description
 
-Backup and restore tools on a device of type C<linux>
-(cai-platform F<docs/entwurf-evals.md> §3.3.1). Files are entries under C<files> with
+Backup and restore tools on a device of type C<linux>. Files are entries under C<files> with
 content (or a fixed size), C<owner>, C<group>, C<mode>, C<mtime>
 (C<"Oct 19 23:30">).
 

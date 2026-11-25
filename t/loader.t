@@ -1,14 +1,13 @@
 #!/usr/bin/env perl
-# Langertha::Holmgang::Loader, Structure and Lint, ported from cai-platform
-# t/eval_suite.t and t/eval_suite_repeat.t onto invented suites (ADR 0003).
+# Langertha::Holmgang::Loader, Structure and Lint, on invented suites (ADR 0003).
 # Claims: (1) a valid suite loads into Suite/Case objects that keep the format 2
 # values as written; (2) the loader refuses broken files loudly with field and
 # reason — format 1, unknown keys, a case without alternative, an observation
 # that changes something, an unknown device type, a broken regex; (3) lint
 # bites: doing nothing that passes, a reference solution or alternative that
 # fails or has a failed call, a wrong solution that passes all keep the suite
-# from loading; (4) the digest depends on the content and is computed as
-# cai-platform computes its digest; (5) only_tools, untrusted, the "no tool"
+# from loading; (4) the digest depends on the content and is computed over
+# file names and bytes in a fixed order; (5) only_tools, untrusted, the "no tool"
 # family, threshold, repeat, hard cases; (6) list, locate, select_suites.
 use strict;
 use warnings;
@@ -55,11 +54,11 @@ my $CASE = $FAN_CASE;
   Path::Tiny::path( $dir, 'cases', 'c1.yaml' )->spew_utf8( $CASE."difficulty: leicht\n" );
   isnt( loader()->load($dir)->digest, $s->digest, 'digest depends on the content' );
 
-  # the cai-platform digest: suite.yaml and each case file with name and bytes
+  # the digest: suite.yaml and each case file with name and bytes
   my $sha = Digest::SHA->new(256);
   $sha->add( "suite.yaml\0", Path::Tiny::path( $dir, 'suite.yaml' )->slurp_raw, "\0" );
   $sha->add( "cases/c1.yaml\0", Path::Tiny::path( $dir, 'cases', 'c1.yaml' )->slurp_raw, "\0" );
-  is( loader()->load($dir)->digest, $sha->hexdigest, 'digest computed like the cai-platform digest' );
+  is( loader()->load($dir)->digest, $sha->hexdigest, 'digest over file names and bytes' );
 }
 
 # --- (2) loud refusals --------------------------------------------------------

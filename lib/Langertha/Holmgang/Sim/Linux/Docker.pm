@@ -23,8 +23,7 @@ our $VERSION = '0.003';
 
 =description
 
-Docker Engine 26 with the Compose plugin v2 as state of a Linux device
-(cai-platform F<docs/entwurf-evals.md> §3.3). The Compose files are ordinary files
+Docker Engine 26 with the Compose plugin v2 as state of a Linux device. The Compose files are ordinary files
 of the device (C<files>); what runs is under C<docker>:
 
   docker:

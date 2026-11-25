@@ -16,8 +16,7 @@ our $VERSION = '0.003';
 
 =description
 
-Block devices, LVM, file systems and mount points of a device of type C<linux>
-(cai-platform F<docs/entwurf-evals.md> §3.3.1). The state lives under C<storage>, the
+Block devices, LVM, file systems and mount points of a device of type C<linux>. The state lives under C<storage>, the
 mounted file systems as before under C<mounts> (C<df>):
 
   storage:

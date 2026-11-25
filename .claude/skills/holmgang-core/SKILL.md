@@ -10,28 +10,23 @@ at the end state** (ADR 0002). It `requires 'Langertha'`, never the other way ro
 Terms are defined in `CONTEXT.md` — use them exactly. Decisions: `docs/adr/`. Anything not
 recorded there is not decided; the karr card says what to build now.
 
-## Where the source lives
+## Where things live
 
-The core is lifted out of CitiAI's platform, not rewritten. On agent-lab the checkout is
-`~/cai-platform` — read it, never edit or commit there; work it needs is a card on its board.
+| Module | What it does |
+|---|---|
+| `Loader`, `Structure`, `Lint`, `ToolSchema` | load format 2 from search directories, shape checks, lint every case on load, the tool-parameter schema subset |
+| `Langertha::Holmgang` (DSL), `Suite`, `Case` | the case DSL and the internal case structure both front ends build (ADR 0004) |
+| `World`, `Template`, `Expectation` | state, tool dispatch, observations, handlers, Kolon templates, end-state diff |
+| `Simulators`, `Role::Simulator`, `Role::AnswerWorld` | registry by device type and the plugin contract |
+| `Sim::*`, `Shell` | the simulators (`Linux` and its parts under `Sim::Linux::*`) and the bash grammar |
+| `Grader` | rules and expectations, status, `forbidden_calls`, `injection_held` |
+| `Runner`, `Target`, `Batch` | the model loop over a Langertha engine, the target and its variants, runs over suites |
+| `Report`, `Evaluation`, `CLI` | the JSON report, evaluation per topic and verdicts, the `holmgang` command |
+| `Haystack`, `Excerpt`, `Random` | generated texts and the seeded random source |
 
-| cai-platform | Lines | What it does |
-|---|---|---|
-| `docs/entwurf-evals.md` §3–4 | — | the format 2 spec, rules (§3.4), lint (§3.5), topics and verdicts (§4.1) |
-| `lib/CAI/Platform/Eval/Suite.pm` | 790 | loads format 2, lints every case, `select_suites`, checksum of the files |
-| `…/Eval/World.pm` | 773 | state, tool dispatch, observations, handlers, Kolon templates, end-state diff |
-| `…/Eval/Sim.pm` | 695 | simulator dispatch by device type, shared command plumbing |
-| `…/Eval/Sim/*.pm` | ~18 900 | 19 simulators; `Linux` alone 6 051, `Shell` is the bash grammar |
-| `…/Eval/Grader.pm` | 244 | rules and expectations, status, `forbidden_calls`, `injection_held` |
-| `…/Eval/Runner.pm` | 299 | the model loop — Moose, over `CAI::Platform::ModelTester`; replaced by a runner over Langertha |
-| `…/Eval/Batch.pm` | 188 | runs over suites and models, `by_topic`, `verdicts` with `threshold.pass_rate` |
-| `…/Eval/Gen/{Rezepte,Buecher}.pm` | 2 037 | generators from external sources; their inputs and outputs never enter a repo |
-| `t/eval_*.t` | 25 files | the behaviour to keep — port the test with the module |
-| `share/evals/<suite>/` | 15 suites | **private cases** — never copied into this repo (ADR 0003) |
-
-The source is plain-Perl modules with functions; only the Runner is Moose. Holmgang turns
-simulators into Moose plugins (roles plus classes, loadable from outside the core). Module
-names in Holmgang are fixed per slice in an ADR; keep the meaning, not the layout.
+Simulators are Moose plugins (roles plus classes, loadable from outside the core). Module
+names are fixed per slice in an ADR. Real benchmark cases live outside this repository and
+never enter it (ADR 0003) — not as a fixture, an example or a quote.
 
 ## What the model sees — and never sees
 
@@ -148,6 +143,6 @@ Comparison: row = target and variant, column = topic; text, Markdown, JSON.
 
 ## Tests
 
-Network-free. Mocks only, no API key. Acceptance against the cai-platform suites runs on a
-copy outside the checkout and skips without it. Real runs go to CitiAI targets from
-agent-lab, only when the card says so.
+Network-free. Mocks only, no API key. A test that needs real cases runs on a copy outside
+the checkout and skips without it. Real runs against live targets happen only when the card
+says so.

@@ -40,8 +40,7 @@ our $VERSION = '0.003';
 
 =description
 
-The run over suites (cai-platform C<Eval::Batch::run> and
-C<Eval::Runner::run>): for every target, every variant of it and every
+The run over suites: for every target, every variant of it and every
 suite, one I<run> (ADR 0006) with its C<repeat> repetitions of every case,
 each case played by L<Langertha::Holmgang::Runner>. The result is a
 L<Langertha::Holmgang::Report> with one run per target, variant and suite, in
@@ -54,7 +53,7 @@ in play holds a I<slot> (C<0 .. concurrency-1>) and gets its engine from the
 target's C<engine> code with that slot, so a caller can give every slot its
 own engine (and with it its own connection). Within a target the cases start
 in this order: variant, suite, repetition, case. With C<concurrency> 1 that
-is one request at a time, as cai-platform's batch ran.
+is one request at a time.
 
 B<Variants.> A variant is a name and its settings, named and checked by
 L<Langertha::Holmgang::Target/check_variant> (C<enable_thinking>,
@@ -186,8 +185,8 @@ sub error_max_length { 2000 }
 
   Langertha::Holmgang::Batch->error_max_length;   # 2000
 
-How many characters of an error a run and a repetition keep (cai-platform
-cuts at the same length when it stores them).
+How many characters of an error a run and a repetition keep; a longer error is
+cut to this length.
 
 =cut
 

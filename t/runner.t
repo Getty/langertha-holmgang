@@ -1,7 +1,6 @@
 #!/usr/bin/env perl
-# Langertha::Holmgang::Runner, ported from cai-platform t/eval_runner.t and
-# t/eval_context_exceeded.t (af7561a5) onto invented cases (ADR 0003) and
-# Langertha::Engine::Virtual instead of MockModel / FakeTarget; network-free.
+# Langertha::Holmgang::Runner, on invented cases (ADR 0003) and
+# Langertha::Engine::Virtual; network-free.
 # Claims: the model works through the suite's tools, their outputs come from
 # the world and go back in the next request; the case ends with an answer
 # without a tool call; only the end state is graded (the right diagnosis in
