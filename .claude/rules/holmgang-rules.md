@@ -9,10 +9,12 @@ until they load. This file adds what is true only here, and wins where it differ
 
 Langertha::Holmgang — deterministic tool-use benchmarks for language models: cases in a Perl
 DSL or suite format 2 YAML, simulated worlds, rules graded at the end state, runs against any
-Langertha engine. The core is lifted out of CitiAI's `cai-platform`. Read first: `CONTEXT.md`,
-the ADRs in `docs/adr/`, the karr card, and the source module in cai-platform (skill
-`holmgang-core`, "Where the source lives"). The sibling Langertha repos and cai-platform each
-have their own board.
+Langertha engine. Read first: `CONTEXT.md`, the ADRs in `docs/adr/` and the karr card. The
+sibling Langertha repos each have their own board.
+
+Holmgang is generic: no project that uses it is named anywhere here — not in code, POD, tests,
+docs, cards, ADRs or commit messages. A user's names, hosts, targets and suites stay in that
+user's repository.
 
 ## Agent team
 
@@ -40,9 +42,9 @@ Mechanism and background: skill `holmgang-core`. These are the locks:
 
 - **No real case enters this repo** (ADR 0003) — not as a fixture, an example, a quote in a
   commit message, card or ADR. Published cases with their solutions land in the next models'
-  training data, and the benchmark then measures memorisation. The cai-platform suites are
-  read in place or from a copy outside the checkout; tests that need them skip without it.
-- **Format 2 loads unchanged** (ADR 0004). Over 200 cases depend on it and are not
+  training data, and the benchmark then measures memorisation. Tests use cases written for the
+  test; real suites are linted in place, outside the checkout, never copied in.
+- **Format 2 loads unchanged** (ADR 0004). Existing suites depend on it and are not
   rewritten; a loader change that needs a case edit is a regression, even when every test
   here is green — the acceptance copy is the test that sees it.
 - **The model sees only system prompt, messages and tool schemas.** State, observations,
@@ -54,8 +56,8 @@ Mechanism and background: skill `holmgang-core`. These are the locks:
   never in loading, lint or tests, and only for a program that knows nothing but the files.
 - **Lint is part of loading.** A case that fails lint does not load. Fix the case or the
   simulator, never loosen lint to make a case load.
-- **Real runs cost GPU time on CitiAI targets** and run from agent-lab, only when the card
-  says so. Tests use `Langertha::Engine::Virtual`, never a key.
+- **Real runs cost GPU time** on someone's target and run only when the card says so. Tests
+  use `Langertha::Engine::Virtual`, never a key.
 
 ## Perl specifics — reference, don't restate
 

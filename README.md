@@ -118,6 +118,11 @@ Verdicts per suite
 target         variant  suite       passed  rate    threshold  pass^k  pass^k min  verdict
 mock-solution  default  demo-linux  2/2     100.0%  100.0%     -       -           ok
 mock-text      default  demo-linux  0/2     0.0%    100.0%     -       -           NOT PASSED
+
+Difficulty (shares of all results)
+target         variant  topic  difficulty  results  passed  context_exceeded  error
+mock-solution  default  demo   leicht      2        100.0%  0.0%              0.0%
+mock-text      default  demo   leicht      2        0.0%    0.0%              0.0%
 ```
 
 To write your own suite, copy one of the examples outside the checkout and

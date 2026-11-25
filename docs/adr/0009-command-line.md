@@ -3,17 +3,14 @@
 - Status: accepted
 - Date: 2026-11-05
 - Source: k21; CONTEXT.md §7; ADR 0005 (`bin/holmgang`, `::CLI`), ADR 0006 (report),
-  ADR 0008 (evaluation, thresholds left to this slice); cai-platform at `af7561a5`:
-  `CLI::Command::Evals::Run`
+  ADR 0008 (evaluation, thresholds left to this slice)
 - Tags: cli, naming, runner, report
 
 ## Context
 
 CONTEXT.md §7 names working commands: `holmgang lint <suite>`, `holmgang run --suite …
 --target … --variant … --repeat 3 --report out.json`, `holmgang report out/*.json --by
-topic`, `holmgang export-yaml`. cai-platform's `evals run` is a `MooseX::App` command over
-its database, takes an OpenAI-compatible `--base-url` and `--model`, reads the key from a
-`--key-file`, and ends with code 1 when a verdict fails. Holmgang has no database, speaks
+topic`, `holmgang export-yaml`. Holmgang has no database, speaks
 every Langertha engine, and has no `::Batch` yet (k15: variants per target, bounded
 concurrency, resume). The choices below are the worker's (k21), not the maintainer's.
 
@@ -92,7 +89,7 @@ concurrency, resume). The choices below are the worker's (k21), not the maintain
 - **Thresholds come from the suites, not the report** (ADR 0008's open question):
   `--suite DIR` (repeatable) loads a suite and takes its `threshold`; without it a verdict
   is judged by its hard cases alone. The report format does not change.
-- Exit 1 when a verdict is not ok, as `run` and cai-platform's `evals run`.
+- Exit 1 when a verdict is not ok, as `run`.
 
 ### Not now
 

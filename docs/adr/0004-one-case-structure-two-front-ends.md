@@ -7,8 +7,8 @@
 
 ## Context
 
-cai-platform's suites are data in suite format 2 (`suite.yaml` plus one file per case under
-`cases/`), and over 200 cases exist in it. Writing new cases — above all generated ones —
+Existing suites are data in suite format 2 (`suite.yaml` plus one file per case under
+`cases/`), with hundreds of cases in it. Writing new cases — above all generated ones —
 is easier in Perl, with loops, a seed and templates.
 
 ## Decision

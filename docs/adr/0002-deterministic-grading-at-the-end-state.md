@@ -2,15 +2,14 @@
 
 - Status: accepted
 - Date: 2026-11-04
-- Source: the project brief of 2026-11-04; cai-platform `docs/entwurf-evals.md` §3.0
+- Source: the project brief of 2026-11-04
 - Tags: grading, simulation, tools
 
 ## Context
 
 Judge models and text comparison measure how an answer sounds, drift with the judge, and
-cannot tell a correct fix from a well-written wrong one. cai-platform removed its judge and
-grades only the state its simulated devices end up in; that turned out sharp and
-reproducible.
+cannot tell a correct fix from a well-written wrong one. Grading only the state simulated
+devices end up in has turned out sharp and reproducible.
 
 ## Decision
 

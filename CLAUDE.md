@@ -1,25 +1,20 @@
 # Langertha::Holmgang — CLAUDE.md
 
-## Status: scaffold, extraction starting
-
 Deterministic tool-use benchmarks for language models: cases in a Perl DSL or suite format 2
 YAML, simulated worlds, rules graded at the end state, runs against any Langertha engine.
 Sibling-dist pattern like `langertha-knarr` / `langertha-raider` / `langertha-skeid`
 (`requires 'Langertha'`, never the other way round). Repo: github.com/Getty/langertha-holmgang.
 
-The core is lifted out of the evaluation core of CitiAI's `cai-platform`
-(`CAI::Platform::Eval::*`). The repo holds the distribution base, the agent team and the
-decisions so far; the code arrives in small vertical slices. Where things live:
+Holmgang is a generic engine. It knows nothing about the projects that use it: no project
+name, host, target or suite of a user appears in code, POD, tests, docs or commit messages.
+How a project runs Holmgang is documented in that project.
 
-- **`CONTEXT.md`** — vision, vocabulary, scope, acceptance, migration order. Read before any
-  non-trivial change.
+- **`CONTEXT.md`** — vision, vocabulary, scope, acceptance. Read before any non-trivial
+  change.
 - **`docs/adr/`** — every decision. Anything not recorded there is not decided.
-- **karr board** — all open work and slices (`karr list --compact`).
-- **Source of the extraction** — `~/cai-platform` on agent-lab: `lib/CAI/Platform/Eval/`,
-  `t/eval_*.t`, `docs/entwurf-evals.md`. Read only; the map is in skill `holmgang-core`.
+- **karr board** — all open work (`karr list --compact`).
 
-Development happens on agent-lab (`~/langertha-holmgang`), next to cai-platform and the
-CitiAI targets. Real benchmark cases never enter this repo (ADR 0003).
+Real benchmark cases never enter this repo (ADR 0003).
 
 Don't create new planning or status files in the repo root: decisions become ADRs, open work
 becomes tickets.

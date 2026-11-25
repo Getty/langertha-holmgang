@@ -1,6 +1,6 @@
 ---
 name: holmgang-test-writer
-description: "Write Langertha::Holmgang tests — loader and lint, tool dispatch, simulators, grading and statuses, runner loops against Langertha::Engine::Virtual mocks, reports. Tests never need a network, a live key or a real benchmark case. Use for test additions, regression scaffolding, and porting cai-platform's t/eval_*.t."
+description: "Write Langertha::Holmgang tests — loader and lint, tool dispatch, simulators, grading and statuses, runner loops against Langertha::Engine::Virtual mocks, reports. Tests never need a network, a live key or a real benchmark case. Use for test additions, regression scaffolding"
 model: sonnet
 skills:
   - holmgang-core
@@ -19,7 +19,7 @@ intent is unclear or the briefed behavior seems wrong, stop and ask.
 
 Hard rule: **no test needs a network, a live API key or a real benchmark case.** Models are
 `Langertha::Engine::Virtual` mocks; worlds, cases and commands are written for the test
-(ADR 0003). Tests against the cai-platform suites copy skip when it is absent.
+(ADR 0003).
 
 Mechanics of this suite:
 
@@ -29,9 +29,9 @@ Mechanics of this suite:
   only checks "failed" passes for the wrong reason.
 - Leak tests assert on the request the mock engine received: no state, observation, rule,
   solution or `untrusted` mark in it.
-- Lint tests show each lint point per case, as cai-platform's per-suite lint tests do.
+- Lint tests show each lint point per case.
 
-Workflow: read the code under test and its cai-platform counterpart → identify the behavior
+Workflow: read the code under test → identify the behavior
 → write the test in the style of its nearest neighbor in `t/` → run `prove -lv t/<file>`
 and fix until green, then `prove -lr t`.
 

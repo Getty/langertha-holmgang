@@ -1,18 +1,16 @@
-# ADR 0001 — Sibling distribution, name, and extraction from cai-platform
+# ADR 0001 — Sibling distribution and name
 
 - Status: accepted
 - Date: 2026-11-04
 - Source: the project brief of 2026-11-04
-- Tags: distribution, naming, dependencies, migration
+- Tags: distribution, naming, dependencies
 
 ## Context
 
-CitiAI's platform (`cai-platform`) measures models with tasks at simulated devices, graded
-at the end state (`CAI::Platform::Eval::*`: Suite, World, Grader, Runner, Batch, the `Sim::*`
-simulators and the `Gen::*` generators; 15 suites, over 200 cases). The principle has proven
-itself, but it is bound to the platform: its model client, its database, its admin UI.
-Measuring any Langertha engine, writing cases in Perl and sharing the engine as a CPAN
-distribution needs it in a dist of its own.
+Measuring models with tasks at simulated devices, graded at the end state, is a principle
+that works best when it is not bound to one platform — its model client, its database, its
+admin UI. Measuring any Langertha engine, writing cases in Perl and sharing the engine as a
+CPAN distribution needs it in a dist of its own.
 
 ## Decision
 
@@ -23,16 +21,12 @@ distribution needs it in a dist of its own.
 - **Dependency direction is one-way:** Holmgang → Langertha, never back. A model call goes
   through a Langertha engine; tokens come from `Langertha::Usage`. Anything Holmgang needs
   from Langertha and Langertha lacks becomes a card on the langertha board.
-- The evaluation core is **lifted** out of cai-platform, not rewritten from scratch:
-  behaviour that cai-platform's tests pin down keeps its meaning here. Platform parts (the
-  model client `CAI::Platform::ModelTester`, database rows, admin UI, the master's queue per
-  target) stay behind; Holmgang gets its own runner over Langertha.
-- Afterwards cai-platform depends on Holmgang and keeps only storage, display and the model
-  catalogue.
+- **Holmgang is a generic engine.** It knows nothing about the projects that use it: no
+  project name, host, target or suite of a user appears in code, POD, tests or docs. Storage
+  of results, display and model catalogues belong to the user; how a project runs Holmgang
+  is documented in that project.
 - Version line starts at **0.001**.
 
 ## Consequences
 
-- During the extraction, cai-platform is the reference: a difference in a mock run between
-  the two runners is a defect until explained.
-- cai-platform is not edited from here. Work it needs goes to its own board.
+- A user's repository is never edited from here. Work it needs goes to its own board.

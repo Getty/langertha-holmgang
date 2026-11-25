@@ -32,7 +32,7 @@ code goes back to the worker as a note on its card, not as your own fix. **Never
    git tracks ships, including `docs/`, `.claude/`, `.github/` and `CLAUDE.md` (bundle
    default); no `gather_exclude` lines; the tarball must still carry no real case (ADR 0003).
 3. **No real case** — the built tarball carries only the example suites; anything that looks
-   like a measurement case (a cai-platform suite id, a reference solution beyond the
+   like a measurement case (a suite id of a real suite, a reference solution beyond the
    examples) blocks the release (ADR 0003).
 4. **`dzil build`** — runs clean: no missing files, no warnings.
 5. **Changes** — `{{$NEXT}}` section exists and covers the user-visible changes since the

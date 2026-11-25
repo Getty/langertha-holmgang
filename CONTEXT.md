@@ -15,10 +15,9 @@ judge model, no text comparison. Only what the model brought about through tools
 simulated world is graded. It builds on Langertha and can measure every engine Langertha
 knows.
 
-The grading principle runs today in CitiAI's platform (`cai-platform`,
-`CAI::Platform::Eval::*`, a few dozen suites, several hundred cases) and has proven itself there. Holmgang
-lifts it out, generalises it and adds a Perl DSL for writing cases. Afterwards `cai-platform`
-only depends on Holmgang (ADR 0001).
+Holmgang is a generic engine: cases in a Perl DSL or in suite format 2, simulators, grading,
+runner and evaluation. It knows nothing about the projects that use it; a project keeps its
+own suites, targets and stored results and documents there how it runs Holmgang (ADR 0001).
 
 ## Language
 
@@ -32,7 +31,7 @@ only depends on Holmgang (ADR 0001).
 | **Simulation gap** (`sim_gap`) | A real command the simulator does not model: it answers neutrally and records the gap. A command that does not exist on the simulated system gets the real "command not found" — that is not a gap. |
 | **Observation** (`observe`) | Case-supplied output for diagnostic commands whose answer lies outside the state (ping across devices, logs). Never changes the state. |
 | **Handler** | A tool effect described in data, for small worlds without a simulator. |
-| **Answer world** | A world without devices whose tools take answers: give the answer, report a finding, rate a clause, hand in a translation. Model: `Sim::Kueche` in cai-platform. |
+| **Answer world** | A world without devices whose tools take answers: give the answer, report a finding, rate a clause, hand in a translation. |
 | **Fixture** | Checked-in fixed output for cases that need it (pre-rendered HTML …). |
 | **Rule** | One check with a title and exactly one kind: `state`, `unchanged_except`, `calls`, `not_called`, `only_tools`, `check`, `packet`, `login` (ADR 0005). Required unless marked display-only. |
 | **Expectation** | What a `state` rule demands of a value: `exists`/`absent`, `equals`, `in`, `regex`, `contains`/`excludes`, `length`, `any`/`none`, `before`. |
@@ -51,15 +50,15 @@ only depends on Holmgang (ADR 0001).
 
 ### Statuses
 
-| Status (brief) | Meaning | Today in cai-platform |
-|---|---|---|
-| bestanden — passed | every required rule met | `passed` |
-| durchgefallen — failed | a required rule missed | `failed` |
-| unsicher — uncertain | failed, but the model hit a simulation gap | `ungraded` |
-| error | the target did not answer | `error` |
-| `context_exceeded` | the input does not fit the target's context window; counted separately, **not** an error | `context_exceeded` |
-| `no_vision` | the case carries an image the target cannot see; counted separately, **not** an error | — |
-| rundengrenze — turn limit | too many turns without finishing | a failed rule |
+| Status | Meaning |
+|---|---|
+| `passed` | every required rule met |
+| `failed` | a required rule missed |
+| `uncertain` | failed, but the model hit a simulation gap |
+| `error` | the target did not answer |
+| `context_exceeded` | the input does not fit the target's context window; counted separately, **not** an error |
+| `no_vision` | the case carries an image the target cannot see; counted separately, **not** an error |
+| `turn_limit` | too many turns without finishing |
 
 The wire names (`passed`, `failed`, `uncertain`, `error`, `context_exceeded`, `turn_limit`, `no_vision`) and the report format are fixed in ADR 0006.
 
@@ -110,17 +109,16 @@ suite 'example-web' => sub {
 
 ### 2. YAML stays a load format
 
-- Suite format 2 (`suite.yaml` plus `cases/*.yaml`) must **load unchanged**: the 200+ cases
-  from cai-platform are not rewritten in one go.
+- Suite format 2 (`suite.yaml` plus `cases/*.yaml`) must **load unchanged**: existing cases
+  are never rewritten for a new version of the engine (ADR 0004).
 - An export of DSL suites to YAML is wanted, so cases stay readable and comparable without
   Perl.
 
 ### 3. Worlds and tools
 
-- Simulators execute real commands on the state. In cai-platform today: Linux (ip, nft, wg,
-  sysctl, systemd, files, shell grammar), PostgreSQL, MariaDB, Redis, Postfix, DNS,
-  Kubernetes, RouterOS, IOS, storage, backup, monitoring, sshd, logrotate, calendar, accounts,
-  kitchen.
+- Simulators execute real commands on the state: Linux (ip, nft, wg, sysctl, systemd, files,
+  shell grammar), PostgreSQL, MariaDB, Redis, Postfix, DNS, Kubernetes, RouterOS, IOS,
+  storage, backup, monitoring, sshd, logrotate, calendar, accounts, kitchen.
 - Simulators are **plugins** (Moose roles and classes) and can be written outside the core.
 - A simulator that cannot do a command answers like a real system and records a **simulation
   gap**. A case that hits one is uncertain, not failed.
@@ -139,7 +137,7 @@ suite 'example-web' => sub {
 | `only_tools` | the main rule of injection cases |
 
 - **Passed** means every required rule is met. The score is only the share of rules met.
-- **Injection:** `forbidden_calls` and `injection_held` per case, as today.
+- **Injection:** `forbidden_calls` and `injection_held` per case.
 - **Lint on every load.** Doing nothing fails. The reference solution and every alternative
   pass. Every wrong solution fails. At least one required rule checks the end state. A mock
   run that replays the reference solution passes, twice identically; a mock that only writes
@@ -148,7 +146,7 @@ suite 'example-web' => sub {
 ### 5. Targets and engines (through Langertha)
 
 - Every target Langertha speaks is measurable: OpenAI-compatible (llama.cpp, vLLM,
-  tensorfold, Skeid), Anthropic, Ollama and more.
+  Skeid, …), Anthropic, Ollama and more.
 - Variants per target (see Language).
 - Tokens per case and turn through `Langertha::Usage` (input, output, reasoning), plus the
   number of turns and tool calls, duration, `finish_reason`.
@@ -162,7 +160,7 @@ suite 'example-web' => sub {
   tier.
 - **Evaluation per topic, never one percentage over all cases.** An overall value, if any, is
   the mean of the topics — a few hard cases must not drown in many easy ones.
-- **Case weights** as in today's core set (see Language).
+- **Case weights** (see Language).
 - **Curves per length tier** (16k, 48k, 96k, 160k): hits, `context_exceeded` and errors
   apart.
 - **Comparison of several targets** as a table: row = target and variant, column = topic. As
@@ -192,7 +190,7 @@ Working names, not fixed: `holmgang lint <suite>`, `holmgang run --suite … --t
 - No judge model, no rubrics, no free-text comparison.
 - No general knowledge tests (MMLU and the like) and no public leaderboards.
 - No platform functions: no database, no web UI, no users or permissions, no model catalogue.
-  That stays in cai-platform, which embeds Holmgang and stores and shows the reports.
+  A project that needs them embeds Holmgang and stores and shows the reports itself.
 - No real devices. Holmgang never runs commands on real systems, only in the simulation.
 - No training, no fine-tuning, no RL environment. Generators serve measuring only.
 - No cases in this repository (ADR 0003).
@@ -202,33 +200,20 @@ Working names, not fixed: `holmgang lint <suite>`, `holmgang run --suite … --t
 - **`Langertha-Holmgang` (public, CPAN):** DSL, YAML loader, runner, grading, lint, report,
   simulators, generator scaffolding and a handful of **example suites** to learn from — small,
   deliberately no real measurement cases.
-- **Cases private** in their own repository (working name `cai-bench-suites`). Public cases
+- **Real cases private**, in the repository of whoever measures with them. Public cases
   with their solutions land in the training data of the next models; after that the test
   only measures memorisation.
-- **Generated suites:** the generator may be public, the seed for our own measurement stays
+- **Generated suites:** the generator may be public, the seed of a real measurement stays
   private.
-- **Foreign sources** are named with licence and origin in the suite head: Reasoning Gym
-  (Apache-2.0), BullshitBench (MIT), German federal statutes (§ 5 UrhG, official works), GDPR
-  from EUR-Lex (reuse with attribution).
+- **Foreign sources** are named with licence and origin in the suite head.
 
 ## Acceptance
 
-1. All existing format 2 suites from cai-platform load unchanged. Their lint is green.
-2. A mock run over all suites gives the same results as today's runner in cai-platform
-   (report comparison).
-3. One suite is additionally written in the DSL, loads, and gives the same results as its
-   YAML version.
+1. Existing format 2 suites load unchanged with every release. Their lint is green.
+2. A mock run over a suite gives the same results on every run (reference solution passes,
+   text-only fails, twice identically).
+3. A suite written in the DSL and its YAML export load and give the same results.
 4. A real run through Langertha against an OpenAI-compatible target yields tokens per case,
    status `context_exceeded` for a case that is too long, and the evaluation per topic.
 5. Tests run without network. The documentation (POD and README) describes the DSL, the
    format, the rules, simulator plugins and the report.
-
-## Migration (in this order)
-
-1. In cai-platform the running suite work is finished and accepted.
-2. Holmgang comes to life with the lifted core. Acceptance 1–3 runs against a copy of the
-   suites, kept outside this repository.
-3. The cases move into the private suite repository.
-4. cai-platform depends on Holmgang and keeps only storage, display and the model catalogue.
-   All tests are green in both repositories.
-5. Measurements run through `holmgang run` from then on.

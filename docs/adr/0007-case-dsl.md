@@ -2,8 +2,8 @@
 
 - Status: accepted
 - Date: 2026-11-04
-- Source: k18; ADR 0004 (one structure, two front ends), ADR 0005 (the structure); suite
-  format 2 as specified in cai-platform `docs/entwurf-evals.md` §3.1–3.6
+- Source: k18; ADR 0004 (one structure, two front ends), ADR 0005 (the structure and
+  suite format 2)
 - Tags: dsl, naming, generators, loader
 
 ## Context
@@ -198,8 +198,7 @@ suite 'example-sums' => sub {
 
 ## Consequences
 
-- The DSL slice depends on k2 (`Structure`, loader) and the registry of k3; its tests port
-  nothing from cai-platform (there is no DSL there) and pin: every keyword against the
+- The DSL slice depends on k2 (`Structure`, loader) and the registry of k3; its tests pin: every keyword against the
   format 2 hash it must produce, every collision above, croak locations, and generator
   determinism across processes.
 - Acceptance 3 (k20) writes one suite in both forms; the export (k19) is the bridge and
@@ -220,7 +219,7 @@ suite 'example-sums' => sub {
 - **Loading `suite.pl`.** Compiled as a string in a package of its own (`Langertha::Holmgang::_SuiteFile<N>`) with none of the loader's pragmas, like `do FILE`; `#line` keeps the file's path and lines in messages. The command line's `lint` and `run` take a directory with `suite.pl` like one with `suite.yaml`.
 - **No shipped DSL example in this slice.** ADR 0010 allows one; it is left out because another slice was changing `share/suites`, `t/share_suites.t` and ADR 0010 in the same tree at the same time. A follow-up card.
 
-**Amendment 2026-11-11 (k19, the YAML export).** Chosen by the worker in the overnight run, not by the maintainer. The temporary `Loader::_export_bytes` is gone; `assemble` writes the export's files and hashes exactly those bytes, so a DSL suite's digest is the digest `load` takes of its export (tested: export, load, same digest). The DSL digests of k18 change once, here; format 2 suites are hashed over their files as before and keep their digests (acceptance baseline).
+**Amendment 2026-11-11 (k19, the YAML export).** Chosen by the worker in the overnight run, not by the maintainer. The temporary `Loader::_export_bytes` is gone; `assemble` writes the export's files and hashes exactly those bytes, so a DSL suite's digest is the digest `load` takes of its export (tested: export, load, same digest). The DSL digests of k18 change once, here; format 2 suites are hashed over their files as before and keep their digests.
 
 - **Where.** `Loader->export( DIR, ROOT )` (ADR 0005 puts the export into `::Loader`): loads the DSL suite (lint included, with the loader's `seeds`), writes `ROOT/<id>/suite.yaml`, `cases/<id>.yaml` and every image a case shows (copied byte for byte under its relative path), into a temporary directory under `ROOT` that is renamed into place, then loads the result back; anything but the same digest removes it and refuses (field `export`). An existing `ROOT/<id>` is refused, nothing is overwritten. A directory with `suite.yaml` is refused (field `suite`): format 2 is YAML already. The written files are kept on the `Suite` in a private attribute (`_export`), set only by `assemble`.
 - **Contents.** The format 2 data the keywords built, nothing else: `suite.yaml` is the head with `format: 2`; texts read by `file` are inline (no text file is copied); `haystack` specs stay `generate` specs (ADR 0005: the export writes the spec, not the text); generated cases are plain cases; `qr//` is its string form; `tier` is its `stufe-` tag. No comment header: the `source`/`license` keys carry the origin.
