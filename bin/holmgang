@@ -59,7 +59,11 @@ writes the JSON report (ADR 0006), also while the run goes on, so a run that
 is cut off can be continued with C<--resume>. Write reports outside any
 checkout: a report quotes its cases. SIGINT or SIGTERM cancels: no further
 case starts, the cases in play finish, the report is written (the run
-C<cancelled>); a second signal ends the process at once.
+C<cancelled>); a second signal ends the process at once. A target that fails
+C<--max-consecutive-errors> cases of a variant in a row (default 10) is taken
+for dead under that variant: no further case of it starts, the line printed
+at that moment says why, and its runs are C<aborted> with that reason; the
+cases it did not play have no result, so C<--resume> plays them later.
 
 B<report> reads report files, joins them, and prints the evaluation per topic:
 the comparison of targets, the verdicts per suite and, where cases have a
@@ -79,8 +83,9 @@ suite in which every result is C<error> measured nothing, its verdict reads
 C<NOT MEASURED>, with or without a threshold), or the target
 answered no case of the run -- every result C<error>, C<context_exceeded> or
 C<no_vision> (run; said on standard error with the count per status and the
-first error text, the report is written all the same); C<2> a usage or setup
-error, or a run that aborted or was cancelled.
+first error text, the report is written all the same; a run stopped because
+the target was taken for dead, C<--max-consecutive-errors>); C<2> a usage or
+setup error, or a run that aborted for any other reason or was cancelled.
 
 B<Keys:> holmgang reads no key. An engine takes its key from where Langertha
 reads it, its environment variable (C<LANGERTHA_OPENAI_API_KEY>,
@@ -164,6 +169,17 @@ further one up to C<retry_delay_max>.
 How long one request may take is C<deadline> above, or the engine's
 C<--option user_agent_timeout=S>.
 
+=item * C<context_window=N> -- tokens, 1 to 9999999; only for C<mock-solution>
+and C<mock-text>, refused for a real engine (its window is its server's). The
+mock then estimates every request (characters / 3.5, as the haystack sizes
+its texts) and answers one above N with llama.cpp's "exceeds the available
+context size", before any tool call: the case is C<context_exceeded>. So a
+dry run shows where a suite's length tiers cut at a given window, one
+variant per window:
+
+  holmgang run --suite /srv/suites/long-logs --target mock-solution \
+    --variant w16k:context_window=16000 --variant w64k:context_window=64000
+
 =back
 
 Anything else is refused, and so is a setting the engine would drop.
@@ -176,9 +192,22 @@ C<run>: at most N requests open against the target at once, 1 to 64; default
 =opt --resume FILE
 
 C<run>: continue the run of an earlier report: every result it holds is taken
-over, only the missing ones are played. The report must come from the same
+over, except a result C<error> (the target did not answer, nothing was
+measured); only the missing ones and those are played. The report must come from the same
 suites (unchanged), target, variants and C<--repeat>; anything else is
 refused. C<--report> may name the same file.
+
+=opt --max-consecutive-errors N
+
+C<run>: after N cases of a variant ended C<error> in a row -- in the order they
+end, after the target's own C<retries>; any other status, C<context_exceeded>
+included, starts the count anew -- the target is taken for dead under that
+variant: no further case of it starts, the cases in play finish, and every
+run of that variant that misses results is C<aborted>, its error naming the
+series and the last error text. The cases not played get no result, not
+C<error>: they count nowhere, and C<--resume> plays them. Other variants go on.
+Such a run exits 1, not 2: its verdict is not ok. Default 10; C<0> turns it
+off.
 
 =opt --repeat N
 

@@ -174,6 +174,7 @@ sub help {
     '                    [--model M] [--url U] [--option K=V]... [--label L]',
     '                    [--variant [NAME:]K=V]... [--repeat N] [--concurrency N]',
     '                    [--resume earlier.json] [--report out.json] [--seed ID=N]...',
+    '                    [--max-consecutive-errors N]',
     '                    [--sandbox docker|podman [--sandbox-image IMAGE]]',
     '       holmgang report <report.json>... [--by topic] [--format text|markdown|json] [--suite <dir>]...',
     '       holmgang export-yaml <suite-dir>... --out <dir> [--seed ID=N]...',
@@ -363,7 +364,12 @@ sub _target {
     return ( undef, '--model, --url and --option do not apply to '.$name )
       if defined $o->{model} || defined $o->{url} || @{ $o->{option} || [] };
     my $runner = $self->runner_class;
-    return ( sub { $runner->mock_engine( $_[0], $mode ) },
+    # the variant's context_window is the mock's window (k80)
+    return ( sub {
+        my ( $case, $slot, $settings ) = @_;
+        $runner->mock_engine( $case, $mode,
+          ( defined $settings && defined $settings->{context_window} ? ( context_window => $settings->{context_window} ) : () ) );
+      },
       { label => $o->{label} // $name, engine => 'Virtual', model => undef, url => undef } );
   }
   return ( undef, 'not an engine name: '.$name ) unless $name =~ /\A[A-Za-z_]\w*(?:::\w+)*\z/;
@@ -439,7 +445,7 @@ sub cmd_run {
   my ( $self, @argv ) = @_;
   my ( $o, $bad ) = $self->_options( \@argv,
     'suite=s@', 'target=s', 'model=s', 'url=s', 'option=s@', 'label=s', 'variant=s@', 'repeat=i',
-    'concurrency=i', 'resume=s', 'report=s', 'seed=s@', 'sandbox=s', 'sandbox-image=s' );
+    'concurrency=i', 'resume=s', 'report=s', 'seed=s@', 'sandbox=s', 'sandbox-image=s', 'max-consecutive-errors=i' );
   return $self->_usage_error($bad) if $bad;
   return $self->_usage_error( 'unexpected argument: '.$argv[0] ) if @argv;
   return $self->_usage_error('run needs at least one --suite') unless @{ $o->{suite} || [] };
@@ -447,6 +453,8 @@ sub cmd_run {
     if defined $o->{repeat} && ( $o->{repeat} < 1 || $o->{repeat} > 100 );
   return $self->_usage_error('--concurrency must be between 1 and 64')
     if defined $o->{concurrency} && ( $o->{concurrency} < 1 || $o->{concurrency} > 64 );
+  return $self->_usage_error('--max-consecutive-errors must be 0 (off) or more')
+    if defined $o->{'max-consecutive-errors'} && $o->{'max-consecutive-errors'} < 0;
   my ( $variants, $vbad ) = $self->_variants( $o->{variant} );
   return $self->_usage_error($vbad) if $vbad;
   # --sandbox (ADR 0011): real programs the Linux simulator does not model run in a container
@@ -462,6 +470,9 @@ sub cmd_run {
     $sandbox_label = join ' ', $o->{sandbox}, $sandbox->image, $id;
     $self->_say( 'sandbox: '.$sandbox_label );
   }
+  # only the mocks build a window into their engine (k80)
+  return $self->_usage_error( '--variant '.$_->{name}.': context_window applies only to mock-solution and mock-text' )
+    for grep { exists $_->{settings}{context_window} && !$MOCK{ $o->{target} // '' } } @$variants;
   my ( $engine_for, $target ) = $self->_target($o);
   return $self->_usage_error($target) unless $engine_for;
   my ( $loader, $lbad ) = $self->_seeded_loader( $o->{seed}, [ grep { _is_suite( path($_) ) } @{ $o->{suite} } ] );
@@ -476,6 +487,7 @@ sub cmd_run {
 
   my $several = @$variants > 1;
   my $batch;
+  my %dead;   # variant name => the error its runs got when the target was taken for dead
   my $last_write = time;
   my $on_event = sub {
     my ( $e ) = @_;
@@ -493,6 +505,7 @@ sub cmd_run {
         :                                  'not ruled out -- '.$self->_one_line( $check->{note} // 'no check decided' ) ) );
     }
     elsif ( $e->{type} eq 'aborted' ) {
+      $dead{ $e->{variant} } = $e->{error} if $e->{consecutive_errors};
       $self->_say( $e->{case}
         ? $at.' '.$e->{case}->id.' #'.$e->{repetition}.' aborted: '.$e->{error}
         : $at.' vision check aborted: '.$e->{error} );
@@ -509,6 +522,7 @@ sub cmd_run {
         concurrency => $o->{concurrency} // 1,
       } ],
       ( defined $o->{repeat} ? ( repeat => $o->{repeat} ) : () ),
+      ( defined $o->{'max-consecutive-errors'} ? ( max_consecutive_errors => $o->{'max-consecutive-errors'} ) : () ),
       ( $resume ? ( resume => $resume ) : () ),
       ( $sandbox ? ( sandbox => $sandbox, sandbox_label => $sandbox_label ) : () ),
       on_event => $on_event,
@@ -536,8 +550,13 @@ sub cmd_run {
   my $ev = $self->evaluation_class->new( report => $report, thresholds => $self->_thresholds($suites) );
   $self->_say( '', $ev->to_text );
   $self->_say( 'report: '.$o->{report} ) if defined $o->{report};
-  # an aborted or cancelled run (k15)
-  return 2 if grep { $_->{status} ne 'complete' } @{ $report->runs };
+  # an aborted or cancelled run (k15); a run aborted because the target was
+  # taken for dead is a target failure, not a setup error: its verdict is not
+  # ok, so it exits 1 below (k74)
+  return 2 if grep {
+    $_->{status} ne 'complete'
+      && !( $_->{status} eq 'aborted' && defined $dead{ $_->{variant}{name} } && ( $_->{error} // '' ) eq $dead{ $_->{variant}{name} } )
+  } @{ $report->runs };
 
   # the report holds the results in suite, case and repetition order: the
   # first error text found is the first of the run (k44)
@@ -597,7 +616,8 @@ sub _tally {
 
 C<holmgang run>: loads the suites (C<--seed ID=N> as for C<lint>), builds the target (an engine name with
 C<--model>, C<--url>, C<--option>; or C<mock-solution> / C<mock-text>) and its
-variants (C<--variant>), and plays them through L<Langertha::Holmgang::Batch>:
+variants (C<--variant>; for a mock, C<context_window=N> gives it a context
+window, L<Langertha::Holmgang::Runner/mock_engine>), and plays them through L<Langertha::Holmgang::Batch>:
 every case C<--repeat> times (default the suite's C<repeat>, else 1) under
 every variant, at most C<--concurrency> requests at once (default 1, one
 engine per slot), continuing the report of C<--resume>. With C<--sandbox docker> (or C<podman>, the
@@ -614,7 +634,11 @@ it finds the target blind, every case with images of that suite ends
 C<no_vision> without a request. SIGINT and SIGTERM cancel the batch: no
 further case starts, the cases in play finish, the report is written. Returns
 1 when a verdict is not ok, 2 for a usage or setup error, an aborted or a
-cancelled run.
+cancelled run -- except a run aborted because the target was taken for dead
+(C<--max-consecutive-errors N>, default 10, C<0> off: N cases of a variant
+ended C<error> in a row, L<Langertha::Holmgang::Batch/max_consecutive_errors>).
+That one is a target failure, not a setup error: the line printed at the
+abort says why, its verdict is not ok (C<unfinished>), so the run returns 1.
 
 When the target answered no case of the whole run -- every result, over all
 suites and repetitions, is C<error>, C<context_exceeded> or C<no_vision> -- the
@@ -627,7 +651,7 @@ got an answer then gets a note on the error handle, and one whose results are
 all C<error> also fails its verdict (C<NOT MEASURED>,
 L<Langertha::Holmgang::Evaluation/verdicts>), so the run returns 1; all
 C<context_exceeded> or C<no_vision> is a measurement and gets only the note.
-An aborted run stays 2.
+An aborted run stays 2, unless the target was taken for dead (then 1).
 The engine's warnings while it is built go to the error handle, cleaned like
 a relayed error.
 

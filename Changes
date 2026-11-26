@@ -35,6 +35,15 @@ Revision history for Langertha-Holmgang
     builtin::is_bool tells them from the text "1" and "". On older perls a
     case with a boolean argument in its solution failed lint and did not
     load
+  - holmgang run --max-consecutive-errors N (default 10, 0 off; Batch
+    max_consecutive_errors): after N results error in a row per target and
+    variant no further case starts, the runs are aborted with the reason and
+    the last error, the cases not played get no result; such a run exits 1.
+    --resume plays results error again
+  - Variant setting context_window=N for mock-solution and mock-text: a
+    request estimated above N tokens ends the case context_exceeded, so a
+    dry run shows where a suite's length tiers cut. Batch hands the
+    variant's settings to the engine code
 
 0.002     2026-11-19 18:21:03Z
   - cpanfile declares the core modules the code loads but did not list:

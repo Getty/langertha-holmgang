@@ -11,8 +11,9 @@ use JSON::MaybeXS ();
 use Langertha::Engine::Virtual;
 use Langertha::Holmgang::Error;
 use Langertha::Holmgang::Grader;
+use Langertha::Holmgang::Haystack;
 use Langertha::Holmgang::Target;
-use Langertha::Virtual::Rules qw( answer tool );
+use Langertha::Virtual::Rules qw( answer error tool );
 use Moose::Util ();
 use Scalar::Util qw( blessed );
 use Time::HiRes ();
@@ -314,12 +315,27 @@ sub _call_arguments {
 #### Lint's mock runs
 
 sub mock_engine {
-  my ( $class, $case, $mode ) = @_;
+  my ( $class, $case, $mode, %o ) = @_;
   $mode //= 'solution';
   croak __PACKAGE__.'->mock_engine: mode is solution or text' unless $mode eq 'solution' || $mode eq 'text';
+  my $window = $o{context_window};
+  croak __PACKAGE__.'->mock_engine: context_window must be a whole number of tokens from 1'
+    if defined $window && !( $window =~ /\A[1-9][0-9]*\z/ );
   my @script = $mode eq 'solution'
     ? ( ( map { tool( $_->{tool} => _plain( $_->{args} // {} ) ) } @{ $case->solution || [] } ), answer('Done.') )
     : ( answer('I would do it like this ... (text only)') );
+  # a context window (k80): a request that does not fit is refused before any
+  # answer, as llama.cpp refuses it -- in words Target classifies as context_exceeded
+  @script = map {
+    my $reaction = $_;
+    sub {
+      my ( $request ) = @_;
+      my $n = $class->_request_tokens($request);
+      return $n > $window
+        ? error( 400, 'request ('.$n.' tokens) exceeds the available context size ('.$window.' tokens)' )
+        : $reaction;
+    };
+  } @script if defined $window;
   # the mock sees what it is sent: a case with images gets a mock that claims
   # image_input, so the vision pre-check does not stop it at the wire, and
   # answers the sight test's requests once its script is done (k27) -- a case
@@ -340,11 +356,51 @@ answers C<Done.>; C<text> answers with text only, at once. For a case with
 images it claims C<image_input> (L<Langertha::Role::ImageInput>), answers
 C<OK> once its script is done (which a case never reaches) and reports no
 token usage, so L<Langertha::Holmgang::Target/vision_check_f> lets it through
-unmeasured (ADR 0005). It estimates
-no tokens and emulates no context window (the target's error path is tested
-with L<Langertha::Virtual::Rules/error> reactions instead).
+unmeasured (ADR 0005). It reports
+no token usage.
+
+  my $engine = Langertha::Holmgang::Runner->mock_engine( $case, 'solution', context_window => 16000 );
+
+With C<context_window> (tokens, a whole number from 1) the mock has a context
+window: every request is estimated first -- the text of every message (text
+parts of a message with images; the images count nothing), the names and
+arguments of the tool calls in it, and the tool schemas as JSON, through
+L<Langertha::Holmgang::Haystack/estimate_tokens> (characters / 3.5, the
+measure the haystack sizes its texts by) -- and a request above the window
+fails like llama.cpp's, C<400> with C<request (N tokens) exceeds the available
+context size (W tokens)>, before any answer or tool call, so
+L<Langertha::Holmgang::Target/classify_error> makes it C<context_exceeded>.
+Only the prompt counts, not C<max_tokens>. The variant setting
+C<context_window> (L<Langertha::Holmgang::Target/check_variant>) is how a run
+asks for it.
 
 =cut
+
+sub haystack_class { 'Langertha::Holmgang::Haystack' }
+
+=method haystack_class
+
+The class whose C<estimate_tokens> the mock's context window counts with;
+L<Langertha::Holmgang::Haystack>.
+
+=cut
+
+# the estimated tokens of a request the mock gets (k80): the text of the
+# messages, the tool calls in them, the tool schemas
+sub _request_tokens {
+  my ( $self, $request ) = @_;
+  my @text;
+  for my $m ( @{ $request->{messages} || [] } ) {
+    my $c = $m->{content};
+    push @text, ref $c eq 'ARRAY' ? ( map { ref $_ eq 'HASH' && defined $_->{text} ? $_->{text} : () } @$c )
+              : defined $c        ? $c
+              :                     ();
+    push @text, map { ( $_->{function}{name} // '', $_->{function}{arguments} // '' ) } @{ $m->{tool_calls} || [] };
+  }
+  my $tools = $request->{tools} || [];
+  my $haystack = $self->haystack_class;
+  return $haystack->estimate_tokens( join "\n", @text ) + ( @$tools ? $haystack->estimate_tokens( $JSON->encode($tools) ) : 0 );
+}
 
 # the parts of two results that must be identical (all but wall time)
 sub _comparable {

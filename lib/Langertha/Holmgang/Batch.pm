@@ -23,7 +23,7 @@ our $VERSION = '0.003';
     suites  => [ $loader->load($dir_a), $loader->load($dir_b) ],
     targets => [ {
       target      => { label => 'local-a', engine => 'vLLM', model => 'm-1', url => 'http://10.0.0.5:8000/v1' },
-      engine      => sub { my ( $case, $slot ) = @_; $engines[$slot] //= build_engine() },
+      engine      => sub { my ( $case, $slot, $settings ) = @_; $engines[$slot] //= build_engine() },
       variants    => [
         { name => 'think-off', settings => { enable_thinking => 'off' } },
         { name => 'think-on',  settings => { enable_thinking => 'on', max_tokens => 16000, deadline => 1800 } },
@@ -32,6 +32,7 @@ our $VERSION = '0.003';
     } ],
     repeat   => 3,                               # else each suite's own repeat, else 1
     resume   => Langertha::Holmgang::Report->read('out.json'),   # optional
+    max_consecutive_errors => 10,                # a dead target: its variant stops after 10 errors in a row
     on_event => sub { my ( $event ) = @_; print "$event->{type}\n" },
   );
 
@@ -57,8 +58,9 @@ is one request at a time.
 
 B<Variants.> A variant is a name and its settings, named and checked by
 L<Langertha::Holmgang::Target/check_variant> (C<enable_thinking>,
-C<reasoning_effort>, C<max_tokens>, C<temperature>, C<deadline>), against the
-engine when the batch is built. The report carries the name and the
+C<reasoning_effort>, C<max_tokens>, C<temperature>, C<deadline>, the retries,
+and C<context_window> for a mock), against the engine when the batch is
+built. The report carries the name and the
 normalised settings.
 
 B<Vision.> Before the cases of a run whose suite has images, the target's
@@ -66,8 +68,9 @@ L<Langertha::Holmgang::Target/vision_check_f> runs once (with the run's
 variant); its C<no_vision> goes to every case of the run.
 
 B<Resume.> With C<resume>, an earlier report of the same batch: every
-repetition it holds a result for (whatever the status) is taken over and not
-played again; only the missing ones run. A run of the earlier report must
+repetition it holds a result for is taken over and not played again, except a
+result C<error> (the target did not answer, nothing was measured), which is
+played again like a missing one. A run of the earlier report must
 match one of the batch (target, variant, suite) with the same suite digest
 and the same C<repeat>; a run the batch does not cover is refused, so
 resuming never drops results.
@@ -79,6 +82,15 @@ C<aborted>, its C<error> the text through
 L<Langertha::Holmgang::Target/scrub> (with the engine's key) and cut to
 L</error_max_length> characters; the other runs go on. Each repetition's
 C<error> is cut to the same length.
+
+B<A dead target.> When L</max_consecutive_errors> cases of one target and
+variant end C<error> in a row -- counted in the order they end, over all
+suites of that variant, after the target's own retries; any other status
+starts the count anew -- the target is taken for dead under that variant: no
+further case of it starts (cases in play finish), and each of its runs that
+misses results is C<aborted>, its C<error> naming the series and the last
+error text. The missing cases get no result at all, so they count nowhere and
+a later L</resume> plays them. The other variants and targets go on.
 
 B<Cancel.> L</cancel> starts no further case; cases in play finish. A run
 that then misses results is C<cancelled>.
@@ -102,8 +114,13 @@ Required. One HashRef per target:
 
 =over
 
-=item * C<engine> -- required: a code reference C<< ( $case, $slot ) >> that
-returns the engine to play the case on, or one engine for every case.
+=item * C<engine> -- required: a code reference C<< ( $case, $slot, $settings ) >>
+that returns the engine to play the case on, or one engine for every case.
+C<$settings> are the variant's settings, checked and normalised; a code that
+builds a mock reads C<context_window> from them
+(L<Langertha::Holmgang::Runner/mock_engine>). A variant with
+C<context_window> needs such a code: one engine object for every case cannot
+take it and is refused.
 
 =item * C<target> -- the report's target, C<< { label, engine, model, url } >>
 (ADR 0006); never a key.
@@ -132,6 +149,16 @@ has resume => ( is => 'ro' );
 
 Optional. An earlier L<Langertha::Holmgang::Report> of the same batch (see
 L</DESCRIPTION>).
+
+=cut
+
+has max_consecutive_errors => ( is => 'ro', default => 10 );
+
+=attr max_consecutive_errors
+
+Optional, default 10. After this many cases of one target and variant ended
+C<error> in a row, no further case of that target and variant starts (see
+L</DESCRIPTION>, "A dead target"). A whole number; C<0> turns it off.
 
 =cut
 
@@ -167,7 +194,11 @@ runner's result, L<Langertha::Holmgang::Runner/run_case_f>);
 L<Langertha::Holmgang::Target/vision_check_f>);
 
 =item * C<aborted> -- a run aborted: C<error> (scrubbed), and C<case> and
-C<repetition> when a case threw, none when the vision check did.
+C<repetition> when a case threw, none when the vision check did. When the
+target is taken for dead (L</max_consecutive_errors>) the event comes once
+per target and variant, for the case whose result completed the series, and
+carries C<consecutive_errors> (the length of the series); its C<error> is the
+one every aborted run of that target and variant gets.
 
 =back
 
@@ -204,6 +235,8 @@ sub BUILD {
   croak __PACKAGE__.'->new: repeat must be a whole number from 1 to 100'
     if defined $self->repeat && !( $self->repeat =~ /\A[0-9]+\z/ && $self->repeat >= 1 && $self->repeat <= 100 );
   croak __PACKAGE__.'->new: on_event must be a code reference' if defined $self->on_event && ref $self->on_event ne 'CODE';
+  croak __PACKAGE__.'->new: max_consecutive_errors must be a whole number from 0'
+    unless defined $self->max_consecutive_errors && $self->max_consecutive_errors =~ /\A[0-9]+\z/;
   my ($first) = map { @{ $_->cases } } @$suites;
   my @runs;
   for my $ti ( 0 .. $#$targets ) {
@@ -224,15 +257,20 @@ sub BUILD {
       croak $where.': variant '.$v->{name}.' named twice' if $seen{ $v->{name} }++;
       # the settings checked once without and once against the engine (the first case, slot 0)
       my $settings = $self->target_class->check_variant( $v->{settings} // {} );
-      $self->target_class->check_variant( $settings, $self->_engine( $t, $first, 0 ) );
+      croak $where.': variant '.$v->{name}.': context_window needs an engine code that builds the mock with it'
+        if exists $settings->{context_window} && ref $t->{engine} ne 'CODE';
+      $self->target_class->check_variant( $settings, $self->_engine( $t, $first, 0, $settings ) );
       push @variants, { name => ''.$v->{name}, settings => $settings };
     }
     $self->{_target}[$ti] = { %$t, concurrency => 0 + $conc, variants => \@variants };
     for my $v ( @variants ) {
+      # the series of errors is counted per target and variant, over its suites
+      my $series = { count => 0 };
       for my $suite ( @$suites ) {
         push @runs, {
           ti      => $ti,
           variant => $v,
+          series  => $series,
           suite   => $suite,
           repeat  => 0 + ( $self->repeat // $suite->repeat // 1 ),
           results => {},
@@ -246,9 +284,9 @@ sub BUILD {
 }
 
 sub _engine {
-  my ( $self, $t, $case, $slot ) = @_;
+  my ( $self, $t, $case, $slot, $settings ) = @_;
   return $t->{engine} unless ref $t->{engine} eq 'CODE';
-  my $engine = $t->{engine}->( $case, $slot );
+  my $engine = $t->{engine}->( $case, $slot, $settings );
   croak __PACKAGE__.': the engine code of target '.( $t->{target}{label} // '?' ).' returned no engine with chat_f'
     unless blessed $engine && $engine->can('chat_f');
   return $engine;
@@ -296,6 +334,8 @@ sub _take_over {
       croak __PACKAGE__.'->new: resume: case '.$c->{case_id}.' of the earlier '.$name.' is not in the suite'
         unless $case{ $c->{case_id} };
       for my $r ( @{ $c->{repetitions} } ) {
+        # an error measured nothing: it is played again
+        next if ( $r->{status} // '' ) eq 'error';
         $run->{results}{ $c->{case_id} }{ $r->{repetition} } = { %$r, case_id => $c->{case_id} };
       }
     }
@@ -387,7 +427,7 @@ sub _target_f {
 sub _job_f {
   my ( $self, $job, $slot ) = @_;
   my $run = $job->{run};
-  return Future->done if $self->{_cancelled} || $run->{aborted};
+  return Future->done if $self->{_cancelled} || $run->{aborted} || $run->{series}{dead};
   my $f = eval { $self->_case_f( $job, $slot ) };
   $f = Future->fail( $@ || 'the case returned no Future' ) unless blessed $f && $f->isa('Future');
   return $f->then(
@@ -410,10 +450,10 @@ async sub _case_f {
   my ( $self, $job, $slot ) = @_;
   my $run = $job->{run};
   my $no_vision = await $self->_vision_f( $run, $slot );
-  return if $run->{aborted};
+  return if $run->{aborted} || $run->{series}{dead};
   my $t = $self->{_target}[ $run->{ti} ];
   my $target = $job->{target} = $self->target_class->for_variant(
-    engine   => $self->_engine( $t, $job->{case}, $slot ),
+    engine   => $self->_engine( $t, $job->{case}, $slot, $run->{variant}{settings} ),
     settings => $run->{variant}{settings},
   );
   my $runner = $self->runner_class->new( target => $target, ( $self->sandbox ? ( sandbox => $self->sandbox ) : () ) );
@@ -429,7 +469,7 @@ sub _vision_f {
     if ( $seeing ) {
       my $f = eval {
         my $target = $run->{vision_target} = $self->target_class->for_variant(
-          engine   => $self->_engine( $self->{_target}[ $run->{ti} ], $seeing, $slot ),
+          engine   => $self->_engine( $self->{_target}[ $run->{ti} ], $seeing, $slot, $run->{variant}{settings} ),
           settings => $run->{variant}{settings},
         );
         $target->vision_check_f;
@@ -470,6 +510,29 @@ sub _record {
   delete @keep{qw( state answer transcript )};
   $run->{results}{ $job->{case}->id }{ $job->{n} } = \%keep;
   $self->_event( $run, type => 'result', case => $job->{case}, repetition => $job->{n}, result => $result );
+  $self->_count( $job, \%keep );
+  return;
+}
+
+# the series of errors of the run's target and variant, in the order results
+# end: an error adds one, anything else starts anew; at the limit the target
+# is dead under this variant
+sub _count {
+  my ( $self, $job, $result ) = @_;
+  my $series = $job->{run}{series};
+  unless ( ( $result->{status} // '' ) eq 'error' ) {
+    $series->{count} = 0;
+    return;
+  }
+  my $max = $self->max_consecutive_errors;
+  return if ++$series->{count} < $max || !$max || defined $series->{dead};
+  my $last = $result->{error} // '';
+  my $text = 'the target failed '.$series->{count}.' cases in a row (status error), so no further case'
+    .' of this target and variant starts'.( length $last ? '; the last error: '.$last : '' );
+  my $scrubber = $job->{target} // $self->target_class;
+  $series->{dead} = $self->_cut( $scrubber->scrub($text) =~ s/\s+\z//r );
+  $self->_event( $job->{run}, type => 'aborted', error => $series->{dead}, case => $job->{case},
+    repetition => $job->{n}, consecutive_errors => $series->{count} );
   return;
 }
 
@@ -515,9 +578,12 @@ sub _missing {
 sub _finish {
   my ( $self ) = @_;
   for my $run ( @{ $self->{_runs} } ) {
-    $run->{status} = $run->{aborted}       ? 'aborted'
-                   : $self->_missing($run) ? 'cancelled'
-                   :                         'complete';
+    my $missing = $self->_missing($run);
+    my $dead    = $missing && !$run->{aborted} && defined $run->{series}{dead};
+    $run->{error} = $run->{series}{dead} if $dead;
+    $run->{status} = $run->{aborted} || $dead ? 'aborted'
+                   : $missing               ? 'cancelled'
+                   :                          'complete';
   }
   $self->{_finished} = 1;
   return;
@@ -531,13 +597,18 @@ sub report {
   for my $run ( @{ $self->{_runs} } ) {
     my $suite = $run->{suite};
     my $status = $run->{status} // ( $run->{aborted} ? 'aborted' : undef );
+    my $error  = $run->{error};
+    # a target taken for dead while the batch still runs: its runs that miss
+    # results are aborted already
+    ( $status, $error ) = ( 'aborted', $run->{series}{dead} )
+      if !defined $status && defined $run->{series}{dead} && $self->_missing($run);
     $report->add_run(
       target  => $self->{_target}[ $run->{ti} ]{target} // {},
       variant => $run->{variant},
       suite   => { id => $suite->id, version => $suite->version, topic => $suite->topic, digest => $suite->digest },
       repeat  => $run->{repeat},
       status  => $status // 'aborted',
-      error   => defined $status ? $run->{error} : 'unfinished: the batch was still running when this report was written',
+      error   => defined $status ? $error : 'unfinished: the batch was still running when this report was written',
       cases   => [ map { $_->report_meta } @{ $suite->cases } ],
       results => [ map {
         my $c = $_;

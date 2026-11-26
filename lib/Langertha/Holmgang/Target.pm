@@ -171,7 +171,8 @@ sub BUILD {
 #### Variants
 
 # The settings a variant may name, in the order a message lists them.
-my @VARIANT_KEYS = qw( enable_thinking reasoning_effort max_tokens temperature deadline retries retry_delay retry_delay_max );
+my @VARIANT_KEYS = qw( enable_thinking reasoning_effort max_tokens temperature deadline retries retry_delay retry_delay_max
+  context_window );
 my %VARIANT_KEY  = map { $_ => 1 } @VARIANT_KEYS;
 
 # Langertha's reasoning_effort values (Langertha::Role::Chat)
@@ -185,7 +186,7 @@ sub variant_keys { @VARIANT_KEYS }
 
 The settings a variant may name: C<enable_thinking>, C<reasoning_effort>,
 C<max_tokens>, C<temperature>, C<deadline>, C<retries>, C<retry_delay>,
-C<retry_delay_max>.
+C<retry_delay_max>, C<context_window>.
 
 =cut
 
@@ -226,6 +227,10 @@ sub check_variant {
       $no->( 'variant.retries' => 'a whole number from 0 to 1000000, or endless' ) unless _retries_ok($x);
       $v{$k} = $x eq 'endless' ? 'endless' : 0 + $x;
     }
+    elsif ( $k eq 'context_window' ) {
+      $no->( 'variant.context_window' => 'tokens, a whole number from 1 to 9999999' ) unless !ref $x && $x =~ /\A[1-9][0-9]{0,6}\z/;
+      $v{$k} = 0 + $x;
+    }
     elsif ( $k eq 'retry_delay' || $k eq 'retry_delay_max' ) {
       $no->( 'variant.'.$k => 'seconds, a number from 0 to 86400' ) unless _seconds_ok($x);
       $v{$k} = 0 + $x;
@@ -247,6 +252,9 @@ sub check_variant {
     if exists $v{reasoning_effort} && !$takes->('reasoning_effort');
   $no->( 'variant.enable_thinking' => $of.' speaks no OpenAI-compatible wire, so chat_template_kwargs has no place' )
     if exists $v{enable_thinking} && !( $engine->can('does') && $engine->does('Langertha::Role::OpenAICompatible') );
+  # a real target's window is the server's; only the mock emulates one (k80)
+  $no->( 'variant.context_window' => $of.' is no mock target; a real target\'s context window is its server\'s' )
+    if exists $v{context_window} && !$engine->isa('Langertha::Engine::Virtual');
   $no->( 'variant.deadline' => $of.' runs on no event loop (IO::Async and Net::Async::HTTP), so a deadline cannot cut a request' )
     if exists $v{deadline} && !( $engine->can('async_loop') && $engine->async_loop );
   return \%v;
@@ -285,6 +293,13 @@ without it 2).
 pause and the longest one (L</retry_delay>, L</retry_delay_max>; without them
 10 and 300).
 
+=item * C<context_window> -- tokens, a whole number from 1 to 9999999: the
+context window of a B<mock> target. It is no request option: whoever builds
+the engine for the variant builds the window into it
+(L<Langertha::Holmgang::Runner/mock_engine>, which L<Langertha::Holmgang::Batch>
+hands the variant's settings), and L</for_variant> leaves it out of
+L</variant>.
+
 =back
 
 An empty value names nothing and is left out. With an C<$engine> the settings
@@ -292,7 +307,9 @@ are also checked against it: C<temperature> and C<reasoning_effort> only where
 it C<supports> them (Langertha would drop them with a warning, and the report
 would name a setting that never went out), C<enable_thinking> only on an
 engine with L<Langertha::Role::OpenAICompatible>, C<deadline> only on an
-engine with an event loop. Throws a L<Langertha::Holmgang::Error> on the field
+engine with an event loop, C<context_window> only on a
+L<Langertha::Engine::Virtual> (the mock; a real target's window is its
+server's). Throws a L<Langertha::Holmgang::Error> on the field
 C<variant.E<lt>keyE<gt>>.
 
 =cut
