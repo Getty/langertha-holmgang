@@ -1,0 +1,14 @@
+---
+class: standard
+created: 2026-11-26T11:25:03Z
+id: 82
+priority: medium
+status: backlog
+tags:
+- simulator
+title: 'Simulator-Lücken aus cai-bench k11 (Labor 2026-11-26): pg_replication_slots-Spalten,
+  RouterOS lease stats, amtool, awk-Blöcke'
+updated: 2026-11-26T11:25:03Z
+---
+
+Aus cai-bench k11 (Läufe gegen brain/crag über den Labor-Eingang): Rundengrenzen in netzwerk/09, postgres-betrieb/03 und /07, dns-mail/10, monitoring-alerting/02 kommen von Lücken der Simulation, nicht vom Modell: (1) pg_replication_slots fehlen Spalten, (2) RouterOS 'ip dhcp-server lease' Statistik, (3) amtool fehlt, (4) awk-Blöcke werden nicht ausgewertet. Je Lücke allgemein schließen (nicht fallbezogen), mit Test; Belege in ~/cai-bench runs/2026-11-26-labor/.
