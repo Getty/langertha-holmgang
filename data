@@ -1,0 +1,24 @@
+---
+claimed_at: 2026-11-26T03:11:47Z
+claimed_by: holmgang-worker
+class: standard
+completed: 2026-11-26T03:11:47Z
+created: 2026-11-18T08:02:21Z
+id: 74
+priority: medium
+started: 2026-11-26T02:48:31Z
+status: done
+tags:
+- runner
+title: Lauf abbrechen, wenn das Ziel tot ist (Fehlerserie statt hunderte Fälle gegen
+  500)
+updated: 2026-11-26T03:11:47Z
+---
+
+Befund 2026-11-18 (cai-bench#4): cortex antwortete ab ca. 07:55 UTC nur noch 500 CudaFailed; holmgang run spielte rund 1500 Fälle in wenigen Minuten dagegen und zählte sie als error. Wunsch: nach N aufeinanderfolgenden Transportfehlern bzw. 5xx eines Ziels (Vorgabe z. B. 10) den Lauf für dieses Ziel anhalten, im Bericht als aborted mit Grund, Rest nicht als error zählen; Option --max-consecutive-errors.
+
+2026-11-26 02:59 Design (worker's choice, ADR 0005/0006/0009 k74 amendments): Batch max_consecutive_errors (default 10, 0 off); the series counts results with status error per target x variant over all its suites, in completion order; any other status resets. At N: no further case of that target+variant starts, in-flight cases finish; each run of it missing results is aborted with 'the target failed N cases in a row (status error), ...; the last error: <scrubbed text>'; missing cases get no result. Event 'aborted' carries consecutive_errors. Resume now replays results with status error (ADR 0005 k15 resume statement amended). CLI: --max-consecutive-errors N; a dead-target abort exits 1 (target failure, verdict unfinished / k42 rule), any other abort or cancel stays 2.
+
+2026-11-26 02:59 Done: lib/Langertha/Holmgang/Batch.pm (max_consecutive_errors, series, resume skips error), CLI.pm (--max-consecutive-errors, exit 1 for a dead target), bin/holmgang POD, ADR 0005/0006/0009 amendments; new tests t/batch_dead_target.t (series aborts, in-flight finish, reset by measured and context_exceeded, other variant/target goes on, resume replays missing+error, checkpoint shows reason, evaluation counts no missing case) and t/cli/dead_target.t (exit 1, abort line, resume, 0 off, option checks, help/POD). prove -lr t: 112 files, 3633 tests, PASS, nothing skipped. Not committed; k80 touches CLI.pm and bin/holmgang too.
+
+2026-11-26 03:11 Committed 4cde332 (k74, k80 together)
