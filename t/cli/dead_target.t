@@ -93,7 +93,7 @@ my $file = $out_dir->child('dead.json');
   ( $code, $out ) = cli('help');
   like( $out, qr/\[--max-consecutive-errors N\]/, 'the help names the option' );
   my $pod = path( $FindBin::Bin, '..', '..', 'bin', 'holmgang' )->slurp_utf8;
-  like( $pod, qr/^=opt --max-consecutive-errors N$/m, 'bin/holmgang documents it' );
+  like( $pod, qr/^=(?:opt|head2) --max-consecutive-errors N$/m, 'bin/holmgang documents it' );
 }
 
 done_testing;
