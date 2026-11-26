@@ -1,0 +1,37 @@
+---
+claimed_at: 2026-11-26T01:20:14Z
+claimed_by: holmgang-sim-worker
+class: standard
+completed: 2026-11-26T01:20:14Z
+created: 2026-11-25T05:41:29Z
+id: 76
+priority: high
+started: 2026-11-25T05:44:01Z
+status: done
+tags:
+- entkopplung
+title: 'Kein CAI im Code und in den Tests: PEM-Kennung, Hostname, cai-platform-Abnahme
+  raus'
+updated: 2026-11-26T01:20:14Z
+---
+
+Holmgang ist ein generischer Motor; nichts darin kennt CAI (Getty, 2026-11-25). Wie CAI Holmgang benutzt, dokumentieren die CAI-Repos.
+- Sim/Linux/Pki.pm: PEM-Inhalt cai-sim-<tag>:<id> geht ans Modell -> neutrale Kennung (z. B. holmgang-sim-). cai-bench nutzt die Zeichenkette in keinem Fall (grep 0 Treffer, 2026-11-25).
+- t/target_retry.t:98 interner Hostname -> erfundener Name.
+- Report.pm Abschnitt cai-platform (Mapping von evals run --report) samt t/report/cai_platform.t, t/acceptance_load.t, t/acceptance_mock_runs.t, HOLMGANG_ACCEPTANCE_*: raus aus der Distribution; die Abnahme wandert als Werkzeug nach cai-bench (Karte dort).
+- t/no_private_suite_ids.t, t/lib/Holmgang/TestSim.pm: CAI-Bezug raus; stattdessen ein Wächtertest: kein cai-/CAI::/citiai/citilan/agent-lab im ausgelieferten Baum.
+Format 2 lädt weiter unverändert (ADR 0004): holmgang lint ~/cai-bench/suites bleibt 36/36 ok.
+
+2026-11-25 05:48 Item PEM marker: STOPPED. ~/cai-bench/suites holds the marker base64-encoded (Y2FpLXNpbS..., 19 case files in tls-zertifikate and webserver-proxy, incl. rule regexes on it; a plaintext grep for cai-sim- misses it). Experiment 1: rename generator+parser -> tls-zertifikate and webserver-proxy refused (34/36). Experiment 2: generic parser ([a-z]+-sim-) + renamed generator -> tls-zertifikate/09-csr-mit-san still refused: its rule pins the base64 of the generated CSR. The marker is part of what format 2 cases depend on (ADR 0004); renaming needs a maintainer decision (case edit in cai-bench, or keeping a legacy marker). Pki.pm code left unchanged; _hex seed 'cai-sim:' (fingerprints/moduli) left for the same reason.
+
+2026-11-25 05:55 Removed (for cai-bench k6, recover from git history at 975f89b): lib/Langertha/Holmgang/Report.pm section '#### cai-platform' (from_cai_platform + _cai_repetition + POD, former lines 725-891), t/report/cai_platform.t, t/acceptance_load.t, t/acceptance_mock_runs.t (env HOLMGANG_ACCEPTANCE_CASES, HOLMGANG_ACCEPTANCE_BASELINE). Nothing in lib/bin called from_cai_platform. Kept: t/acceptance_dsl.t (generic DSL-vs-format-2 check; HOLMGANG_ACCEPTANCE_DSL/SUITES stay). t/no_private_suite_ids.t replaced by t/no_private_names.t (untracked, needs git add): scans lib bin share t + cpanfile dist.ini for the private names at a word start, case-insensitive, plus platform#NNN; one allow entry for the Pki.pm PEM marker pending the decision above. Verified it bites (probe file -> FAIL, allow removed -> 5 Pki.pm hits) and does not hit mosaic-/crag. t/target_retry.t host -> llm.example.invalid. prove -lr t: PASS, 110 files, 3584 tests; skipped: acceptance_dsl.t, sandbox_docker.t, sim/denken_vectors.t (env unset). holmgang lint ~/cai-bench/suites: 36 ok, 0 refused.
+
+2026-11-25 06:01 Decision (coordinator, 2026-11-25): PEM marker kept for now, ADR 0004 wins. k76 stays blocked: the rename first needs the 19 case files (tls-zertifikate, webserver-proxy) edited in the user's case repository, then generator, parser and _hex seed in Pki.pm can change and the allow entry in t/no_private_names.t goes. Also done: Loader.pm:564/:624 example format pii-1 -> corpus-1 (comment/POD only); guard gained p[i]i- (word start; 'apii' in t/sim/kubernetes_adv.t is no hit, asserted). prove -lr t PASS, 110 files, 3586 tests, 3 env-gated skips.
+
+Getty 2026-11-26: die Fälle im Fall-Repo anpassen und k76 fertigmachen.
+
+2026-11-26 01:16 PEM marker renamed (maintainer go-ahead 2026-11-26). Pki.pm: generator, parser, CSR generator and POD now holmgang-sim-<tag>:<id>; _hex seed holmgang-sim: (fingerprints/moduli/serials/subject hashes change). t/no_private_names.t: allow entry and its mechanism removed. t/sim/pki.t: +15 asserts (pem/enckey/pub/csr body decodes to the new marker and blocks() parses it back; foreign marker -> bad); verified they fail against the old Pki.pm. cai-bench (uncommitted, for the main agent): 19 case files rewritten by script (decode -> replace marker -> re-encode, re-wrapped at 64 chars), 124 base64 runs: suites/tls-zertifikate 12 files, suites/webserver-proxy 2, plus archiv/tls-zertifikate 4 and archiv/webserver-proxy 1 (incl. the archived CSR case with the pinned CSR). No case pins a _hex-derived value (checked all hex tokens in both suites + archiv). No suite version changed. Not touched: one run report JSON under runs/2026-11-18-holmgang still holds the old marker (historical run record). Old Pki.pm refuses the rewritten tls/proxy suites (0/2), new one accepts (2/2).
+
+2026-11-26 01:16 Done: Pki.pm marker+seed neutral, guard without allow entry, round-trip test. prove -lr t PASS (110 files, 3601 tests; skipped env-gated: acceptance_dsl.t, sandbox_docker.t, sim/denken_vectors.t). holmgang lint ~/cai-bench/suites: 39 suites, 39 ok, 0 refused (board said 36; cai-bench has 39 suites now). Archived tls/proxy cases linted in a scratch copy: 2/2 ok. git grep for private names: empty. cai-bench: 19 files changed, 127+/126-, uncommitted.
+
+Committed 8221c23
