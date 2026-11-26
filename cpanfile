@@ -17,7 +17,7 @@ requires 'IO::Compress::Gzip';
 requires 'IO::Uncompress::Gunzip';
 requires 'JSON::MaybeXS', '1.004006';
 requires 'JSON::PP';
-requires 'Langertha', '0.504';
+requires 'Langertha', '0.506';
 requires 'Math::BigInt';
 requires 'Math::BigRat';
 requires 'MIME::Base64';

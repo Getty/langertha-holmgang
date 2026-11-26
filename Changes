@@ -1,6 +1,7 @@
 Revision history for Langertha-Holmgang
 
 {{$NEXT}}
+  - Needs Langertha 0.506
   - PKI simulator: PEM bodies carry holmgang-sim-<tag>:<id> and derived
     fingerprints and moduli use the seed holmgang-sim:; a case that pins
     the old base64 or derived values must be re-encoded
