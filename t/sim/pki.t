@@ -6,6 +6,7 @@ use FindBin;
 use lib "$FindBin::Bin/../lib";
 use Test::More;
 use JSON::MaybeXS ();
+use MIME::Base64 qw( decode_base64 encode_base64 );
 
 use Holmgang::TestSim qw( run_command write_file prepare clone diff get throws_ok need_parts );
 use Langertha::Holmgang::Sim::Linux::Pki ();
@@ -183,4 +184,22 @@ is( $state->{web1}{files}{'/root/b.csr'}, $state->{web1}{files}{'/root/shop.csr'
 ( $o, $ok ) = sh( 'web1', 'openssl req -x509 -newkey rsa:2048 -nodes -keyout /root/s.key -out /root/s.crt -days 30 -subj /CN=staging.example.com' );
 ok( $ok, 'req -x509 -newkey: selbst signiert' );
 like( sh( 'web1', 'openssl x509 -in /root/s.crt -noout -subject -enddate' ), qr/subject=CN = staging.example.com\nnotAfter=Nov 23 08:00:00 2026 GMT/, '... mit Laufzeit' );
+# Der Inhalt eines PEM-Blocks: base64("holmgang-sim-<tag>:<id>"); blocks()
+# liest ihn zurueck, eine fremde Kennung ist "bad".
+{
+    my $pki  = 'Langertha::Holmgang::Sim::Linux::Pki';
+    my $body = sub { my ($t) = @_; $t =~ m{-----\n(.*?)\n-----END}s or return; ( my $b = $1 ) =~ s{\s+}{}g; return decode_base64($b) };
+    for my $c ( [ cert => 'cert', 'CERTIFICATE' ], [ key => 'key', 'PRIVATE KEY' ], [ enckey => 'key', 'ENCRYPTED PRIVATE KEY' ], [ pub => 'pub', 'PUBLIC KEY' ] ) {
+        my ( $kind, $tag, $label ) = @$c;
+        my $text = $P->( $kind => 'shop-2026' );
+        like( $text, qr{\A-----BEGIN $label-----\n}, 'pem '.$kind.': Rahmen' );
+        is( $body->($text), 'holmgang-sim-'.$tag.':shop-2026', 'pem '.$kind.': Inhalt traegt die Kennung' );
+        is_deeply( [ map { [ $_->{kind}, $_->{id} ] } $pki->can('blocks')->($text) ], [ [ $kind, 'shop-2026' ] ], 'pem '.$kind.': blocks liest zurueck' );
+    }
+    my $csr = $pki->can('csr_pem_for')->( subject => 'CN=shop.example.com', sans => ['shop.example.com'], key => 'k-shop' );
+    like( $body->($csr), qr{\Aholmgang-sim-csr:\{}, 'CSR: Inhalt traegt die Kennung' );
+    is( ( $pki->can('blocks')->($csr) )[0]{kind}, 'csr', 'CSR: blocks liest zurueck' );
+    my $foreign = "-----BEGIN CERTIFICATE-----\n".encode_base64( 'other-sim-cert:shop-2026', '' )."\n-----END CERTIFICATE-----\n";
+    is( ( $pki->can('blocks')->($foreign) )[0]{kind}, 'bad', 'fremde Kennung: bad' );
+}
 done_testing;

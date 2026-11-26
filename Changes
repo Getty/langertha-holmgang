@@ -1,6 +1,9 @@
 Revision history for Langertha-Holmgang
 
 {{$NEXT}}
+  - PKI simulator: PEM bodies carry holmgang-sim-<tag>:<id> and derived
+    fingerprints and moduli use the seed holmgang-sim:; a case that pins
+    the old base64 or derived values must be re-encoded
   - Report: the import of another runner's report format for acceptance
     comparisons is removed; POD describes each module's behaviour instead of
     its origin; a test keeps names of private users out of the shipped tree

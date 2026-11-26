@@ -35,13 +35,6 @@ my @NAMES = (
   qr/p[i]i-/i,
 );
 
-my @ALLOW = (
-  # the body marker of the simulated PEM blocks: format 2 cases carry it
-  # base64-encoded and a rule pins it (ADR 0004); renaming it waits on the
-  # maintainer's decision (k76)
-  [ qr{\Alib/Langertha/Holmgang/Sim/Linux/Pki\.pm\z}, qr/c[a]i-sim[-:]/ ],
-);
-
 my @files;
 for my $top (qw( lib bin share t )) {
   my $dir = File::Spec->catdir( $root, $top );
@@ -64,7 +57,6 @@ sub scan {
     open my $fh, '<:raw', $path or die "$rel: $!";
     while ( my $line = <$fh> ) {
       next unless $line =~ $re;
-      next if grep { $rel =~ $_->[0] && $line =~ $_->[1] } @ALLOW;
       push @hits, "$rel:$.";
     }
     close $fh;

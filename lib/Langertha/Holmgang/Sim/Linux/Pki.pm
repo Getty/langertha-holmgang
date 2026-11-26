@@ -39,7 +39,7 @@ or more devices (merged):
     trusted: [ root-x1 ]                      # trust store of this device (client)
     installed: [ … ]                          # by the simulator: installed via update-ca-certificates
 
-A PEM block carries C<base64("cai-sim-cert:<id>")> as its body (or C<key>,
+A PEM block carries C<base64("holmgang-sim-cert:<id>")> as its body (or C<key>,
 encrypted in an C<ENCRYPTED PRIVATE KEY> block); files stay text, C<cat
 a b E<gt> chain> works as for real. CSRs carry their content (subject, names,
 key) canonically in the block. Self-generated certificates and keys
@@ -90,7 +90,7 @@ PEM text (with a trailing newline) for an entry of the catalog.
 sub pem {
     my ( $kind, $id ) = @_;
     my $tag = $kind eq 'enckey' ? 'key' : $kind;
-    my $b = MIME::Base64::encode_base64( "cai-sim-$tag:$id", '' );
+    my $b = MIME::Base64::encode_base64( "holmgang-sim-$tag:$id", '' );
     $b =~ s/(.{64})/$1\n/g;
     $b =~ s/\n\z//;
     return "-----BEGIN $LABEL{$kind}-----\n$b\n-----END $LABEL{$kind}-----\n";
@@ -115,7 +115,7 @@ sub blocks {
         ( my $b64 = $body ) =~ s/\s+//g;
         my $raw = MIME::Base64::decode_base64($b64);
         my $block = "-----BEGIN $label-----\n$body\n-----END $label-----\n";
-        if ( $raw =~ /\Acai-sim-(cert|key|csr|pub|p7):(.+)\z/s ) {
+        if ( $raw =~ /\Aholmgang-sim-(cert|key|csr|pub|p7):(.+)\z/s ) {
             my ( $tag, $id ) = ( $1, $2 );
             my $want = $kind eq 'enckey' ? 'key' : $kind;
             if ( $tag eq $want ) { push @b, { kind => $kind, id => $id, text => $block }; next }
@@ -180,7 +180,7 @@ sub dn {
 
 sub _cn { my ($s) = @_; return ( $s // '' ) =~ /(?:\A|,)\s*CN\s*=\s*([^,]+)/ ? $1 : undef }
 
-sub _hex { my ( $id, $n, $sep ) = @_; my $h = uc Digest::SHA::sha512_hex("cai-sim:$id"); $h = substr( $h x 4, 0, $n ); return $sep ? join( ':', $h =~ /(..)/g ) : $h }
+sub _hex { my ( $id, $n, $sep ) = @_; my $h = uc Digest::SHA::sha512_hex("holmgang-sim:$id"); $h = substr( $h x 4, 0, $n ); return $sep ? join( ':', $h =~ /(..)/g ) : $h }
 
 =func modulus
 
@@ -728,7 +728,7 @@ sub _canon_csr {
     return $JSON->encode( { subject => \%dn, sans => \@sans, key => $c{key} } );
 }
 
-sub _csr_pem { my ($json) = @_; my $b = MIME::Base64::encode_base64( "cai-sim-csr:$json", '' ); $b =~ s/(.{64})/$1\n/g; $b =~ s/\n\z//; return "-----BEGIN CERTIFICATE REQUEST-----\n$b\n-----END CERTIFICATE REQUEST-----\n" }
+sub _csr_pem { my ($json) = @_; my $b = MIME::Base64::encode_base64( "holmgang-sim-csr:$json", '' ); $b =~ s/(.{64})/$1\n/g; $b =~ s/\n\z//; return "-----BEGIN CERTIFICATE REQUEST-----\n$b\n-----END CERTIFICATE REQUEST-----\n" }
 
 =func csr_pem_for
 
