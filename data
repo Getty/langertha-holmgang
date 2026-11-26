@@ -1,0 +1,24 @@
+---
+claimed_at: 2026-11-26T03:12:04Z
+claimed_by: holmgang-worker
+class: standard
+completed: 2026-11-26T03:12:04Z
+created: 2026-11-26T02:45:01Z
+id: 80
+priority: low
+started: 2026-11-26T02:48:41Z
+status: done
+tags:
+- runner
+- mock
+title: 'Mock-Ziel mit Kontextfenster: context_exceeded ohne echtes Ziel prüfen'
+updated: 2026-11-26T03:12:04Z
+---
+
+Die Mock-Ziele (mock-solution, mock-text) kennen kein Kontextfenster. Ob die Längenstufen einer Suite am Fenster eines Ziels richtig schneiden (context_exceeded ab Stufe X), zeigt heute nur ein echtes Ziel. Wunsch: eine Variant-Einstellung oder Option für die Mock-Ziele, die ein Fenster von N Token vorgibt und darüber context_exceeded liefert (Schätzung wie Haystack::estimate_tokens).
+
+2026-11-26 03:07 Design (worker's choice, ADR 0005/0009 k80 amendments): variant setting context_window (tokens 1..9999999), checked by Target::check_variant, accepted only on Langertha::Engine::Virtual, not a request option. Batch hands the variant's settings to the engine code as third argument (case, slot, settings); one engine object cannot take a window and is refused. Runner::mock_engine(case, mode, context_window => N) wraps each script entry: the request is estimated (message texts, tool calls, tool schemas as JSON, via Haystack->estimate_tokens) and above N answered with 400 'request (n tokens) exceeds the available context size (N tokens)', which Target classifies as context_exceeded before any tool call. CLI refuses context_window for any non-mock target (exit 2).
+
+2026-11-26 03:07 Done: Target.pm (context_window setting), Runner.pm (mock_engine window, _request_tokens, haystack_class), Batch.pm (engine code gets settings), CLI.pm (mock engine_for passes the window, non-mock refused), bin/holmgang POD, ADR 0005/0009 amendments; new t/mock_context_window.t (under the window passes, longer one context_exceeded before any call, estimate parts, setting checks, refused on non-mock and on one engine object, tier curve per window, CLI run/refusals). prove -lr t: 113 files, 3637 tests, PASS; self-skipped: acceptance_dsl.t, sandbox_docker.t, sim/denken_vectors.t (env not set). holmgang lint on the external suite copy: 39 ok, 0 refused. Not committed; shares CLI.pm, Batch.pm and bin/holmgang with k74.
+
+2026-11-26 03:11 Committed 4cde332 (k74, k80 together)
