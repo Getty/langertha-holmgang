@@ -1,0 +1,17 @@
+---
+class: standard
+created: 2026-11-26T03:06:25Z
+id: 81
+priority: low
+status: backlog
+tags:
+- dsl
+- tests
+title: 'acceptance_dsl.t und DSL-Export: gleiche Digests, Zahlen aus Strings, JSON-Booleans'
+updated: 2026-11-26T03:06:25Z
+---
+
+Drei Befunde beim Umzug von Generatoren in die DSL (generisch):
+1. t/acceptance_dsl.t prüft isnt(digest DSL, digest Format-2-Original). Ist das Original selbst der Export der DSL-Suite, sind die Digests gleich und genau dieser Check schlägt fehl, obwohl das das stärkere Ergebnis ist. Gleichheit erlauben.
+2. Eine Zahl, die einmal in einen String interpoliert wurde, exportiert export-yaml als quotierten String ("28"); Lauf und Mock-Lauf weichen dann vom Original ab. ADR 0007 nennt das, aber weder Laden noch Lint warnt. Prüfen, ob Lint/Export das erkennen kann.
+3. Die DSL speichert ein JSON::PP::Boolean wie übergeben, der YAML-Lader liefert ein Perl-Boolean; gleich im Wahrheitswert, nicht in der Struktur (acceptance_dsl.t schlägt an). Normalisieren?
